@@ -63,6 +63,26 @@ export const MENU_BY_CATEGORY: Record<string, MenuItem[]> = {
     { id: 2, name: "짬뽕", price: 10000, category: "식사" },
     { id: 3, name: "탕수육", price: 18000, category: "사이드" },
   ],
+  한식: [
+    { id: 1, name: "김치찌개", price: 9000, category: "식사" },
+    { id: 2, name: "제육덮밥", price: 10000, category: "식사" },
+    { id: 3, name: "계란말이", price: 5000, category: "사이드" },
+  ],
+  일식: [
+    { id: 1, name: "모둠초밥", price: 14000, category: "식사" },
+    { id: 2, name: "우동", price: 8000, category: "식사" },
+    { id: 3, name: "새우튀김", price: 6000, category: "사이드" },
+  ],
+  카페: [
+    { id: 1, name: "아메리카노", price: 4500, category: "음료" },
+    { id: 2, name: "카페라테", price: 5500, category: "음료" },
+    { id: 3, name: "조각 케이크", price: 6500, category: "디저트" },
+  ],
+  분식: [
+    { id: 1, name: "떡볶이", price: 9000, category: "식사" },
+    { id: 2, name: "김밥", price: 4500, category: "식사" },
+    { id: 3, name: "모둠튀김", price: 5000, category: "사이드" },
+  ],
 }
 
 export type Review = { stars: number ; comment: string ; tags: string[] }

@@ -210,6 +210,29 @@ const POSTS = [
   },
 ]
 
+const ADDITIONAL_POSTS = [
+  { restaurant: "바삭치킨 역삼점", category: "치킨", emoji: "🍗", distance: 350, currentMembers: 1, maxMembers: 3, currentAmount: 22000, minOrderAmount: 30000, deadline: "19:00", leaderName: "치킨친구", leaderRating: 4.7, leaderTrades: 12, description: "저녁 치킨 같이 주문해요. 배달비를 나누고 건물 입구에서 만나요.", imageId: "1569050467450-2de3c2afc2cd" },
+  { restaurant: "우리피자 테헤란로점", category: "피자", emoji: "🍕", distance: 480, currentMembers: 2, maxMembers: 4, currentAmount: 24000, minOrderAmount: 40000, deadline: "19:20", leaderName: "피자한조각", leaderRating: 4.9, leaderTrades: 31, description: "피자와 사이드 함께 주문할 분 구해요. 각자 원하는 메뉴를 골라 주세요.", imageId: "1513104890138-7c749dbe5d58" },
+  { restaurant: "따뜻한밥상 역삼점", category: "한식", emoji: "🍜", distance: 160, currentMembers: 1, maxMembers: 3, currentAmount: 9000, minOrderAmount: 20000, deadline: "18:40", leaderName: "든든한저녁", leaderRating: 4.8, leaderTrades: 20, description: "김치찌개나 제육덮밥 같이 주문해요. 퇴근하고 저녁 먹을 분 환영해요.", imageId: "1547592180-85f173990554" },
+  { restaurant: "한그릇식당 강남점", category: "한식", emoji: "🍜", distance: 620, currentMembers: 2, maxMembers: 4, currentAmount: 18000, minOrderAmount: 25000, deadline: "19:10", leaderName: "밥친구", leaderRating: 4.6, leaderTrades: 9, description: "든든한 한 끼 함께 주문해요. 만날 장소는 채팅에서 정해요.", imageId: "1547592180-85f173990554" },
+  { restaurant: "동네반점 역삼점", category: "중식", emoji: "🥡", distance: 430, currentMembers: 1, maxMembers: 3, currentAmount: 10000, minOrderAmount: 25000, deadline: "18:50", leaderName: "짬뽕좋아", leaderRating: 4.7, leaderTrades: 16, description: "짜장면, 짬뽕 같이 시켜요. 탕수육도 각자 메뉴에 추가할 수 있어요.", imageId: "1563245372-f21724e3856d" },
+  { restaurant: "버거스테이션 역삼점", category: "패스트푸드", emoji: "🍔", distance: 270, currentMembers: 2, maxMembers: 4, currentAmount: 20000, minOrderAmount: 25000, deadline: "18:20", leaderName: "감튀러버", leaderRating: 4.8, leaderTrades: 25, description: "버거 세트 함께 주문할 분 모집해요. 배달 도착 후 바로 수령해 주세요.", imageId: "1568901346375-23c9450c58cd" },
+  { restaurant: "오늘초밥 역삼점", category: "일식", emoji: "🍱", distance: 240, currentMembers: 1, maxMembers: 3, currentAmount: 14000, minOrderAmount: 25000, deadline: "18:50", leaderName: "초밥한접시", leaderRating: 4.9, leaderTrades: 38, description: "초밥과 우동 같이 주문해요. 각자 먹을 메뉴를 채팅방에서 선택해 주세요.", imageId: "1579871494447-9811cf80d66c" },
+  { restaurant: "소담일식 테헤란로점", category: "일식", emoji: "🍱", distance: 690, currentMembers: 2, maxMembers: 4, currentAmount: 28000, minOrderAmount: 35000, deadline: "19:30", leaderName: "우동친구", leaderRating: 4.6, leaderTrades: 7, description: "일식 저녁 메뉴 함께 시킬 분 구해요. 수령 위치는 추천 장소를 보고 정해요.", imageId: "1579871494447-9811cf80d66c" },
+  { restaurant: "오후커피 역삼점", category: "카페", emoji: "☕", distance: 110, currentMembers: 2, maxMembers: 4, currentAmount: 10000, minOrderAmount: 15000, deadline: "18:10", leaderName: "커피타임", leaderRating: 4.8, leaderTrades: 22, description: "커피와 디저트 함께 주문해요. 건물 1층에서 수령하면 편할 것 같아요.", imageId: "1509042239860-f550ce710b93" },
+  { restaurant: "달콤카페 강남점", category: "카페", emoji: "☕", distance: 550, currentMembers: 1, maxMembers: 3, currentAmount: 6500, minOrderAmount: 15000, deadline: "19:00", leaderName: "디저트산책", leaderRating: 4.7, leaderTrades: 14, description: "저녁 커피 같이 주문해요. 케이크도 메뉴에서 골라 주세요.", imageId: "1509042239860-f550ce710b93" },
+  { restaurant: "매콤분식 역삼점", category: "분식", emoji: "🍢", distance: 190, currentMembers: 1, maxMembers: 3, currentAmount: 9000, minOrderAmount: 20000, deadline: "18:30", leaderName: "떡볶이친구", leaderRating: 4.9, leaderTrades: 29, description: "떡볶이, 김밥, 튀김 같이 주문할 분 모집해요.", imageId: "1563245372-f21724e3856d" },
+  { restaurant: "김밥한줄 테헤란로점", category: "분식", emoji: "🍢", distance: 380, currentMembers: 2, maxMembers: 4, currentAmount: 16000, minOrderAmount: 20000, deadline: "19:15", leaderName: "가벼운한끼", leaderRating: 4.5, leaderTrades: 6, description: "간단한 저녁 함께 시켜요. 김밥과 분식 메뉴 중에서 선택해 주세요.", imageId: "1563245372-f21724e3856d" },
+].map((post, index) => ({
+  ...POSTS.find(template => template.category === post.category) ?? POSTS[0],
+  ...post,
+  id: index + 5,
+  status: "recruiting",
+  deliveryTime: "모집 마감 후 약 30~40분",
+}))
+
+const DEMO_POSTS = [...POSTS, ...ADDITIONAL_POSTS]
+
 const APPLICANTS = [
   {
     id: 1,
@@ -954,7 +977,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
             {posts
               .filter((p) => p.distance <= RECRUITMENT_RADIUS && p.status === "recruiting")
               .sort((a, b) => a.distance - b.distance)
-              .slice(0, 3)
+              .slice(0, 6)
               .map((p) => (
                 <PostCard
                   key={p.id}
@@ -2201,7 +2224,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
 
 export default function App() {
   return (
-    <FlowProvider initialPosts={POSTS}>
+    <FlowProvider initialPosts={DEMO_POSTS}>
       <PrototypeApp />
     </FlowProvider>
   )
