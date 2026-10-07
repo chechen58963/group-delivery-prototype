@@ -1,0 +1,10 @@
+{
+  "description": "Facilitates location-based group food delivery by connecting users to nearby orders, enabling shared payments, real-time chat, and seamless coordination.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
