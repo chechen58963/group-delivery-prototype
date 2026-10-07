@@ -769,23 +769,55 @@ function BottomNav({ tab, onTab }: { tab: Tab ; onTab: (t: Tab) => void }) {
 // ─── SCREEN 1: MAIN ───────────────────────────────────────────────────────────
 
 function MainScreen({ push }: { push: (s: Screen) => void }) {
-  const { posts, tx, active, selectPost, setCategory } = useFlow()
+  const { posts, tx, active, selectPost, setCategory, setQuery, myLocation, setMyLocation, setNotice } = useFlow()
+  const [locationOpen, setLocationOpen] = useState(false)
+  const [locationDraft, setLocationDraft] = useState(myLocation)
+  const showAllPosts = () => {
+    setCategory("all")
+    setQuery("")
+    push("list")
+  }
 
   return (
     <div className="flex-1 overflow-y-auto bg-brand-50">
       {/* top bar */}
+      {locationOpen && (
+        <div className="absolute inset-0 z-40 bg-black/30 flex items-center justify-center p-5" onKeyDown={event => { if (event.key === "Escape") setLocationOpen(false) }}>
+          <form role="dialog" aria-modal="true" aria-labelledby="location-title" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onSubmit={event => {
+            event.preventDefault()
+            const value = locationDraft.trim()
+            if (!value) return
+            setMyLocation(value)
+            setLocationOpen(false)
+            setNotice("내 위치를 저장했어요.")
+          }}>
+            <h2 id="location-title" className="font-bold text-lg">내 위치 입력</h2>
+            <label htmlFor="my-location" className="block text-sm text-gray-600 mt-4 mb-2">주소 또는 동네 이름</label>
+            <input id="my-location" autoFocus required maxLength={100} value={locationDraft} onChange={event => setLocationDraft(event.target.value)} placeholder="예: 대전 유성구 궁동" className="w-full min-w-0 rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none focus:border-brand" />
+            <p className="mt-2 text-xs text-gray-500">모집글 거리는 시연용이며 입력한 주소로 실제 거리를 계산하지 않아요.</p>
+            <div className="flex gap-2 mt-5">
+              <button type="button" onClick={() => setLocationOpen(false)} className="flex-1 rounded-xl border border-gray-200 py-3 text-sm">취소</button>
+              <button type="submit" disabled={!locationDraft.trim()} className="flex-1 rounded-xl bg-brand text-white py-3 text-sm font-bold disabled:opacity-40">위치 저장</button>
+            </div>
+          </form>
+        </div>
+      )}
       <div className="bg-white px-4 pt-2 pb-4">
         <div className="flex items-center justify-between mb-3">
           <button
-            onClick={() => push("category")}
-            className="flex items-center gap-1 text-gray-800"
+            aria-label="내 위치 입력"
+            onClick={() => {
+              setLocationDraft(myLocation)
+              setLocationOpen(true)
+            }}
+            className="flex min-w-0 items-center gap-1 text-gray-800"
           >
             <IcLocation />
             <span
-              className="font-semibold text-base"
+              className="font-semibold text-base truncate max-w-[230px]"
               style={{ fontFamily: "Noto Sans KR" }}
             >
-              강남구 역삼동
+              {myLocation}
             </span>
             <svg
               viewBox="0 0 24 24"
@@ -803,7 +835,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
         </div>
         {/* search */}
         <button
-          onClick={() => push("list")}
+          onClick={showAllPosts}
           className="w-full flex items-center gap-3 bg-gray-50 rounded-2xl px-4 h-11 text-gray-400 border border-gray-100"
         >
           <IcSearch />
@@ -816,18 +848,14 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
       <div className="px-4 py-4 space-y-5">
         {/* categories */}
         <div>
-          <h2
-            className="font-bold text-gray-900 mb-3"
-            style={{ fontFamily: "Noto Sans KR" }}
-          >
-            카테고리
-          </h2>
+          <button onClick={() => push("category")} className="font-bold text-gray-900 mb-3" style={{ fontFamily: "Noto Sans KR" }}>카테고리</button>
           <div className="grid grid-cols-5 gap-2">
             {CATEGORIES.slice(0, 10).map((c) => (
               <button
                 key={c.id}
                 onClick={() => {
                   setCategory(c.id)
+                  setQuery("")
                   push("list")
                 }}
                 className="flex flex-col items-center gap-1.5 p-2 bg-white rounded-2xl shadow-sm border border-gray-100 active:scale-95 transition-all"
@@ -856,7 +884,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
                     ? "applicants"
                     : "chat",
               )
-            } else push("list")
+            } else showAllPosts()
           }}
           className="w-full bg-white rounded-2xl p-4 border border-orange-200 shadow-sm active:scale-[0.98] transition-all text-left"
           style={{ background: "linear-gradient(135deg, #FFF6EE, #FFE8D6)" }}
@@ -915,7 +943,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
               근처 모집 중
             </h2>
             <button
-              onClick={() => push("list")}
+              onClick={showAllPosts}
               className="text-xs text-brand font-medium"
               style={{ fontFamily: "Noto Sans KR" }}
             >
@@ -953,7 +981,7 @@ function CategoryScreen({
   pop: () => void
   push: (s: Screen) => void
 }) {
-  const { category: sel, setCategory: setSel } = useFlow()
+  const { category: sel, setCategory: setSel, setQuery } = useFlow()
 
   return (
     <div className="flex-1 overflow-y-auto bg-white">
@@ -969,7 +997,11 @@ function CategoryScreen({
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
-              onClick={() => setSel(c.id)}
+              onClick={() => {
+                setSel(c.id)
+                setQuery("")
+                push("list")
+              }}
               className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all active:scale-95 ${
                 sel === c.id
                   ? "border-brand bg-brand-50"
@@ -1026,7 +1058,7 @@ function ListScreen({
         p.distance <= RECRUITMENT_RADIUS &&
         p.status === "recruiting" &&
         (activeCat === "all" ||
-          p.category === CATEGORIES.find((c) => c.id === activeCat)?.label) &&
+          p.category === (activeCat === "burger" ? "패스트푸드" : CATEGORIES.find((c) => c.id === activeCat)?.label)) &&
         p.restaurant.includes(query.trim()),
     )
     .sort((a, b) => a.distance - b.distance)
@@ -1056,7 +1088,10 @@ function ListScreen({
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
-              onClick={() => setActiveCat(c.id)}
+              onClick={() => {
+                setActiveCat(c.id)
+                setQuery("")
+              }}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeCat === c.id
                   ? "bg-brand text-white"

@@ -80,6 +80,7 @@ function useFlowState(initialPosts: Post[]) {
   const [category, setCategory] = useState("all")
 
   const [query, setQuery] = useState("")
+  const [myLocation, setMyLocation] = useState("강남구 역삼동")
 
   const [tx, setTx] = useState<Transaction | null>(null)
 
@@ -362,6 +363,8 @@ function useFlowState(initialPosts: Post[]) {
     setCategory,
     query,
     setQuery,
+    myLocation,
+    setMyLocation,
     tx,
     active,
     menu,
