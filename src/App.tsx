@@ -1127,6 +1127,11 @@ function DetailScreen({
           <p>{post.priceNote ?? "가격과 실제 판매 메뉴는 주문 전 확인이 필요해요."}</p>
           {post.storeSource && <details><summary className="cursor-pointer py-1">가게 정보 · 자료 확인일</summary><p>{MENU_CHECKED_ON} · <a href={post.storeSource} target="_blank" rel="noopener noreferrer" className="underline">가게 정보 출처</a></p></details>}
         </div>
+        {post.menus && <details className="bg-white rounded-xl border border-gray-100 p-4">
+          <summary className="cursor-pointer text-sm font-bold">메뉴 미리 보기 · {post.menus.length}개</summary>
+          <div className="mt-3 divide-y divide-gray-100">{post.menus.map(item => <div key={item.id} className="flex justify-between gap-3 py-2 text-sm"><span>{item.name}</span><span className="shrink-0 text-gray-500">{money(item.price)}</span></div>)}</div>
+          <p className="text-[11px] text-gray-500 mt-2">선택과 수량 입력은 참여 수락 후 채팅방에서 진행해요. 표시 가격은 참고값 또는 시연값이에요.</p>
+        </details>}
         {/* amount */}
         <div className="bg-brand-50 rounded-2xl p-4">
           <div className="flex justify-between items-end mb-2">
