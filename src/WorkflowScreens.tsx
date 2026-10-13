@@ -612,7 +612,10 @@ function MeetingRecommendations({
 }
 
 export function Chat({ pop, push }: Navigation) {
-  const { tx, dispatch, setNotice, myLocation, setSelectedApplicant } = useFlow()
+  const { tx, dispatch, setNotice, myLocation, setSelectedApplicant, unreadCount, setNotificationsOpen, advanceClock } = useFlow()
+  const [panel, setPanel] = useState<"order" | "place" | "people" | "menu" | "payment" | "delivery" | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [text, setText] = useState("")
   const [place, setPlace] = useState(tx?.meeting ?? "")
   const [meetingTimeDraft, setMeetingTimeDraft] = useState(tx?.meetingTime ?? "")
@@ -627,6 +630,24 @@ export function Chat({ pop, push }: Navigation) {
     if (followBottom.current) bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
     else setNewMessages(true)
   }, [tx?.messages.length])
+
+  const panelOpen = panel !== null
+  useEffect(() => {
+    if (!panelOpen) return
+    const previous = document.activeElement as HTMLElement | null
+    panelRef.current?.querySelector<HTMLButtonElement>("button")?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setPanel(null) }
+      if (event.key !== "Tab") return
+      const elements = [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary, [tabindex="0"]') ?? [])]
+        .filter(element => element.getClientRects().length > 0)
+      const first = elements[0], last = elements[elements.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => { document.removeEventListener("keydown", onKey); previous?.focus() }
+  }, [panelOpen])
 
   if (!tx || tx.cancelled || tx.application !== "accepted")
     return (
@@ -678,45 +699,72 @@ export function Chat({ pop, push }: Navigation) {
           ? "payment"
           : "menu"
 
+  const navigate = (screen: Screen) => {
+    if (screen === "chat") setPanel(null)
+    else if (screen === "menu" || screen === "payment" || screen === "delivery") setPanel(screen)
+    else push(screen)
+  }
+  const action = allReceived(tx) ? "거래 완료 보기"
+    : tx.arrived ? "음식 수령 확인하기"
+    : tx.ordered ? "배달 현황 확인하기"
+    : tx.menusFinal ? "송금 금액 확인하기"
+    : ready && tx.role === "leader" ? "최종 주문 확정하기"
+    : !mine.menuConfirmed ? "내 메뉴 선택하기" : null
+  const openProfile = (id: string) => {
+    setSelectedApplicant(tx.role === "leader" ? Number(id.split("-")[1]) || 1 : 0)
+    push("applicantProfile")
+  }
+
   return (
-    <div className="flex-1 min-h-0 flex flex-col bg-gray-50">
-      <Top title={tx.post.restaurant} pop={pop} />
-      <div className="flex gap-2 bg-white px-3 py-2 border-b border-gray-100">
-        {[
-          { label: "메뉴 내역", screen: "menu" as Screen, enabled: true },
-          {
-            label: "송금 현황",
-            screen: "payment" as Screen,
-            enabled: tx.menusFinal,
-          },
-          {
-            label: "배달 현황",
-            screen: "delivery" as Screen,
-            enabled: tx.ordered,
-          },
-        ].map((item) => (
-          <button
-            key={item.label}
-            disabled={!item.enabled}
-            onClick={() => push(item.screen)}
-            className="flex-1 text-xs font-semibold text-brand bg-brand-50 rounded-xl py-2 disabled:text-gray-300 disabled:bg-gray-50"
-          >
-            {item.label}
+    <div className="chat-room relative flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col" inert={panelOpen}>
+        <header className="chat-header flex-shrink-0 px-3 pt-3 pb-2">
+          <div className="flex items-center gap-2">
+            <button aria-label="채팅 나가기" onClick={pop} className="w-9 h-10 text-2xl">‹</button>
+            <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-bold">{tx.post.restaurant}</h1><button onClick={() => setPanel("people")} className="chat-muted text-[11px] py-1">참여자 {tx.people.length}명 · 프로필 보기 ›</button></div>
+            <button aria-label={"알림 열기, 읽지 않은 알림 " + unreadCount + "개"} onClick={() => setNotificationsOpen(true)} className="chat-muted text-xs p-2">알림{unreadCount > 0 && <span className="ml-1 text-brand font-bold">{unreadCount}</span>}</button>
+          </div>
+          <button onClick={() => setPanel("order")} className="chat-status w-full mt-1 px-3 py-2 rounded-xl flex justify-between items-center text-xs">
+            <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-brand" />{statusOf(tx)}</span><span className="chat-muted">주문 정보 보기 ›</span>
           </button>
-        ))}
+        </header>
+        <div ref={listRef} role="log" aria-label="공동배달 대화" aria-live="polite" onScroll={(event) => {
+          const element = event.currentTarget
+          followBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80
+          if (followBottom.current) setNewMessages(false)
+        }} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-5 space-y-4">
+          <p className="chat-muted text-center text-[11px] pb-2">메뉴와 수령 장소를 함께 정해 보세요.</p>
+          {tx.messages.length === 0 && <div className="chat-empty text-center py-12"><span className="text-3xl">💬</span><p className="text-sm font-semibold mt-3">첫 인사를 나눠 보세요</p><p className="chat-muted text-xs mt-2">주문 정보는 상단에서 언제든 확인할 수 있어요.</p></div>}
+          {tx.messages.map((m) => {
+            const person = tx.people.find(p => p.name === m.sender)
+            return <div key={m.id} className={"flex " + (m.isMe ? "justify-end" : "justify-start")}>
+              <div className="max-w-[85%] min-w-0">
+                {!m.isMe && (person && person.id !== "me" ? <button onClick={() => openProfile(person.id)} className="chat-muted text-[11px] mb-1.5">{m.sender} ›</button> : <p className="chat-muted text-[11px] mb-1.5">{m.sender}</p>)}
+                <div className={"chat-bubble rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words " + (m.isMe ? "chat-bubble-mine rounded-br-sm" : "rounded-bl-sm")}>{m.content}</div>
+                <p className={"chat-muted text-[10px] mt-1 " + (m.isMe ? "text-right" : "")}>{m.time}</p>
+              </div>
+            </div>
+          })}
+          <div ref={bottom} />
+        </div>
+        {newMessages && <button onClick={() => { followBottom.current = true; setNewMessages(false); bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }) }} className="chat-new-message absolute bottom-32 left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-xs shadow-lg">새 메시지 보기 ↓</button>}
+        {action && <button onClick={() => ready && !tx.menusFinal && tx.role === "leader" ? setPanel("order") : navigate(next)} className="chat-next flex-shrink-0 px-4 py-2.5 text-xs flex justify-between"><span>{action}</span><span>›</span></button>}
+        <form onSubmit={event => { event.preventDefault(); send(); inputRef.current?.focus() }} className="chat-composer flex-shrink-0 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center gap-2">
+          <button type="button" aria-label="주문·장소 도구 열기" onClick={() => setPanel("order")} className="chat-muted w-9 h-11 text-2xl shrink-0">＋</button>
+          <input ref={inputRef} aria-label="채팅 메시지" value={text} onChange={event => setText(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault() }} placeholder="메시지를 입력하세요" className="chat-input min-w-0 flex-1 h-11 rounded-2xl px-3 text-sm" />
+          <button aria-label="메시지 전송" disabled={!text.trim()} className="chat-send w-11 h-11 rounded-full text-lg disabled:opacity-30">↑</button>
+        </form>
       </div>
-      <div className="flex-shrink-0 bg-white px-4 py-2 border-b border-gray-100 text-xs text-gray-600">
-        <div className="flex justify-between gap-2"><span>{statusOf(tx)} · {tx.people.length}명</span><span>내 예상 부담 {money(due(tx, "me"))}</span></div>
-        <p className="mt-1 truncate">수령 {tx.nearbyDelivery?.agreed ? tx.nearbyDelivery.address : tx.meeting || "장소 조율 중"} · {tx.meetingTime || "시간 조율 중"}</p>
-      </div>
-      <div ref={listRef} onScroll={(event) => {
-        const element = event.currentTarget
-        followBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80
-        if (followBottom.current) setNewMessages(false)
-      }} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3">
-        <details className="rounded-lg bg-white border border-gray-100 p-3">
-          <summary className="cursor-pointer font-semibold text-sm">주문·장소 설정 열기</summary>
-          <div className="pt-3 space-y-3">
+      {panel && <div className="absolute inset-0 z-30 flex items-end">
+        <button aria-label="주문 정보 닫기" onClick={() => setPanel(null)} className="absolute inset-0 bg-black/45" tabIndex={-1} />
+        <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="chat-panel-title" className="chat-panel relative w-full h-[92%] min-h-0 flex flex-col rounded-t-3xl overflow-hidden shadow-2xl">
+          <div className="flex-shrink-0 px-5 pt-4 pb-3 flex justify-between items-center"><h2 id="chat-panel-title" className="font-bold text-sm">공동배달 정보</h2><button onClick={() => setPanel(null)} className="chat-muted text-xs px-2 py-2">채팅으로 돌아가기 ×</button></div>
+          {(panel === "order" || panel === "place" || panel === "people") ? <>
+            <div className="chat-panel-tabs flex gap-1 px-4 pb-3" aria-label="공동배달 정보 종류">{([{id: "order", name: "주문·송금"}, {id: "place", name: "장소·시간"}, {id: "people", name: "참여자"}] as const).map(tab => <button key={tab.id} aria-pressed={panel === tab.id} onClick={() => setPanel(tab.id)} className={"flex-1 py-2.5 text-xs rounded-xl " + (panel === tab.id ? "chat-tab-active font-bold" : "chat-muted")}>{tab.name}</button>)}</div>
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4">
+              {panel === "order" && <>
+                <FlowBar />
+                <div className="grid grid-cols-3 gap-2">{[{name: "메뉴", screen: "menu", enabled: true}, {name: "송금", screen: "payment", enabled: tx.menusFinal}, {name: "배달", screen: "delivery", enabled: tx.ordered}].map(item => <button key={item.screen} disabled={!item.enabled} onClick={() => navigate(item.screen as Screen)} className="chat-tool rounded-xl py-3 text-xs disabled:opacity-35">{item.name} 보기</button>)}</div>
         <Card>
           <p className="text-sm font-bold">
             {!tx.closed
@@ -730,7 +778,7 @@ export function Chat({ pop, push }: Navigation) {
               ? `${tx.people.length}/${tx.post.maxMembers}명 · 모집 중에도 메뉴를 선택할 수 있어요.`
               : "주문 전까지 취소할 수 있고, 주문 후에는 수령을 진행해요."}
           </p>
-          <Button onClick={() => push(next)}>
+          <Button onClick={() => navigate(next)}>
             {allReceived(tx)
               ? "거래 완료 보기"
               : tx.arrived
@@ -749,7 +797,7 @@ export function Chat({ pop, push }: Navigation) {
               <Button
                 onClick={() => {
                   dispatch({ type: "finalize" })
-                  push("payment")
+                  navigate("payment")
                 }}
               >
                 최종 주문 확정하고 입금 안내
@@ -760,7 +808,7 @@ export function Chat({ pop, push }: Navigation) {
                   onClick={() => {
                     dispatch({ type: "finalize" })
                     setNotice("리더가 최종 주문을 확정했어요.")
-                    push("payment")
+                    navigate("payment")
                   }}
                 >
                   리더가 최종 주문 확정하기
@@ -793,27 +841,6 @@ export function Chat({ pop, push }: Navigation) {
             ))}
         </Card>
         <OrderSummary tx={tx} />
-        <div className="bg-white border border-gray-100 rounded-lg p-3 text-xs space-y-2">
-          <p className="font-semibold">수령 방식과 배달비</p>
-          <p>함께 만나요: 배달비 {money(feeShare(tx, "me"))} · 내 근처에서 받기: 요청자가 배달비 3,000원 전액 부담</p>
-          {tx.people.length === 2 && !tx.menusFinal && !tx.nearbyDelivery && (
-            <div className="space-y-2">
-              <label className="block">내 근처 수령 장소 (상세 집 주소 대신 건물 앞 권장)
-                <input aria-label="내 근처 배달 주소" value={nearbyAddress} onChange={event => setNearbyAddress(event.target.value)} className="w-full mt-1 border border-gray-200 p-2 rounded-lg" />
-              </label>
-              <Button secondary disabled={!nearbyAddress.trim()} onClick={() => dispatch({ type: "nearby-propose", requesterId: "me", address: nearbyAddress })}>내 근처에서 받기 제안</Button>
-              <Demo><Button secondary onClick={() => dispatch({ type: "nearby-propose", requesterId: tx.people.find(p => p.id !== "me")!.id, address: "상대방 근처 건물 앞 (시연)" })}>상대가 자기 근처 수령 제안</Button></Demo>
-            </div>
-          )}
-          {tx.nearbyDelivery && <div className="space-y-2">
-            <p>{tx.nearbyDelivery.agreed ? "합의 완료" : "상대 동의 대기"} · 배달 주소: {tx.nearbyDelivery.address}</p>
-            <p>요청자 배달비 3,000원 · 이동하는 사람 배달비 0원 · 이동 약 {tx.post.distance}m (시연 거리)</p>
-            {!tx.nearbyDelivery.agreed && tx.nearbyDelivery.requesterId !== "me" && <Button secondary onClick={() => dispatch({ type: "nearby-agree", id: "me" })}>이동 조건에 동의하기</Button>}
-            {!tx.nearbyDelivery.agreed && tx.nearbyDelivery.requesterId === "me" && <Demo><Button secondary onClick={() => dispatch({ type: "nearby-agree", id: tx.people.find(p => p.id !== "me")!.id })}>상대가 이동 조건에 동의하기</Button></Demo>}
-            {!tx.menusFinal && <Button secondary onClick={() => dispatch({ type: "nearby-reset" })}>일반 수령으로 되돌리기</Button>}
-          </div>}
-          {tx.people.length !== 2 && <p className="text-gray-500">내 근처에서 받기는 2인 공동배달에서 사용할 수 있어요.</p>}
-        </div>
         <Demo>
           <Button secondary onClick={() => {
             const sender = tx.people.find(person => person.id !== "me")!
@@ -839,34 +866,35 @@ export function Chat({ pop, push }: Navigation) {
                 ))}
             </Demo>
           )}
-          </div>
-        </details>
-        {tx.people.length > 1 && <button onClick={() => {
-          const other = tx.people.find(person => person.id !== "me")!
-          setSelectedApplicant(tx.role === "leader" ? Number(other.id.split("-")[1]) || 1 : 0)
-          push("applicantProfile")
-        }} className="text-xs text-brand underline">{tx.role === "leader" ? "참여자" : "리더"} 평점·거래 이력 보기</button>}
-        {tx.messages.map((m) => (
-          <div
-            key={m.id}
-            className={`flex ${m.isMe ? "justify-end" : "justify-start"}`}
-          >
-            <div
-              className={`max-w-[85%] rounded-2xl p-3 text-sm ${
-                m.isMe
-                  ? "bg-brand text-white rounded-br-sm"
-                  : "bg-white border border-gray-100 rounded-bl-sm"
-              }`}
-            >
-              <p className="text-[10px] opacity-70 mb-1">
-                {m.sender} · {m.time}
-              </p>
-              {m.content}
+
+                <CancelControl push={push} />
+                <details className="text-xs text-gray-500"><summary className="cursor-pointer py-2">시연 시간 조절</summary><button onClick={advanceClock} className="py-3 text-brand">30분 진행 (모집 마감·수령 지각 체험)</button></details>
+              </>}
+              {panel === "place" && <>
+                <div className="chat-tool rounded-2xl p-4 text-xs space-y-2"><p className="font-bold">합의한 수령 안내</p><p>{tx.nearbyDelivery?.agreed ? tx.nearbyDelivery.address : tx.meeting || "장소 조율 중"} · {tx.meetingTime || "시간 조율 중"}</p><p>내 예상 부담 {money(due(tx, "me"))}</p></div>
+        <div className="bg-white border border-gray-100 rounded-lg p-3 text-xs space-y-2">
+          <p className="font-semibold">수령 방식과 배달비</p>
+          <p>함께 만나요: 배달비 {money(feeShare(tx, "me"))} · 내 근처에서 받기: 요청자가 배달비 3,000원 전액 부담</p>
+          {tx.people.length === 2 && !tx.menusFinal && !tx.nearbyDelivery && (
+            <div className="space-y-2">
+              <label className="block">내 근처 수령 장소 (상세 집 주소 대신 건물 앞 권장)
+                <input aria-label="내 근처 배달 주소" value={nearbyAddress} onChange={event => setNearbyAddress(event.target.value)} className="w-full mt-1 border border-gray-200 p-2 rounded-lg" />
+              </label>
+              <Button secondary disabled={!nearbyAddress.trim()} onClick={() => dispatch({ type: "nearby-propose", requesterId: "me", address: nearbyAddress })}>내 근처에서 받기 제안</Button>
+
+        <Demo><Button secondary onClick={() => dispatch({ type: "nearby-propose", requesterId: tx.people.find(p => p.id !== "me")!.id, address: "상대방 근처 건물 앞 (시연)" })}>상대가 자기 근처 수령 제안</Button></Demo>
             </div>
-          </div>
-        ))}
-        <details className="rounded-lg bg-white border border-gray-100 p-3"><summary className="cursor-pointer text-sm font-semibold">위치 추천·수령 장소 조율</summary><div className="pt-3 space-y-3">
-        <MeetingRecommendations tx={tx} setPlace={setPlace} setText={setText} />
+          )}
+          {tx.nearbyDelivery && <div className="space-y-2">
+            <p>{tx.nearbyDelivery.agreed ? "합의 완료" : "상대 동의 대기"} · 배달 주소: {tx.nearbyDelivery.address}</p>
+            <p>요청자 배달비 3,000원 · 이동하는 사람 배달비 0원 · 이동 약 {tx.post.distance}m (시연 거리)</p>
+            {!tx.nearbyDelivery.agreed && tx.nearbyDelivery.requesterId !== "me" && <Button secondary onClick={() => dispatch({ type: "nearby-agree", id: "me" })}>이동 조건에 동의하기</Button>}
+            {!tx.nearbyDelivery.agreed && tx.nearbyDelivery.requesterId === "me" && <Demo><Button secondary onClick={() => dispatch({ type: "nearby-agree", id: tx.people.find(p => p.id !== "me")!.id })}>상대가 이동 조건에 동의하기</Button></Demo>}
+            {!tx.menusFinal && <Button secondary onClick={() => dispatch({ type: "nearby-reset" })}>일반 수령으로 되돌리기</Button>}
+          </div>}
+          {tx.people.length !== 2 && <p className="text-gray-500">내 근처에서 받기는 2인 공동배달에서 사용할 수 있어요.</p>}
+        </div>
+        <MeetingRecommendations tx={tx} setPlace={setPlace} setText={(value) => { setText(value); setPanel(null) }} />
         <Card>
           <h2 className="text-xs font-bold text-gray-500">
             채팅에서 정한 만남 장소 메모 (선택)
@@ -897,30 +925,17 @@ export function Chat({ pop, push }: Navigation) {
           <input aria-label="수령 약속 시간" type="time" value={meetingTimeDraft} onChange={event => setMeetingTimeDraft(event.target.value)} className="block w-full mt-1 border border-gray-200 rounded-lg p-2" />
         </label>
         <Button secondary disabled={!meetingTimeDraft} onClick={() => dispatch({ type: "meeting-time", value: meetingTimeDraft })}>수령 시간 저장</Button>
-        </div></details>
-        <CancelControl push={push} />
-        <div ref={bottom} />
-      </div>
-      {newMessages && <button onClick={() => { followBottom.current = true; setNewMessages(false); bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }) }} className="flex-shrink-0 bg-brand text-white text-xs py-2">새 메시지 보기 ↓</button>}
-      <div className="flex-shrink-0 bg-white border-t border-gray-100 p-3 flex gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <input
-          aria-label="채팅 메시지"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.nativeEvent.isComposing) send()
-          }}
-          placeholder="메시지를 입력하세요"
-          className="min-w-0 flex-1 h-11 rounded-xl bg-gray-100 px-3 text-sm"
-        />
-        <button
-          disabled={!text.trim()}
-          onClick={send}
-          className="bg-brand text-white px-4 rounded-xl text-sm disabled:opacity-40"
-        >
-          전송
-        </button>
-      </div>
+
+              </>}
+              {panel === "people" && <><p className="chat-muted text-xs">이름을 누르면 평점과 거래 이력을 확인할 수 있어요.</p>{tx.people.map(person => <button key={person.id} disabled={person.id === "me"} onClick={() => openProfile(person.id)} className="chat-tool w-full rounded-2xl p-4 flex justify-between items-center text-sm"><span>{person.name}{person.id === "me" ? " (나)" : ""}{person.id === leaderId(tx) ? " · 리더" : ""}</span><span className="chat-muted text-xs">{person.id === "me" ? "참여 중" : "프로필 ›"}</span></button>)}</>}
+            </div>
+          </> : <div className="flex-1 min-h-0 flex flex-col">
+            {panel === "menu" && <Menu pop={() => setPanel("order")} push={navigate} />}
+            {panel === "payment" && <Payment pop={() => setPanel("order")} push={navigate} />}
+            {panel === "delivery" && <Delivery pop={() => setPanel("order")} push={navigate} />}
+          </div>}
+        </div>
+      </div>}
     </div>
   )
 }

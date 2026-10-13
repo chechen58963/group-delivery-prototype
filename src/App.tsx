@@ -55,11 +55,11 @@ const CATEGORIES = [
   { id: "burger", label: "버거", emoji: "🍟" },
 ]
 const CATEGORY_COLOR: Record<string, string> = {
-  치킨: "bg-amber-100 text-amber-800", 피자: "bg-red-100 text-red-800", 한식: "bg-green-100 text-green-800",
-  중식: "bg-violet-100 text-violet-800", 패스트푸드: "bg-yellow-100 text-yellow-900", 일식: "bg-sky-100 text-sky-800",
-  카페: "bg-teal-100 text-teal-800", 분식: "bg-pink-100 text-pink-800",
+  치킨: "category-chicken", 피자: "category-pizza", 한식: "category-korean",
+  중식: "category-chinese", 패스트푸드: "category-fastfood", 일식: "category-japanese",
+  카페: "category-cafe", 분식: "category-snack",
 }
-const categoryStyle = (category: string) => CATEGORY_COLOR[category === "버거" ? "패스트푸드" : category] ?? "bg-gray-100 text-gray-700"
+const categoryStyle = (category: string) => "category-chip " + (CATEGORY_COLOR[category === "버거" ? "패스트푸드" : category] ?? "")
 let lastListScroll = 0
 
 const POSTS = [
@@ -598,9 +598,9 @@ function PostCard({
         <img
           src={`https://images.unsplash.com/photo-${post.imageId}?w=400&h=200&fit=crop&auto=format`}
           alt={post.restaurant}
-          className="w-full h-full object-cover mix-blend-overlay opacity-60"
+          className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 flex flex-col justify-between p-3">
+        <div className="absolute inset-0 flex flex-col justify-between p-3 bg-gradient-to-t from-black/75 via-black/10 to-transparent">
           <div className="flex justify-between items-start">
             <StatusBadge status={post.status} />
             <span className="text-2xl">{post.emoji}</span>
@@ -815,7 +815,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-brand-50">
+    <div className="app-page flex-1 overflow-y-auto">
       {/* top bar */}
       {locationOpen && (
         <div className="absolute inset-0 z-40 bg-black/30 flex items-center justify-center p-5" onKeyDown={event => { if (event.key === "Escape") setLocationOpen(false) }}>
@@ -924,7 +924,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
             } else showAllPosts()
           }}
           className="prototype-banner w-full bg-white rounded-2xl p-4 border border-orange-200 shadow-sm active:scale-[0.98] transition-all text-left"
-          style={{ background: "linear-gradient(135deg, #FFF6EE, #FFE8D6)" }}
+
         >
           <div className="flex items-center justify-between">
             <div>
@@ -1108,7 +1108,7 @@ function ListScreen({
     .sort((a, b) => a.distance - b.distance)
 
   return (
-    <div ref={scrollRef} onScroll={event => { lastListScroll = event.currentTarget.scrollTop }} className="flex-1 overflow-y-auto bg-brand-50">
+    <div ref={scrollRef} onScroll={event => { lastListScroll = event.currentTarget.scrollTop }} className="app-page flex-1 overflow-y-auto">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="flex items-center gap-3 px-4 h-14">
           <button
@@ -1227,8 +1227,9 @@ function DetailScreen({
         <img
           src={`https://images.unsplash.com/photo-${post.imageId}?w=400&h=280&fit=crop&auto=format`}
           alt={post.restaurant}
-          className="w-full h-full object-cover mix-blend-overlay opacity-50"
+          className="w-full h-full object-cover"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
         <div className="absolute top-4 left-4">
           <button
             onClick={pop}
@@ -2114,7 +2115,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
             } else push("list")
           }}
           className="prototype-banner w-full bg-white rounded-2xl p-4 border border-orange-200 shadow-sm text-left active:scale-[0.98] transition-all"
-          style={{ background: "linear-gradient(135deg, #FFF6EE, #FFE8D6)" }}
+
         >
           <div
             className="text-xs text-brand font-semibold mb-1"
@@ -2322,7 +2323,7 @@ function PrototypeApp() {
     } else setHistory(["profile"])
   }
 
-  const showBottomNav = ["main", "list", "create", "chat", "profile"].includes(
+  const showBottomNav = ["main", "list", "create", "profile"].includes(
     screen,
   )
 
@@ -2334,59 +2335,22 @@ function PrototypeApp() {
         className={`relative w-full sm:w-[390px] h-dvh sm:h-[calc(100dvh-2rem)] bg-[#FFF6EE] flex flex-col overflow-hidden sm:rounded-[40px] sm:shadow-2xl ${flow.isDark ? "app-dark" : ""}`}
         style={{ maxHeight: "900px", ...(keyboardViewportHeight ? { height: `${keyboardViewportHeight}px` } : {}) }}
       >
-        {/* Status bar */}
-        <div className="flex-shrink-0 h-10 flex items-center justify-between px-7 bg-white">
-          <span
-            className="text-xs font-bold text-gray-900"
-            style={{ fontFamily: "Outfit" }}
-          >
-            9:41
-          </span>
-          <div className="flex items-center gap-1 text-gray-900">
-            <svg
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="w-3.5 h-3.5"
-            >
-              <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" />
-            </svg>
-            <svg
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="w-3.5 h-3.5"
-            >
-              <rect x="1" y="6" width="15" height="12" rx="2" />
-              <path d="M23 13v-2a2 2 0 0 0 0 4v-2" />
-            </svg>
-          </div>
-        </div>
-
-        <div className="flex-shrink-0 px-4 py-1.5 bg-white border-b border-gray-100 text-[10px] text-gray-400 flex justify-between">
-          <span>프로토타입 · 실제 주문 / 송금 없음</span>
-          <span>
-            시연 시간{" "}
-            {new Date(flow.now).toLocaleTimeString("ko-KR", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            })}
-          </span>
-        </div>
-        <div className="flex-shrink-0 flex justify-end bg-white px-4 border-b border-gray-100">
+        {screen !== "chat" && <div className="flex-shrink-0 flex justify-end bg-white px-4 border-b border-gray-100">
           <button aria-label={`알림 열기, 읽지 않은 알림 ${flow.unreadCount}개`} onClick={() => flow.setNotificationsOpen(true)} className="flex items-center gap-2 py-2 text-xs text-gray-600">
             <IcBell /> 알림
             {flow.unreadCount > 0 && <span className="rounded-full bg-red-500 px-1.5 text-white font-bold">{flow.unreadCount}</span>}
           </button>
-        </div>
+        </div>}
         {flow.notice && (
           <div
             role="status"
-            className="flex-shrink-0 px-4 py-3 bg-gray-800 text-white text-xs leading-relaxed"
+            className={screen === "chat" ? "absolute top-24 left-4 right-4 z-40 rounded-xl px-4 py-3 bg-gray-800 text-white text-xs leading-relaxed shadow-lg pointer-events-none" : "flex-shrink-0 px-4 py-3 bg-gray-800 text-white text-xs leading-relaxed"}
           >
             {flow.notice}
           </div>
         )}
         {![
+          "chat",
           "category",
           "list",
           "create",
@@ -2417,7 +2381,7 @@ function PrototypeApp() {
           {screen === "profile" && <ProfileScreen push={push} />}
         </div>
 
-        {["detail", "applicants", "chat", "receipt"].includes(screen) && (
+        {["detail", "applicants", "receipt"].includes(screen) && (
           <details className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-1 text-[10px] text-gray-400">
             <summary className="cursor-pointer">시연 시간 조절</summary>
             <button className="text-brand py-2" onClick={flow.advanceClock}>
