@@ -101,6 +101,7 @@ function useFlowState(initialPosts: Post[]) {
   const [category, setCategory] = useState("all")
 
   const [query, setQuery] = useState("")
+  const [browseView, setBrowseView] = useState<"list" | "map">("list")
   const [myLocation, setMyLocation] = useState("강남구 역삼동")
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
     const stored = window.localStorage.getItem("group-delivery-theme")
@@ -396,6 +397,8 @@ function useFlowState(initialPosts: Post[]) {
     setCategory,
     query,
     setQuery,
+    browseView,
+    setBrowseView,
     myLocation,
     setMyLocation,
     themePreference,

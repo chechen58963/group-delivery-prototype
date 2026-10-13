@@ -26,11 +26,14 @@ const {
   LATE_GRACE_MS,
   LATE_SUSPENSION_MS,
   flowEvents,
+  postLeaderPoint,
+  straightDistance,
 } = await import(
   `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`
 )
 const post = {
   id: 1,
+  distance: 120,
   restaurant: "시연 음식점",
   category: "치킨",
   currentMembers: 2,
@@ -53,6 +56,23 @@ const finalized = () => {
   tx = transition(tx, { type: "menu-confirm" })
   return transition(tx, { type: "finalize" })
 }
+
+test("recruitment map distance stays consistent after joining the participant map", () => {
+  for (const distance of [0, 85, 120, 690, 700]) {
+    const candidate = { ...post, id: distance + 1, distance }
+    const origin = { x: 0, y: 0 }
+    const marker = postLeaderPoint(candidate)
+    assert.equal(straightDistance(origin, marker), distance)
+    const pending = makeTransaction(candidate, menu, "participant")
+    assert.equal(pending.people.some(person => person.id === "me"), false)
+    const joined = transition(pending, { type: "approve", accepted: true, items: menu, now: 100 })
+    const me = joined.people.find(person => person.id === "me")
+    const leader = joined.people.find(person => person.id === "leader")
+    assert.equal(straightDistance(me.location, leader.location), distance)
+    assert.ok(Math.abs(marker.x + me.location.x) < 0.00001)
+    assert.ok(Math.abs(marker.y + me.location.y) < 0.00001)
+  }
+})
 test("approval fills capacity and closes recruitment; rejection releases the application lock", () => {
   const pending = makeTransaction(post, menu, "participant")
   assert.equal(isActive(pending), true)

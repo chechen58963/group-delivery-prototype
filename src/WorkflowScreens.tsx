@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 
 import { useFlow } from "./FlowContext"
+import ParticipantLocations from "./ParticipantLocations"
 
 import {
   allPaid,
@@ -547,8 +548,8 @@ function MeetingRecommendations({
   const suggestions = recommendMeetings(tx)
   const locationIndex = (id: string) => {
     const point = tx.people.find((p) => p.id === id)!.location
-    return Math.max(0, demoLocations.findIndex((location) =>
-      location.point.x === point.x && location.point.y === point.y))
+    return demoLocations.findIndex((location) =>
+      location.point.x === point.x && location.point.y === point.y)
   }
   const selector = (id: string, name: string) => (
     <label key={id} className="flex items-center justify-between gap-2 text-xs">
@@ -563,6 +564,7 @@ function MeetingRecommendations({
           point: demoLocations[Number(event.target.value)].point,
         })}
       >
+        {locationIndex(id) === -1 && <option value={-1}>현재 시연 위치</option>}
         {demoLocations.map((location, index) => (
           <option key={location.name} value={index}>{location.name}</option>
         ))}
@@ -721,7 +723,7 @@ export function Chat({ pop, push }: Navigation) {
         <header className="chat-header flex-shrink-0 px-3 pt-3 pb-2">
           <div className="flex items-center gap-2">
             <button aria-label="채팅 나가기" onClick={pop} className="w-9 h-10 text-2xl">‹</button>
-            <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-bold">{tx.post.restaurant}</h1><button onClick={() => setPanel("people")} className="chat-muted text-[11px] py-1">참여자 {tx.people.length}명 · 프로필 보기 ›</button></div>
+            <div className="min-w-0 flex-1"><h1 className="truncate text-sm font-bold">{tx.post.restaurant}</h1><button onClick={() => setPanel("place")} className="chat-muted text-[11px] py-1">참여자 {tx.people.length}명 · 지도 보기 ›</button></div>
             <button aria-label={"알림 열기, 읽지 않은 알림 " + unreadCount + "개"} onClick={() => setNotificationsOpen(true)} className="chat-muted text-xs p-2">알림{unreadCount > 0 && <span className="ml-1 text-brand font-bold">{unreadCount}</span>}</button>
           </div>
           <button onClick={() => setPanel("order")} className="chat-status w-full mt-1 px-3 py-2 rounded-xl flex justify-between items-center text-xs">
@@ -871,6 +873,7 @@ export function Chat({ pop, push }: Navigation) {
                 <details className="text-xs text-gray-500"><summary className="cursor-pointer py-2">시연 시간 조절</summary><button onClick={advanceClock} className="py-3 text-brand">30분 진행 (모집 마감·수령 지각 체험)</button></details>
               </>}
               {panel === "place" && <>
+                <ParticipantLocations tx={tx} />
                 <div className="chat-tool rounded-2xl p-4 text-xs space-y-2"><p className="font-bold">합의한 수령 안내</p><p>{tx.nearbyDelivery?.agreed ? tx.nearbyDelivery.address : tx.meeting || "장소 조율 중"} · {tx.meetingTime || "시간 조율 중"}</p><p>내 예상 부담 {money(due(tx, "me"))}</p></div>
         <div className="bg-white border border-gray-100 rounded-lg p-3 text-xs space-y-2">
           <p className="font-semibold">수령 방식과 배달비</p>

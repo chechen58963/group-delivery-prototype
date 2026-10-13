@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useEffect, useRef, useState } from "react"
+import type { MapPin } from "./LocationMap"
 
 import { FlowProvider, MENU_BY_CATEGORY, useFlow } from "./FlowContext"
 
@@ -10,7 +11,10 @@ import {
   due,
   deliveryFee,
   RECRUITMENT_RADIUS,
+  postLeaderPoint,
 } from "./workflow"
+
+const LocationMap = lazy(() => import("./LocationMap"))
 
 import {
   FlowBar,
@@ -804,7 +808,7 @@ function BottomNav({ tab, onTab }: { tab: Tab ; onTab: (t: Tab) => void }) {
 // ─── SCREEN 1: MAIN ───────────────────────────────────────────────────────────
 
 function MainScreen({ push }: { push: (s: Screen) => void }) {
-  const { posts, tx, active, selectPost, setCategory, setQuery, myLocation, setMyLocation, setNotice } = useFlow()
+  const { posts, tx, active, selectPost, setCategory, setQuery, myLocation, setMyLocation, setNotice, setBrowseView } = useFlow()
   const [locationOpen, setLocationOpen] = useState(false)
   const [locationDraft, setLocationDraft] = useState(myLocation)
   const showAllPosts = () => {
@@ -882,6 +886,9 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
       </div>
 
       <div className="px-4 py-4 space-y-5">
+        <button onClick={() => { setBrowseView("map"); showAllPosts() }} className="map-entry w-full rounded-2xl p-4 flex items-center justify-between text-left">
+          <div><p className="font-bold text-sm">🗺️ 지도에서 모집글 찾기</p><p className="text-xs text-gray-500 mt-1">주변 700m · 음식 아이콘을 눌러 확인해요</p></div><span aria-hidden="true">›</span>
+        </button>
         {/* categories */}
         <div>
           <button onClick={() => push("category")} className="font-bold text-gray-900 mb-3" style={{ fontFamily: "Noto Sans KR" }}>카테고리</button>
@@ -1088,6 +1095,9 @@ function ListScreen({
     selectPost,
     query,
     setQuery,
+    browseView,
+    setBrowseView,
+    selectedId,
   } = useFlow()
   const scrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -1107,9 +1117,15 @@ function ListScreen({
     )
     .sort((a, b) => a.distance - b.distance)
 
+  const selectedMapPost = visible.find(post => post.id === selectedId) ?? visible[0]
+  const mapPins: MapPin[] = [
+    { id: "me", point: { x: 0, y: 0 }, label: "내 시연 위치", symbol: "나", kind: "me" },
+    ...visible.map(post => ({ id: String(post.id), point: postLeaderPoint(post), label: `${post.restaurant} · ${post.distance}m · ${post.currentMembers}/${post.maxMembers}명`, symbol: post.emoji, kind: "post" as const })),
+  ]
+
   return (
-    <div ref={scrollRef} onScroll={event => { lastListScroll = event.currentTarget.scrollTop }} className="app-page flex-1 overflow-y-auto">
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+    <div ref={scrollRef} onScroll={event => { if (browseView === "list") lastListScroll = event.currentTarget.scrollTop }} className={`app-page flex-1 min-h-0 ${browseView === "map" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shrink-0">
         <div className="flex items-center gap-3 px-4 h-14">
           <button
             onClick={pop}
@@ -1151,7 +1167,7 @@ function ListScreen({
         </div>
       </div>
 
-      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between shrink-0">
         <span
           className="text-sm text-gray-500"
           style={{ fontFamily: "Noto Sans KR" }}
@@ -1165,14 +1181,21 @@ function ListScreen({
           </span>{" "}
           이내 · {visible.length}개
         </span>
-        <div className="flex gap-2">
-          <span className="text-xs bg-white text-gray-500 border border-gray-200 px-3 py-1.5 rounded-full">
-            가까운순
-          </span>
+        <div className="map-view-toggle flex gap-1 rounded-xl p-1" aria-label="모집글 보기 방식">
+          {(["list", "map"] as const).map(view => <button key={view} aria-pressed={browseView === view} onClick={() => { setBrowseView(view); if (view === "list") requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = lastListScroll }) }} className={`px-3 py-1.5 rounded-lg text-xs ${browseView === view ? "map-view-active font-bold" : "text-gray-500"}`}>{view === "map" ? "지도" : "목록"}</button>)}
         </div>
       </div>
 
-      <div className="px-4 pb-4 space-y-3">
+      {browseView === "map" ? <div className="flex-1 min-h-0 flex flex-col px-3 pb-3 gap-2 overflow-y-auto">
+        <p className="text-[10px] text-gray-500 shrink-0">역삼역 주변 시연 위치 · 음식점 대신 모집 리더의 위치를 표시해요</p>
+        <Suspense fallback={<div className="map-loading flex-1 min-h-[260px] rounded-2xl flex items-center justify-center text-sm">지도 불러오는 중…</div>}>
+          <LocationMap pins={mapPins} selectedId={selectedMapPost ? String(selectedMapPost.id) : undefined} onSelect={id => { if (id !== "me") selectPost(Number(id)) }} radius={RECRUITMENT_RADIUS} title="주변 공동배달 모집글 지도" />
+        </Suspense>
+        {selectedMapPost ? <section className="map-selection shrink-0 rounded-2xl p-3 space-y-2" aria-label="선택한 모집글">
+          <label className="flex gap-2 items-center text-xs text-gray-500">모집글 선택<select aria-label="지도에서 모집글 선택" value={selectedMapPost.id} onChange={event => selectPost(Number(event.target.value))} className="min-w-0 flex-1 rounded-lg py-1 px-2 bg-gray-50 text-gray-800">{visible.map(post => <option key={post.id} value={post.id}>{post.emoji} {post.restaurant} · {post.distance}m</option>)}</select></label>
+          <div className="flex items-center justify-between gap-2"><div className="min-w-0"><h2 className="text-sm font-bold truncate">{selectedMapPost.restaurant}</h2><p className="mt-1 text-[11px] text-gray-500">{selectedMapPost.currentMembers}/{selectedMapPost.maxMembers}명 · {selectedMapPost.distance}m · {selectedMapPost.deadline} 마감</p></div><button onClick={() => { selectPost(selectedMapPost.id); push("detail") }} className="shrink-0 bg-brand text-white rounded-xl px-4 py-3 text-xs font-bold">상세 보기</button></div>
+        </section> : <div className="map-selection shrink-0 p-4 rounded-2xl text-center text-xs"><p>조건에 맞는 모집글이 없어요.</p><button onClick={() => { setActiveCat("all"); setQuery("") }} className="mt-2 text-brand font-semibold">전체 모집글 보기</button></div>}
+      </div> : <div className="px-4 pb-4 space-y-3">
         {visible.length === 0 && (
           <div className="text-center p-8 text-sm text-gray-500">
             조건에 맞는 모집글이 없어요.
@@ -1197,7 +1220,7 @@ function ListScreen({
             }}
           />
         ))}
-      </div>
+      </div>}
     </div>
   )
 }

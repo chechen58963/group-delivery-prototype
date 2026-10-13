@@ -28,6 +28,12 @@ export type MenuItem = {
   category: string
 }
 export type Point = { x: number; y: number }
+// Stable demo coordinates in metres: east is +x, north is +y.
+// Recruitment distances and participant maps use the same leader position.
+export function postLeaderPoint(post: Pick<Post, "id" | "distance">): Point {
+  const angle = ((post.id % 360) * 137.508) * Math.PI / 180
+  return { x: Math.cos(angle) * post.distance, y: Math.sin(angle) * post.distance }
+}
 export const demoLocations = [
   { name: "리더 주변", point: { x: 0, y: 0 } },
   { name: "역삼역 서쪽", point: { x: -120, y: 35 } },
@@ -314,7 +320,10 @@ export function transition(tx: Transaction, action: Action): Transaction {
       if (tx.application !== "pending") return tx
       if (!action.accepted) return { ...tx, application: "rejected" }
       if (recruitmentClosed(tx, action.now)) return tx
-      const people = [...tx.people, person("me", "나", action.items)]
+      const me = person("me", "나", action.items)
+      const leaderPoint = postLeaderPoint(tx.post)
+      me.location = { x: -leaderPoint.x, y: -leaderPoint.y }
+      const people = [...tx.people, me]
       return {
         ...tx,
         application: "accepted",
