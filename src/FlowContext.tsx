@@ -95,7 +95,10 @@ export type UserReport = { id: number; postId: number; person: string; reason: s
 function useFlowState(initialPosts: Post[]) {
   const [saved] = useState(() => loadSnapshot())
   const [posts, setPosts] = useState<Post[]>(() =>
-    saved?.posts ?? initialPosts.map((p) => ({
+    saved?.posts.map(p => {
+      const seed = initialPosts.find(seed => seed.id === p.id && seed.restaurant === p.restaurant)
+      return seed ? { ...p, imageId: seed.imageId, leaderRating: seed.leaderRating } : p
+    }) ?? initialPosts.map((p) => ({
       ...p,
       closesAt: asDeadline(p.deadline, START),
     })),
