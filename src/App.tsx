@@ -873,7 +873,7 @@ function CategoryScreen({
         >
           원하는 음식 종류를 선택해서 모집글을 탐색해 보세요.
         </p>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
