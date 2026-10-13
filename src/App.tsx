@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import type { MapPin } from "./LocationMap"
-import { CAMPUS_POSTS, CAMPUS_STORES, WALKING_NOTE } from "./campus"
+import { CAMPUS_POSTS, CAMPUS_STORES, WALKING_NOTE, MENU_CHECKED_ON } from "./campus"
 import { ReportControl } from "./ReportControl"
 
 import { FlowProvider, MENU_BY_CATEGORY, useFlow } from "./FlowContext"
@@ -12,6 +12,7 @@ import {
   money,
   due,
   deliveryFee,
+  feeShare,
   RECRUITMENT_RADIUS,
   postLeaderPoint,
 } from "./workflow"
@@ -50,7 +51,7 @@ const CATEGORIES = [
 
   { id: "chinese", label: "중식", emoji: "🥡" },
 
-  { id: "fastfood", label: "패스트푸드", emoji: "🍔" },
+  { id: "fastfood", label: "패스트푸드", emoji: "🥪" },
 
   { id: "japanese", label: "일식", emoji: "🍱" },
 
@@ -58,7 +59,7 @@ const CATEGORIES = [
 
   { id: "snack", label: "분식", emoji: "🍢" },
 
-  { id: "burger", label: "버거", emoji: "🍟" },
+  { id: "burger", label: "버거", emoji: "🍔" },
 ]
 const CATEGORY_COLOR: Record<string, string> = {
   치킨: "category-chicken", 피자: "category-pizza", 한식: "category-korean",
@@ -457,7 +458,7 @@ function PostCard({
         <p className="text-[10px] text-gray-400">음식 종류 참고 사진</p>
         <div className="flex items-center justify-between gap-2">
           <span className={`px-2 py-1 rounded-md text-xs font-semibold ${categoryStyle(post.category)}`}>{post.emoji} {post.category}</span>
-          <span className="text-xs font-semibold text-green-700">배달비 약 {money(deliveryFee - Math.ceil(deliveryFee / (post.currentMembers + 1)))} 절약</span>
+          <span className="text-xs font-semibold text-green-700">배달비 약 {money(deliveryFee - Math.ceil(deliveryFee / Math.min(post.currentMembers + 1, post.maxMembers)))} 절약</span>
         </div>
         <p className="text-xs text-gray-600">수령 이동 약 {post.distance}m · 도보 약 {Math.max(1, Math.ceil(post.distance / 75))}분 <span className="text-gray-400">(시연 추정)</span></p>
         {/* progress */}
@@ -727,8 +728,8 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
         {/* categories */}
         <div>
           <button onClick={() => push("category")} className="font-bold text-gray-900 mb-3" style={{ fontFamily: "Noto Sans KR" }}>카테고리</button>
-          <div className="grid grid-cols-3 gap-2">
-            {CATEGORIES.filter(c => c.id === "all" || CAMPUS_STORES.some(store => store.category === c.label)).map((c) => (
+          <div className="grid grid-cols-5 gap-2">
+            {CATEGORIES.map((c) => (
               <button
                 key={c.id}
                 onClick={() => {
@@ -946,7 +947,7 @@ function ListScreen({
         p.distance <= RECRUITMENT_RADIUS &&
         p.status === "recruiting" &&
         (activeCat === "all" ||
-          p.category === (activeCat === "burger" ? "패스트푸드" : CATEGORIES.find((c) => c.id === activeCat)?.label)) &&
+          p.category === CATEGORIES.find((c) => c.id === activeCat)?.label) &&
         (!normalizedQuery || [p.restaurant, p.category, ...(p.menus ?? MENU_BY_CATEGORY[p.category] ?? []).map(item => item.name)]
           .some(value => value.toLocaleLowerCase("ko-KR").includes(normalizedQuery))),
     )
@@ -1072,6 +1073,9 @@ function DetailScreen({
   const { selectedPost: post, tx, setSelectedApplicant } = useFlow()
 
   const remaining = post.minOrderAmount - post.currentAmount
+  const joined = tx?.post.id === post.id && tx.application === "accepted" && !tx.cancelled
+  const estimatedPeople = joined ? tx.people.length : Math.min(post.maxMembers, post.currentMembers + 1)
+  const estimatedFee = joined ? feeShare(tx, "me") : Math.ceil(deliveryFee / estimatedPeople)
 
   return (
     <div className="flex-1 overflow-y-auto bg-white">
@@ -1111,13 +1115,18 @@ function DetailScreen({
 
       <div className="p-4 space-y-4">
         <section className="campus-value rounded-2xl p-4 text-sm space-y-2">
-          <h2 className="font-bold text-lg text-green-700">예상 배달비 {money(deliveryFee - Math.ceil(deliveryFee / (post.currentMembers + 1)))} 절약</h2>
+          <h2 className="font-bold text-lg text-green-700">예상 배달비 {money(deliveryFee - estimatedFee)} 절약</h2>
           <p className="font-semibold">수령 이동 약 {post.distance}m · 도보 약 {Math.max(1, Math.ceil(post.distance / 75))}분</p>
-          <p className="text-xs text-gray-500">혼자 {money(deliveryFee)} → 함께 약 {money(Math.ceil(deliveryFee / (post.currentMembers + 1)))} · 나를 포함한 {post.currentMembers + 1}명 기준</p>
+          <p className="text-xs text-gray-500">혼자 {money(deliveryFee)} → 내 배달비 약 {money(estimatedFee)} · {estimatedPeople}명 기준</p>
           <p className="text-[11px] text-gray-500">{WALKING_NOTE}</p>
           <details className="text-xs text-gray-600"><summary className="cursor-pointer py-1">이동이 부담된다면?</summary><p className="pt-2">2인 거래에서 ‘내 근처에서 받기’를 합의할 수 있어요. 요청자 근처로 배달 주소를 정하고, 요청자가 배달비 3,000원 전액을 부담해요. 이동하는 사람의 배달비는 0원이에요.</p></details>
         </section>
-        <p className="text-[10px] text-gray-400">음식 사진은 종류별 참고 사진이며 메뉴·가격·모집 정보는 시연용이에요.{post.storeSource && <> <a href={post.storeSource} target="_blank" rel="noopener noreferrer" className="underline">가게 정보 출처</a></>}</p>
+        <div className="text-[11px] text-gray-500 space-y-1">
+          <p>사진은 음식 종류 참고 사진 · 모집 위치·최소주문금액·배달비는 시연 조건이에요.</p>
+          <p>{post.menuBasis ?? "직접 입력한 가게 · 메뉴는 시연용"} {post.menuSource && <> · <a href={post.menuSource} target="_blank" rel="noopener noreferrer" className="underline">메뉴 정보 출처</a></>}</p>
+          <p>{post.priceNote ?? "가격과 실제 판매 메뉴는 주문 전 확인이 필요해요."}</p>
+          {post.storeSource && <details><summary className="cursor-pointer py-1">가게 정보 · 자료 확인일</summary><p>{MENU_CHECKED_ON} · <a href={post.storeSource} target="_blank" rel="noopener noreferrer" className="underline">가게 정보 출처</a></p></details>}
+        </div>
         {/* amount */}
         <div className="bg-brand-50 rounded-2xl p-4">
           <div className="flex justify-between items-end mb-2">
@@ -1365,7 +1374,7 @@ function CreateScreen({
           {storeSearchOpen && <div className="mt-2 rounded-xl border border-gray-200 p-2 space-y-1">
             <p className="text-xs text-gray-500 px-2 py-1">학교 주변 가게 선택 · 메뉴와 가격은 시연용</p>
             {CAMPUS_STORES.filter(store => !form.restaurant.trim() || store.name.includes(form.restaurant.trim())).map(store => <button key={store.name} onClick={() => {
-              setForm(f => ({ ...f, restaurant: store.name, category: CATEGORIES.find(c => c.label === store.category)!.id, minAmount: "15000", currentAmount: String(store.menus[0].price), deliveryTime: "모집 마감 후 약 30분" }))
+              setForm(f => ({ ...f, restaurant: store.name, category: CATEGORIES.find(c => c.label === store.category)!.id, minAmount: String(store.demoMinOrder), currentAmount: String(store.menus[0].price), deliveryTime: "모집 마감 후 약 30분" }))
               setStoreSearchOpen(false)
             }} className="w-full text-left px-3 py-2.5 rounded-lg bg-gray-50 text-sm">{store.emoji} {store.name}</button>)}
             {!CAMPUS_STORES.some(store => !form.restaurant.trim() || store.name.includes(form.restaurant.trim())) && <p className="text-xs text-gray-500 p-2">등록된 가게가 없어요. 이름과 카테고리를 직접 입력할 수 있어요.</p>}
@@ -1382,7 +1391,6 @@ function CreateScreen({
           </label>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.filter((c) => c.id !== "all")
-              .slice(0, 8)
               .map((c) => (
                 <button
                   key={c.id}

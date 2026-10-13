@@ -22,6 +22,9 @@ export type Post = {
   closesAt?: number
   menus?: MenuItem[]
   storeSource?: string
+  menuSource?: string
+  menuBasis?: string
+  priceNote?: string
 }
 export type MenuItem = {
   id: number
@@ -218,8 +221,9 @@ export function person(
   items: MenuItem[],
   amount = 0,
 ): Person {
+  const knownMenu = amount > 0 ? items.find(item => item.price === amount) : undefined
   const choices =
-    amount > 0
+    amount > 0 && !knownMenu
       ? [
           { id: 0, name: "선택한 메뉴", price: amount, category: "주문" },
           ...items,
@@ -230,7 +234,7 @@ export function person(
     name,
     avatar: id === "me" ? "🧑" : "👨",
     items: choices,
-    quantities: amount ? { 0: 1 } : {},
+    quantities: knownMenu ? { [knownMenu.id]: 1 } : amount ? { 0: 1 } : {},
     menuConfirmed: amount > 0,
     location:
       id === "leader" || (id === "me" && name.includes("리더"))

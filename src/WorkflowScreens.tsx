@@ -947,6 +947,11 @@ export function Menu({ pop, push }: Navigation) {
     <div className="flex-1 overflow-y-auto bg-white">
       <Top title="메뉴 선택 및 주문 내역" pop={pop} />
       <div className="p-4 space-y-4">
+        <div className="text-xs text-gray-500 rounded-xl bg-gray-50 p-3 space-y-1">
+          <p className="font-semibold text-gray-800">{tx.post.restaurant}</p>
+          <p>{tx.post.menuBasis ?? "이 주문에서 저장한 시연 메뉴"}{tx.post.menuSource && <> · <a href={tx.post.menuSource} target="_blank" rel="noopener noreferrer" className="underline">메뉴 출처 보기</a></>}</p>
+          <p>{tx.post.priceNote ?? "등록 당시의 메뉴와 금액을 유지해요. 실제 배달앱 가격은 확인이 필요해요."}</p>
+        </div>
         <OrderSummary tx={tx} />
         <h2 className="font-bold text-sm">
           내 메뉴{" "}

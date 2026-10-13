@@ -24,7 +24,7 @@ import {
   type Post,
   type Transaction,
 } from "./workflow"
-import { CAMPUS_LOCATION, CAMPUS_STORES, CATEGORY_PHOTOS } from "./campus"
+import { CAMPUS_LOCATION, CAMPUS_STORES, CATEGORY_PHOTOS, mergeCampusPosts } from "./campus"
 import { loadSnapshot, saveSnapshot } from "./prototypeStorage"
 
 const START = new Date(2026, 9, 13, 17, 30).getTime()
@@ -59,6 +59,10 @@ export const MENU_BY_CATEGORY: Record<string, MenuItem[]> = {
     { id: 2, name: "치킨버거 세트", price: 9500, category: "버거" },
     { id: 3, name: "감자튀김", price: 3500, category: "사이드" },
     { id: 5, name: "콜라", price: 2000, category: "음료" },
+  ],
+  버거: [
+    { id: 1, name: "버거 (시연 메뉴)", price: 6000, category: "버거" },
+    { id: 2, name: "감자튀김 (시연 메뉴)", price: 3000, category: "사이드" },
   ],
 
   중식: [
@@ -95,12 +99,9 @@ export type UserReport = { id: number; postId: number; person: string; reason: s
 function useFlowState(initialPosts: Post[]) {
   const [saved] = useState(() => loadSnapshot())
   const [posts, setPosts] = useState<Post[]>(() =>
-    saved?.posts.map(p => {
-      const seed = initialPosts.find(seed => seed.id === p.id && seed.restaurant === p.restaurant)
-      return seed ? { ...p, imageId: seed.imageId, leaderRating: seed.leaderRating } : p
-    }) ?? initialPosts.map((p) => ({
+    mergeCampusPosts(saved?.posts ?? [], initialPosts, saved?.tx?.post.id).map((p) => ({
       ...p,
-      closesAt: asDeadline(p.deadline, START),
+      closesAt: p.closesAt ?? asDeadline(p.deadline, START + (saved?.clockOffset ?? 0)),
     })),
   )
 
@@ -336,8 +337,11 @@ function useFlowState(initialPosts: Post[]) {
       status: "recruiting",
       menus: store?.menus ?? MENU_BY_CATEGORY[input.category],
       storeSource: store?.source,
+      menuSource: store?.menuSource,
+      menuBasis: store?.menuBasis,
+      priceNote: store?.priceNote,
       imageId: store?.imageId ?? CATEGORY_PHOTOS[input.category] ?? template.imageId,
-      emoji: store?.emoji ?? ({ 치킨: "🍗", 피자: "🍕", 한식: "🍱", 중식: "🥡", 패스트푸드: "🍔", 일식: "🍣", 카페: "☕", 분식: "🍢" }[input.category] ?? "🍽️"),
+      emoji: store?.emoji ?? ({ 치킨: "🍗", 피자: "🍕", 한식: "🍱", 중식: "🥡", 패스트푸드: "🥪", 일식: "🍣", 카페: "☕", 분식: "🍢", 버거: "🍔" }[input.category] ?? "🍽️"),
     }
 
     setPosts((list) => [post, ...list])
