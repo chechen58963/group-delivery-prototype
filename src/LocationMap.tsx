@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import * as L from "leaflet"
 import { type Point } from "./workflow"
+import { CAMPUS_CENTER } from "./campus"
 
 export type MapPin = {
   id: string
@@ -11,7 +12,7 @@ export type MapPin = {
 }
 
 // Only simulated positions are converted; typed addresses are never geocoded.
-const DEMO_CENTER = { lat: 37.5007, lng: 127.0364 }
+const DEMO_CENTER = CAMPUS_CENTER
 const toLatLng = (point: Point): L.LatLngTuple => [
   DEMO_CENTER.lat + point.y / 111320,
   DEMO_CENTER.lng + point.x / (111320 * Math.cos(DEMO_CENTER.lat * Math.PI / 180)),

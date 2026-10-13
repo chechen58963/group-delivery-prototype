@@ -12,6 +12,7 @@ import {
   isSuspended,
   isActive,
   LATE_SUSPENSION_MS,
+  latePenalty,
   makeTransaction,
   recruitmentClosed,
   transition,
@@ -23,8 +24,10 @@ import {
   type Post,
   type Transaction,
 } from "./workflow"
+import { CAMPUS_LOCATION, CAMPUS_STORES, CATEGORY_PHOTOS } from "./campus"
+import { loadSnapshot, saveSnapshot } from "./prototypeStorage"
 
-const START = new Date(2026, 8, 30, 17, 30).getTime()
+const START = new Date(2026, 9, 13, 17, 30).getTime()
 
 const asDeadline = (time: string, now: number) => {
   const [hours, minutes] = time.split(":").map(Number)
@@ -87,25 +90,29 @@ export const MENU_BY_CATEGORY: Record<string, MenuItem[]> = {
 
 export type Review = { stars: number ; comment: string ; tags: string[] }
 export type ThemePreference = "light" | "dark" | "system"
+export type UserReport = { id: number; postId: number; person: string; reason: string; detail: string; status: "검토 대기"; createdAt: number }
 
 function useFlowState(initialPosts: Post[]) {
+  const [saved] = useState(() => loadSnapshot())
   const [posts, setPosts] = useState<Post[]>(() =>
-    initialPosts.map((p) => ({
+    saved?.posts ?? initialPosts.map((p) => ({
       ...p,
       closesAt: asDeadline(p.deadline, START),
     })),
   )
 
-  const [selectedId, setSelectedId] = useState(initialPosts[0].id)
+  const [selectedId, setSelectedId] = useState(saved?.selectedId ?? initialPosts[0].id)
 
   const [category, setCategory] = useState("all")
 
   const [query, setQuery] = useState("")
   const [browseView, setBrowseView] = useState<"list" | "map">("list")
-  const [myLocation, setMyLocation] = useState("강남구 역삼동")
+  const [myLocation, setMyLocation] = useState(saved?.myLocation ?? CAMPUS_LOCATION)
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
-    const stored = window.localStorage.getItem("group-delivery-theme")
-    return stored === "light" || stored === "dark" ? stored : "system"
+    try {
+      const stored = window.localStorage.getItem("group-delivery-theme")
+      return stored === "light" || stored === "dark" ? stored : "system"
+    } catch { return "system" }
   })
   const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches)
   useEffect(() => {
@@ -114,14 +121,14 @@ function useFlowState(initialPosts: Post[]) {
     media.addEventListener("change", update)
     return () => media.removeEventListener("change", update)
   }, [])
-  useEffect(() => window.localStorage.setItem("group-delivery-theme", themePreference), [themePreference])
+  useEffect(() => { try { window.localStorage.setItem("group-delivery-theme", themePreference) } catch { /* Continue without saving the theme. */ } }, [themePreference])
 
-  const [tx, setTx] = useState<Transaction | null>(null)
+  const [tx, setTx] = useState<Transaction | null>(saved?.tx ?? null)
 
-  const [completed, setCompleted] = useState<Transaction[]>([])
+  const [completed, setCompleted] = useState<Transaction[]>(saved?.completed ?? [])
 
   const [reviews, setReviews] =
-    useState<Record<number, Record<string, Review>>>({})
+    useState<Record<number, Record<string, Review>>>(saved?.reviews ?? {})
   const [reviewDrafts, setReviewDrafts] =
     useState<Record<number, Record<string, Review>>>({})
   const [selectedApplicant, setSelectedApplicant] = useState(1)
@@ -129,12 +136,13 @@ function useFlowState(initialPosts: Post[]) {
   const [notice, setNotice] = useState("")
   const [notifications, setNotifications] = useState<(FlowEvent & { id: number; postId: number; restaurant: string; read: boolean; time: number })[]>([])
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const previousTx = useRef<Transaction | null>(null)
+  const previousTx = useRef<Transaction | null>(saved?.tx ?? null)
   const notificationSequence = useRef(0)
 
-  const [clockOffset, setClockOffset] = useState(0)
-  const [suspensionUntil, setSuspensionUntil] = useState(0)
-  const [couponUsed, setCouponUsed] = useState(false)
+  const [clockOffset, setClockOffset] = useState(saved?.clockOffset ?? 0)
+  const [suspensionUntil, setSuspensionUntil] = useState(saved?.suspensionUntil ?? 0)
+  const [couponUsed, setCouponUsed] = useState(saved?.couponUsed ?? false)
+  const [reports, setReports] = useState<UserReport[]>(saved?.reports ?? [])
 
   const [elapsed, setElapsed] = useState(0)
 
@@ -151,6 +159,13 @@ function useFlowState(initialPosts: Post[]) {
   }, [notice])
 
   const now = START + elapsed + clockOffset
+  const storageFailed = useRef(false)
+  useEffect(() => {
+    if (!saveSnapshot({ posts, selectedId, tx, completed, reviews, myLocation, clockOffset: clockOffset + elapsed, suspensionUntil, couponUsed, reports }) && !storageFailed.current) {
+      storageFailed.current = true
+      setNotice("이 브라우저에서는 저장이 제한돼요. 새로고침하면 진행 상태가 초기화될 수 있어요.")
+    }
+  }, [posts, selectedId, tx, completed, reviews, myLocation, clockOffset, suspensionUntil, couponUsed, reports, Math.floor(elapsed / 10000)])
   useEffect(() => {
     if (tx) {
       const events = flowEvents(previousTx.current, tx)
@@ -167,13 +182,14 @@ function useFlowState(initialPosts: Post[]) {
   const myTrades = 23 + completed.length
   const couponEligible = myRating >= 4.8 && myTrades >= 5
   const canUseCoupon = couponEligible && !couponUsed && !suspended
+  const penalty = latePenalty([...completed, ...(tx ? [tx] : [])])
+  const lateIncidentCount = penalty.count
 
   useEffect(() => {
-    const reportedAt = tx?.lateReports.me
-    if (reportedAt)
-      setSuspensionUntil((until) => Math.max(until, reportedAt + LATE_SUSPENSION_MS))
+    if (penalty.until)
+      setSuspensionUntil((until) => Math.max(until, penalty.until))
     if (tx?.ordered && tx.couponDiscount > 0) setCouponUsed(true)
-  }, [tx])
+  }, [tx, penalty.until])
 
   useEffect(() => {
     setTx((current) =>
@@ -190,7 +206,7 @@ function useFlowState(initialPosts: Post[]) {
 
   const active = isActive(tx)
 
-  const menu = MENU_BY_CATEGORY[(tx?.post ?? selectedPost).category] ?? [
+  const menu = (tx?.post ?? selectedPost).menus ?? MENU_BY_CATEGORY[(tx?.post ?? selectedPost).category] ?? [
     { id: 1, name: "대표 메뉴", price: 10000, category: "메뉴" },
     { id: 2, name: "사이드 메뉴", price: 3000, category: "사이드" },
   ]
@@ -237,7 +253,7 @@ function useFlowState(initialPosts: Post[]) {
     setTx(
       makeTransaction(
         post,
-        MENU_BY_CATEGORY[post.category] ?? menu,
+        post.menus ?? MENU_BY_CATEGORY[post.category] ?? menu,
         "participant",
       ),
     )
@@ -293,6 +309,7 @@ function useFlowState(initialPosts: Post[]) {
       return false
     }
 
+    const store = CAMPUS_STORES.find(s => s.name === input.restaurant.trim() && s.category === input.category)
     const template =
       posts.find((p) => p.category === input.category) ?? posts[0]
 
@@ -314,12 +331,16 @@ function useFlowState(initialPosts: Post[]) {
       leaderTrades: 23,
       distance: 0,
       status: "recruiting",
+      menus: store?.menus ?? MENU_BY_CATEGORY[input.category],
+      storeSource: store?.source,
+      imageId: store?.imageId ?? CATEGORY_PHOTOS[input.category] ?? template.imageId,
+      emoji: store?.emoji ?? ({ 치킨: "🍗", 피자: "🍕", 한식: "🍱", 중식: "🥡", 패스트푸드: "🍔", 일식: "🍣", 카페: "☕", 분식: "🍢" }[input.category] ?? "🍽️"),
     }
 
     setPosts((list) => [post, ...list])
     setSelectedId(post.id)
     setTx(
-      makeTransaction(post, MENU_BY_CATEGORY[post.category] ?? menu, "leader"),
+      makeTransaction(post, post.menus ?? MENU_BY_CATEGORY[post.category] ?? menu, "leader"),
     )
     return true
   }
@@ -430,6 +451,18 @@ function useFlowState(initialPosts: Post[]) {
     couponEligible,
     canUseCoupon,
     couponUsed,
+    lateIncidentCount,
+    reports,
+    submitReport: (postId: number, person: string, reason: string, detail: string) => {
+      if (!reason || !person || person === "나") return false
+      if (reports.some(r => r.postId === postId && r.person === person)) {
+        setNotice("이 거래의 해당 사용자 신고는 이미 접수됐어요.")
+        return false
+      }
+      setReports(list => [{ id: Date.now(), postId, person, reason, detail: detail.trim(), status: "검토 대기", createdAt: now }, ...list])
+      setNotice("신고를 저장했어요. 시연용 검토 대기 상태이며 자동으로 이용을 제한하지 않아요.")
+      return true
+    },
     completed,
     reviews,
     setReviews,

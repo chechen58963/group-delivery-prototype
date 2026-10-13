@@ -20,6 +20,8 @@ export type Post = {
   imageId: string
   deliveryTime?: string
   closesAt?: number
+  menus?: MenuItem[]
+  storeSource?: string
 }
 export type MenuItem = {
   id: number
@@ -36,16 +38,16 @@ export function postLeaderPoint(post: Pick<Post, "id" | "distance">): Point {
 }
 export const demoLocations = [
   { name: "리더 주변", point: { x: 0, y: 0 } },
-  { name: "역삼역 서쪽", point: { x: -120, y: 35 } },
-  { name: "역삼역 동쪽", point: { x: 130, y: 25 } },
-  { name: "테헤란로 남쪽", point: { x: 20, y: -145 } },
-  { name: "역삼역 북쪽", point: { x: -15, y: 150 } },
+  { name: "정문 서쪽", point: { x: -120, y: 35 } },
+  { name: "정문 동쪽", point: { x: 130, y: 25 } },
+  { name: "궁동 방향", point: { x: 20, y: -145 } },
+  { name: "교내 방향", point: { x: -15, y: 150 } },
 ] as const
 export const meetingCandidates = [
-  { id: "station", name: "역삼역 2번 출구 앞", point: { x: -35, y: 45 } },
-  { id: "store", name: "역삼역 앞 편의점", point: { x: 45, y: 35 } },
-  { id: "lobby", name: "리더 주변 건물 1층 로비", point: { x: 5, y: -30 } },
-  { id: "square", name: "테헤란로 작은 광장", point: { x: 75, y: -70 } },
+  { id: "station", name: "충남대학교 정문 바깥 (시연)", point: { x: -35, y: 45 } },
+  { id: "store", name: "정문 동쪽 인도 (시연)", point: { x: 45, y: 35 } },
+  { id: "lobby", name: "리더 근처 건물 입구 (시연)", point: { x: 5, y: -30 } },
+  { id: "square", name: "정문 서쪽 인도 (시연)", point: { x: 75, y: -70 } },
 ] as const
 export const straightDistance = (a: Point, b: Point) =>
   Math.round(Math.hypot(a.x - b.x, a.y - b.y))
@@ -122,6 +124,13 @@ export function flowEvents(previous: Transaction | null, next: Transaction): Flo
 }
 export const LATE_GRACE_MS = 10 * 60 * 1000
 export const LATE_SUSPENSION_MS = 3 * 24 * 60 * 60 * 1000
+export function latePenalty(transactions: Transaction[]) {
+  const incidents = new Map<number, number>()
+  for (const tx of transactions) {
+    if (tx.lateReports.me) incidents.set(tx.post.id, tx.lateReports.me)
+  }
+  return { count: incidents.size, until: incidents.size >= 2 ? Math.max(...incidents.values()) + LATE_SUSPENSION_MS : 0 }
+}
 export const isSuspended = (now: number, until: number) => now < until
 export const leaderId = (tx: Transaction) =>
   tx.role === "leader" ? "me" : "leader"

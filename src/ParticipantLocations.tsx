@@ -31,7 +31,7 @@ export default function ParticipantLocations({ tx }: { tx: Transaction }) {
         <h3 className="font-bold text-sm">참여자 위치</h3>
         <span className="text-[10px] text-gray-500">수락된 멤버 {tx.people.length}명</span>
       </div>
-      <p className="text-[11px] text-gray-500">역삼역 주변 시연 위치예요. 실제 GPS 위치가 아니에요.</p>
+      <p className="text-[11px] text-gray-500">충남대학교 정문 주변 시연 위치예요. 실제 GPS 위치가 아니에요.</p>
       <div className="flex h-[300px] min-h-0">
         <Suspense fallback={<div className="map-loading flex-1 rounded-2xl flex items-center justify-center text-sm">지도 불러오는 중…</div>}>
           <LocationMap pins={pins} selectedId={selectedId} onSelect={setSelectedId} title="공동배달 참여자 위치 지도" />

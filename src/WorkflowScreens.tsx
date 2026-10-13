@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 
 import { useFlow } from "./FlowContext"
 import ParticipantLocations from "./ParticipantLocations"
+import { ReportControl } from "./ReportControl"
 
 import {
   allPaid,
@@ -112,20 +113,10 @@ export function FlowBar() {
 
   if (!tx || tx.cancelled || tx.application === "rejected") return null
 
-  const labels = ["신청", "모집", "메뉴", "송금", "배달", "수령"]
+  const labels = ["참여·모집", "메뉴·송금", "배달·수령", "완료"]
 
   const index =
-    tx.application === "pending"
-      ? 0
-      : !tx.closed
-        ? 1
-        : !tx.menusFinal
-          ? 2
-          : !tx.ordered
-            ? 3
-            : !tx.arrived
-              ? 4
-              : 5
+    allReceived(tx) ? 3 : tx.ordered ? 2 : tx.closed ? 1 : 0
 
   return (
     <div className="flex-shrink-0 bg-brand-50 px-4 py-2.5 border-b border-orange-100">
@@ -928,9 +919,10 @@ export function Chat({ pop, push }: Navigation) {
           <input aria-label="수령 약속 시간" type="time" value={meetingTimeDraft} onChange={event => setMeetingTimeDraft(event.target.value)} className="block w-full mt-1 border border-gray-200 rounded-lg p-2" />
         </label>
         <Button secondary disabled={!meetingTimeDraft} onClick={() => dispatch({ type: "meeting-time", value: meetingTimeDraft })}>수령 시간 저장</Button>
+        <p className="text-xs text-gray-500">각자 음식을 받아 가져가고 개인 포장은 각자 처리해요. 공용 봉투는 리더가 가져가요.</p>
 
               </>}
-              {panel === "people" && <><p className="chat-muted text-xs">이름을 누르면 평점과 거래 이력을 확인할 수 있어요.</p>{tx.people.map(person => <button key={person.id} disabled={person.id === "me"} onClick={() => openProfile(person.id)} className="chat-tool w-full rounded-2xl p-4 flex justify-between items-center text-sm"><span>{person.name}{person.id === "me" ? " (나)" : ""}{person.id === leaderId(tx) ? " · 리더" : ""}</span><span className="chat-muted text-xs">{person.id === "me" ? "참여 중" : "프로필 ›"}</span></button>)}</>}
+              {panel === "people" && <><p className="chat-muted text-xs">이름을 누르면 평점과 거래 이력을 확인할 수 있어요.</p>{tx.people.map(person => <div key={person.id} className="space-y-2"><button disabled={person.id === "me"} onClick={() => openProfile(person.id)} className="chat-tool w-full rounded-2xl p-4 flex justify-between items-center text-sm"><span>{person.name}{person.id === "me" ? " (나)" : ""}{person.id === leaderId(tx) ? " · 리더" : ""}</span><span className="chat-muted text-xs">{person.id === "me" ? "참여 중" : "프로필 ›"}</span></button>{person.id !== "me" && <ReportControl person={person.name} postId={tx.post.id} />}</div>)}</>}
             </div>
           </> : <div className="flex-1 min-h-0 flex flex-col">
             {panel === "menu" && <Menu pop={() => setPanel("order")} push={navigate} />}
@@ -1316,7 +1308,7 @@ export function Delivery({ pop, push }: Navigation) {
 }
 
 export function Receipt({ pop, push }: Navigation) {
-  const { tx, dispatch, now } = useFlow()
+  const { tx, dispatch, now, lateIncidentCount, suspended } = useFlow()
 
   if (!tx || !tx.arrived)
     return <Empty push={push} title="음식이 도착한 뒤 수령을 확인해요" />
@@ -1336,6 +1328,7 @@ export function Receipt({ pop, push }: Navigation) {
           <p className="font-semibold">수령 안내</p>
           <p>{tx.nearbyDelivery?.agreed ? tx.nearbyDelivery.address : tx.meeting || "채팅에서 합의한 장소 확인"} · {tx.meetingTime || "시간은 채팅에서 조율"}</p>
           <p className="text-xs text-gray-500 mt-1">서로의 닉네임과 메뉴를 확인한 뒤 각자 수령 완료를 눌러 주세요.</p>
+          <p className="text-xs text-gray-500 mt-2">음식은 각자 가져가요. 개인 용기·포장 쓰레기는 각자 처리하고 공용 봉투는 리더가 가져가요. 수령 장소에 포장재를 남기지 않아요.</p>
         </div>
         <Card>
           <p className="text-5xl text-center">🛍️</p>
@@ -1366,7 +1359,7 @@ export function Receipt({ pop, push }: Navigation) {
             <h2 className="text-sm font-bold">수령 지각 확인</h2>
             <p className="text-xs text-gray-500">
               배달 도착 10분 후에도 수령하지 않은 참가자는 리더가 지각을 확인할 수 있어요.
-              확인된 참가자는 새 모집·참여가 3일간 제한됩니다.
+              첫 확인은 경고예요. 서로 다른 거래에서 2회 확인되면 새 모집·참여를 3일 제한하는 시연 규칙이에요.
             </p>
             {!lateWindowPassed ? (
               <p className="text-xs text-amber-600">시연 시간을 30분 진행하면 지각 확인을 체험할 수 있어요.</p>
@@ -1387,7 +1380,7 @@ export function Receipt({ pop, push }: Navigation) {
         )}
         {tx.lateReports.me && (
           <p className="text-xs text-center text-amber-600">
-            내 수령 지각이 확인됐어요. 새 공동배달 참여·모집이 3일간 제한됩니다.
+            {suspended ? "반복 지각이 확인되어 새 공동배달 참여·모집이 3일간 제한됩니다." : `지각 경고 ${lateIncidentCount}회 · 다음 거래에서도 확인되면 새 모집·참여가 3일 제한돼요.`}
           </p>
         )}
         <Card>

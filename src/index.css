@@ -129,3 +129,4 @@ input, textarea, select {
 .map-pin-selected .map-pin-content { border-color: #e97236; box-shadow: 0 0 0 4px #e9723644, 0 3px 10px #0004; }
 .map-pin:focus-visible { outline: 3px solid #e97236; outline-offset: 5px; border-radius: 50%; }
 .app-dark .location-map .leaflet-tile-pane { filter: brightness(.76) saturate(.65); }
+.campus-value { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-top: 3px solid var(--color-brand); }

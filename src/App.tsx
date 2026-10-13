@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import type { MapPin } from "./LocationMap"
+import { CAMPUS_POSTS, CAMPUS_STORES, WALKING_NOTE } from "./campus"
+import { ReportControl } from "./ReportControl"
 
 import { FlowProvider, MENU_BY_CATEGORY, useFlow } from "./FlowContext"
 
@@ -66,184 +68,7 @@ const CATEGORY_COLOR: Record<string, string> = {
 const categoryStyle = (category: string) => "category-chip " + (CATEGORY_COLOR[category === "버거" ? "패스트푸드" : category] ?? "")
 let lastListScroll = 0
 
-const POSTS = [
-  {
-    id: 1,
-
-    restaurant: "BBQ치킨 역삼역점",
-
-    category: "치킨",
-
-    emoji: "🍗",
-
-    currentMembers: 2,
-
-    maxMembers: 4,
-
-    minOrderAmount: 30000,
-
-    currentAmount: 18000,
-
-    distance: 120,
-
-    deadline: "18:30",
-
-    leaderRating: 4.8,
-
-    leaderTrades: 34,
-
-    leaderName: "배달왕김씨",
-
-    status: "recruiting",
-
-    gradFrom: "#FF6B35",
-
-    gradTo: "#FF9500",
-
-    description:
-      "역삼역 2번 출구 앞에서 수령 예정입니다. 황금올리브 같이 시킬 분 환영해요!",
-
-    imageId: "1569050467450-2de3c2afc2cd",
-  },
-
-  {
-    id: 2,
-
-    restaurant: "도미노피자 강남점",
-
-    category: "피자",
-
-    emoji: "🍕",
-
-    currentMembers: 3,
-
-    maxMembers: 4,
-
-    minOrderAmount: 46000,
-
-    currentAmount: 42000,
-
-    distance: 210,
-
-    deadline: "19:00",
-
-    leaderRating: 4.6,
-
-    leaderTrades: 18,
-
-    leaderName: "점심파이터",
-
-    status: "recruiting",
-
-    gradFrom: "#E63946",
-
-    gradTo: "#FF6B6B",
-
-    description: "강남역 10번 출구 근처에서 수령합니다. 거의 다 찼어요!",
-
-    imageId: "1513104890138-7c749dbe5d58",
-  },
-
-  {
-    id: 3,
-
-    restaurant: "맥도날드 역삼점",
-
-    category: "패스트푸드",
-
-    emoji: "🍔",
-
-    currentMembers: 1,
-
-    maxMembers: 3,
-
-    minOrderAmount: 25000,
-
-    currentAmount: 10500,
-
-    distance: 85,
-
-    deadline: "17:45",
-
-    leaderRating: 4.9,
-
-    leaderTrades: 47,
-
-    leaderName: "치킨마니아",
-
-    status: "recruiting",
-
-    gradFrom: "#FFC300",
-
-    gradTo: "#FF5722",
-
-    description:
-      "맥모닝 세트 같이 시킬 분! 회사 앞 편의점에서 수령 가능합니다.",
-
-    imageId: "1568901346375-23c9450c58cd",
-  },
-
-  {
-    id: 4,
-
-    restaurant: "홍콩반점 서초점",
-
-    category: "중식",
-
-    emoji: "🥡",
-
-    currentMembers: 2,
-
-    maxMembers: 3,
-
-    minOrderAmount: 35000,
-
-    currentAmount: 25000,
-
-    distance: 300,
-
-    deadline: "19:30",
-
-    leaderRating: 4.7,
-
-    leaderTrades: 23,
-
-    leaderName: "야식러버",
-
-    status: "recruiting",
-
-    gradFrom: "#6C63FF",
-
-    gradTo: "#4ECDC4",
-
-    description: "짜장면+짬뽕+탕수육 세트 같이 시킬 분들 모집합니다.",
-
-    imageId: "1563245372-f21724e3856d",
-  },
-]
-
-const ADDITIONAL_POSTS = [
-  { restaurant: "바삭치킨 역삼점", category: "치킨", emoji: "🍗", distance: 350, currentMembers: 1, maxMembers: 3, currentAmount: 22000, minOrderAmount: 30000, deadline: "19:00", leaderName: "치킨친구", leaderRating: 4.7, leaderTrades: 12, description: "저녁 치킨 같이 주문해요. 배달비를 나누고 건물 입구에서 만나요.", imageId: "1569050467450-2de3c2afc2cd" },
-  { restaurant: "우리피자 테헤란로점", category: "피자", emoji: "🍕", distance: 480, currentMembers: 2, maxMembers: 4, currentAmount: 24000, minOrderAmount: 40000, deadline: "19:20", leaderName: "피자한조각", leaderRating: 4.9, leaderTrades: 31, description: "피자와 사이드 함께 주문할 분 구해요. 각자 원하는 메뉴를 골라 주세요.", imageId: "1513104890138-7c749dbe5d58" },
-  { restaurant: "따뜻한밥상 역삼점", category: "한식", emoji: "🍜", distance: 160, currentMembers: 1, maxMembers: 3, currentAmount: 9000, minOrderAmount: 20000, deadline: "18:40", leaderName: "든든한저녁", leaderRating: 4.8, leaderTrades: 20, description: "김치찌개나 제육덮밥 같이 주문해요. 퇴근하고 저녁 먹을 분 환영해요.", imageId: "1547592180-85f173990554" },
-  { restaurant: "한그릇식당 강남점", category: "한식", emoji: "🍜", distance: 620, currentMembers: 2, maxMembers: 4, currentAmount: 18000, minOrderAmount: 25000, deadline: "19:10", leaderName: "밥친구", leaderRating: 4.6, leaderTrades: 9, description: "든든한 한 끼 함께 주문해요. 만날 장소는 채팅에서 정해요.", imageId: "1547592180-85f173990554" },
-  { restaurant: "동네반점 역삼점", category: "중식", emoji: "🥡", distance: 430, currentMembers: 1, maxMembers: 3, currentAmount: 10000, minOrderAmount: 25000, deadline: "18:50", leaderName: "짬뽕좋아", leaderRating: 4.7, leaderTrades: 16, description: "짜장면, 짬뽕 같이 시켜요. 탕수육도 각자 메뉴에 추가할 수 있어요.", imageId: "1563245372-f21724e3856d" },
-  { restaurant: "버거스테이션 역삼점", category: "패스트푸드", emoji: "🍔", distance: 270, currentMembers: 2, maxMembers: 4, currentAmount: 20000, minOrderAmount: 25000, deadline: "18:20", leaderName: "감튀러버", leaderRating: 4.8, leaderTrades: 25, description: "버거 세트 함께 주문할 분 모집해요. 배달 도착 후 바로 수령해 주세요.", imageId: "1568901346375-23c9450c58cd" },
-  { restaurant: "오늘초밥 역삼점", category: "일식", emoji: "🍱", distance: 240, currentMembers: 1, maxMembers: 3, currentAmount: 14000, minOrderAmount: 25000, deadline: "18:50", leaderName: "초밥한접시", leaderRating: 4.9, leaderTrades: 38, description: "초밥과 우동 같이 주문해요. 각자 먹을 메뉴를 채팅방에서 선택해 주세요.", imageId: "1579871494447-9811cf80d66c" },
-  { restaurant: "소담일식 테헤란로점", category: "일식", emoji: "🍱", distance: 690, currentMembers: 2, maxMembers: 4, currentAmount: 28000, minOrderAmount: 35000, deadline: "19:30", leaderName: "우동친구", leaderRating: 4.6, leaderTrades: 7, description: "일식 저녁 메뉴 함께 시킬 분 구해요. 수령 위치는 추천 장소를 보고 정해요.", imageId: "1579871494447-9811cf80d66c" },
-  { restaurant: "오후커피 역삼점", category: "카페", emoji: "☕", distance: 110, currentMembers: 2, maxMembers: 4, currentAmount: 10000, minOrderAmount: 15000, deadline: "18:10", leaderName: "커피타임", leaderRating: 4.8, leaderTrades: 22, description: "커피와 디저트 함께 주문해요. 건물 1층에서 수령하면 편할 것 같아요.", imageId: "1509042239860-f550ce710b93" },
-  { restaurant: "달콤카페 강남점", category: "카페", emoji: "☕", distance: 550, currentMembers: 1, maxMembers: 3, currentAmount: 6500, minOrderAmount: 15000, deadline: "19:00", leaderName: "디저트산책", leaderRating: 4.7, leaderTrades: 14, description: "저녁 커피 같이 주문해요. 케이크도 메뉴에서 골라 주세요.", imageId: "1509042239860-f550ce710b93" },
-  { restaurant: "매콤분식 역삼점", category: "분식", emoji: "🍢", distance: 190, currentMembers: 1, maxMembers: 3, currentAmount: 9000, minOrderAmount: 20000, deadline: "18:30", leaderName: "떡볶이친구", leaderRating: 4.9, leaderTrades: 29, description: "떡볶이, 김밥, 튀김 같이 주문할 분 모집해요.", imageId: "1563245372-f21724e3856d" },
-  { restaurant: "김밥한줄 테헤란로점", category: "분식", emoji: "🍢", distance: 380, currentMembers: 2, maxMembers: 4, currentAmount: 16000, minOrderAmount: 20000, deadline: "19:15", leaderName: "가벼운한끼", leaderRating: 4.5, leaderTrades: 6, description: "간단한 저녁 함께 시켜요. 김밥과 분식 메뉴 중에서 선택해 주세요.", imageId: "1563245372-f21724e3856d" },
-].map((post, index) => ({
-  ...POSTS.find(template => template.category === post.category) ?? POSTS[0],
-  ...post,
-  id: index + 5,
-  status: "recruiting",
-  deliveryTime: "모집 마감 후 약 30~40분",
-}))
-
-const DEMO_POSTS = [...POSTS, ...ADDITIONAL_POSTS]
+const DEMO_POSTS = CAMPUS_POSTS
 
 const APPLICANTS = [
   {
@@ -261,7 +86,7 @@ const APPLICANTS = [
 
     lastActive: "방금 전",
 
-    requestedMenu: "소이갈릭치킨",
+    requestedMenu: "뿌링클",
 
     reviewSnippets: [
       "약속 시간 칼같이 지켜요",
@@ -577,12 +402,17 @@ function Header({
 }
 
 // ─── POST CARD ─────────────────────────────────────────────────────────────────
+function FoodPhoto({ post, height }: { post: (typeof CAMPUS_POSTS)[0]; height: number }) {
+  const [failed, setFailed] = useState(false)
+  const alt = `${post.category} 참고 사진 · 실제 매장 음식 사진 아님`
+  return failed ? <div role="img" aria-label={alt} className="w-full h-full flex items-center justify-center text-6xl">{post.emoji}</div> : <img src={`https://images.unsplash.com/photo-${post.imageId}?w=500&h=${height}&fit=crop&auto=format`} alt={alt} onError={() => setFailed(true)} className="w-full h-full object-cover" />
+}
 
 function PostCard({
   post,
   onClick,
 }: {
-  post: typeof POSTS[0]
+  post: (typeof CAMPUS_POSTS)[0]
   onClick: () => void
 }) {
   const remaining = post.minOrderAmount - post.currentAmount
@@ -599,11 +429,7 @@ function PostCard({
           background: `linear-gradient(135deg, ${post.gradFrom}, ${post.gradTo})`,
         }}
       >
-        <img
-          src={`https://images.unsplash.com/photo-${post.imageId}?w=400&h=200&fit=crop&auto=format`}
-          alt={post.restaurant}
-          className="w-full h-full object-cover"
-        />
+        <FoodPhoto key={post.imageId} post={post} height={200} />
         <div className="absolute inset-0 flex flex-col justify-between p-3 bg-gradient-to-t from-black/75 via-black/10 to-transparent">
           <div className="flex justify-between items-start">
             <StatusBadge status={post.status} />
@@ -628,10 +454,12 @@ function PostCard({
 
       {/* details */}
       <div className="p-3 space-y-2.5">
+        <p className="text-[10px] text-gray-400">음식 종류 참고 사진</p>
         <div className="flex items-center justify-between gap-2">
           <span className={`px-2 py-1 rounded-md text-xs font-semibold ${categoryStyle(post.category)}`}>{post.emoji} {post.category}</span>
           <span className="text-xs font-semibold text-green-700">배달비 약 {money(deliveryFee - Math.ceil(deliveryFee / (post.currentMembers + 1)))} 절약</span>
         </div>
+        <p className="text-xs text-gray-600">수령 이동 약 {post.distance}m · 도보 약 {Math.max(1, Math.ceil(post.distance / 75))}분 <span className="text-gray-400">(시연 추정)</span></p>
         {/* progress */}
         <div>
           <div className="flex justify-between items-center mb-1.5">
@@ -886,14 +714,21 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
       </div>
 
       <div className="px-4 py-4 space-y-5">
+        {!active && <section className="campus-value rounded-2xl p-5 space-y-3">
+          <p className="text-xs font-semibold text-brand">충남대에서 함께 주문해요</p>
+          <h1 className="font-bold text-xl leading-snug">잠깐 걸어서 만나고,<br />배달비는 함께 나눠요.</h1>
+          <p className="text-sm text-gray-600">배달비 3,000원을 3명이 나누면<br /><b className="text-green-700">한 사람당 2,000원 절약</b>할 수 있어요.</p>
+          <p className="text-[11px] text-gray-500">수령 장소와 도보 시간을 확인하고 참여하세요. 금액·거리는 시연용 예상치예요.</p>
+          <button onClick={showAllPosts} className="w-full rounded-xl bg-brand py-3 text-white text-sm font-bold">가까운 모집글 둘러보기</button>
+        </section>}
         <button onClick={() => { setBrowseView("map"); showAllPosts() }} className="map-entry w-full rounded-2xl p-4 flex items-center justify-between text-left">
           <div><p className="font-bold text-sm">🗺️ 지도에서 모집글 찾기</p><p className="text-xs text-gray-500 mt-1">주변 700m · 음식 아이콘을 눌러 확인해요</p></div><span aria-hidden="true">›</span>
         </button>
         {/* categories */}
         <div>
           <button onClick={() => push("category")} className="font-bold text-gray-900 mb-3" style={{ fontFamily: "Noto Sans KR" }}>카테고리</button>
-          <div className="grid grid-cols-5 gap-2">
-            {CATEGORIES.slice(0, 10).map((c) => (
+          <div className="grid grid-cols-3 gap-2">
+            {CATEGORIES.filter(c => c.id === "all" || CAMPUS_STORES.some(store => store.category === c.label)).map((c) => (
               <button
                 key={c.id}
                 onClick={() => {
@@ -917,7 +752,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
         </div>
 
         {/* active delivery banner */}
-        <button
+        {active && <button
           onClick={() => {
             if (active && tx) {
               selectPost(tx.post.id)
@@ -975,7 +810,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
               </svg>
             </div>
           </div>
-        </button>
+        </button>}
 
         {/* nearby posts */}
         <div>
@@ -1112,7 +947,7 @@ function ListScreen({
         p.status === "recruiting" &&
         (activeCat === "all" ||
           p.category === (activeCat === "burger" ? "패스트푸드" : CATEGORIES.find((c) => c.id === activeCat)?.label)) &&
-        (!normalizedQuery || [p.restaurant, p.category, ...(MENU_BY_CATEGORY[p.category] ?? []).map(item => item.name)]
+        (!normalizedQuery || [p.restaurant, p.category, ...(p.menus ?? MENU_BY_CATEGORY[p.category] ?? []).map(item => item.name)]
           .some(value => value.toLocaleLowerCase("ko-KR").includes(normalizedQuery))),
     )
     .sort((a, b) => a.distance - b.distance)
@@ -1187,7 +1022,7 @@ function ListScreen({
       </div>
 
       {browseView === "map" ? <div className="flex-1 min-h-0 flex flex-col px-3 pb-3 gap-2 overflow-y-auto">
-        <p className="text-[10px] text-gray-500 shrink-0">역삼역 주변 시연 위치 · 음식점 대신 모집 리더의 위치를 표시해요</p>
+        <p className="text-[10px] text-gray-500 shrink-0">충남대학교 정문 주변 시연 위치 · 음식점 대신 모집 리더의 위치를 표시해요</p>
         <Suspense fallback={<div className="map-loading flex-1 min-h-[260px] rounded-2xl flex items-center justify-center text-sm">지도 불러오는 중…</div>}>
           <LocationMap pins={mapPins} selectedId={selectedMapPost ? String(selectedMapPost.id) : undefined} onSelect={id => { if (id !== "me") selectPost(Number(id)) }} radius={RECRUITMENT_RADIUS} title="주변 공동배달 모집글 지도" />
         </Suspense>
@@ -1247,11 +1082,7 @@ function DetailScreen({
           background: `linear-gradient(135deg, ${post.gradFrom}, ${post.gradTo})`,
         }}
       >
-        <img
-          src={`https://images.unsplash.com/photo-${post.imageId}?w=400&h=280&fit=crop&auto=format`}
-          alt={post.restaurant}
-          className="w-full h-full object-cover"
-        />
+        <FoodPhoto key={post.imageId} post={post} height={280} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
         <div className="absolute top-4 left-4">
           <button
@@ -1273,12 +1104,20 @@ function DetailScreen({
             className="text-white/80 text-sm"
             style={{ fontFamily: "Noto Sans KR" }}
           >
-            {post.category} · 역삼동
+            {post.category} · 충남대 주변
           </div>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
+        <section className="campus-value rounded-2xl p-4 text-sm space-y-2">
+          <h2 className="font-bold text-lg text-green-700">예상 배달비 {money(deliveryFee - Math.ceil(deliveryFee / (post.currentMembers + 1)))} 절약</h2>
+          <p className="font-semibold">수령 이동 약 {post.distance}m · 도보 약 {Math.max(1, Math.ceil(post.distance / 75))}분</p>
+          <p className="text-xs text-gray-500">혼자 {money(deliveryFee)} → 함께 약 {money(Math.ceil(deliveryFee / (post.currentMembers + 1)))} · 나를 포함한 {post.currentMembers + 1}명 기준</p>
+          <p className="text-[11px] text-gray-500">{WALKING_NOTE}</p>
+          <details className="text-xs text-gray-600"><summary className="cursor-pointer py-1">이동이 부담된다면?</summary><p className="pt-2">2인 거래에서 ‘내 근처에서 받기’를 합의할 수 있어요. 요청자 근처로 배달 주소를 정하고, 요청자가 배달비 3,000원 전액을 부담해요. 이동하는 사람의 배달비는 0원이에요.</p></details>
+        </section>
+        <p className="text-[10px] text-gray-400">음식 사진은 종류별 참고 사진이며 메뉴·가격·모집 정보는 시연용이에요.{post.storeSource && <> <a href={post.storeSource} target="_blank" rel="noopener noreferrer" className="underline">가게 정보 출처</a></>}</p>
         {/* amount */}
         <div className="bg-brand-50 rounded-2xl p-4">
           <div className="flex justify-between items-end mb-2">
@@ -1323,12 +1162,6 @@ function DetailScreen({
         </div>
 
         {/* info grid */}
-        <div className="bg-green-50 rounded-lg p-3 text-sm text-green-800">
-          <p className="font-bold">혼자 주문할 때보다 배달비 약 {money(deliveryFee - Math.ceil(deliveryFee / (post.currentMembers + 1)))} 절약</p>
-          <p className="text-xs mt-1">일반 수령 기준: 혼자 {money(deliveryFee)} → 참여 시 예상 {money(Math.ceil(deliveryFee / (post.currentMembers + 1)))} · 최종 인원에 따라 달라져요.</p>
-          <p className="text-xs mt-1">수령을 위해 리더 근처까지 약 {post.distance}m 이동 · 도보 약 {Math.max(1, Math.round(post.distance / 75))}분 (시연 추정)</p>
-          <p className="text-xs mt-1">2인 거래에서는 ‘내 근처에서 받기’를 합의할 수도 있어요.</p>
-        </div>
         <div className="grid grid-cols-2 gap-3">
           {[
             {
@@ -1422,6 +1255,7 @@ function DetailScreen({
           </div>
         )}
 
+        <details className="border border-gray-100 rounded-xl p-3 text-xs text-gray-500"><summary className="cursor-pointer">수령·포장 처리 약속</summary><p className="mt-2">각자 음식을 받아 가져가고 개인 용기·포장 쓰레기는 각자 처리해요. 공용 봉투는 리더가 가져가요. 수령 장소에 포장재를 남기지 않아요.</p></details>
         {/* applicants shortcut (leader view) */}
         {tx?.post.id === post.id && tx.role === "leader" && (
           <button
@@ -1476,7 +1310,9 @@ function CreateScreen({
   pop: () => void
   push: (s: Screen) => void
 }) {
-  const { create, active, setNotice } = useFlow()
+  const { create, active, setNotice, now } = useFlow()
+  const [storeSearchOpen, setStoreSearchOpen] = useState(false)
+  const defaultTime = new Date(now + 30 * 60 * 1000).toTimeString().slice(0, 5)
 
   const [form, setForm] = useState({
     restaurant: "",
@@ -1485,7 +1321,7 @@ function CreateScreen({
 
     maxMembers: "4",
 
-    deadline: "18:30",
+    deadline: defaultTime,
 
     minAmount: "",
 
@@ -1513,21 +1349,27 @@ function CreateScreen({
           <div className="flex gap-2">
             <input
               value={form.restaurant}
-              onChange={(e) => set("restaurant", e.target.value)}
+              onChange={(e) => { set("restaurant", e.target.value); setStoreSearchOpen(true) }}
               placeholder="음식점 이름을 입력하세요"
               className="flex-1 h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm outline-none focus:border-brand"
               style={{ fontFamily: "Noto Sans KR" }}
             />
             <button
-              onClick={() =>
-                setNotice("시연에서는 음식점 이름을 직접 입력해 주세요.")
-              }
+              onClick={() => setStoreSearchOpen(open => !open)}
               className="h-11 px-4 bg-brand-50 text-brand text-sm font-medium rounded-xl border border-brand/20"
               style={{ fontFamily: "Noto Sans KR" }}
             >
               검색
             </button>
           </div>
+          {storeSearchOpen && <div className="mt-2 rounded-xl border border-gray-200 p-2 space-y-1">
+            <p className="text-xs text-gray-500 px-2 py-1">학교 주변 가게 선택 · 메뉴와 가격은 시연용</p>
+            {CAMPUS_STORES.filter(store => !form.restaurant.trim() || store.name.includes(form.restaurant.trim())).map(store => <button key={store.name} onClick={() => {
+              setForm(f => ({ ...f, restaurant: store.name, category: CATEGORIES.find(c => c.label === store.category)!.id, minAmount: "15000", currentAmount: String(store.menus[0].price), deliveryTime: "모집 마감 후 약 30분" }))
+              setStoreSearchOpen(false)
+            }} className="w-full text-left px-3 py-2.5 rounded-lg bg-gray-50 text-sm">{store.emoji} {store.name}</button>)}
+            {!CAMPUS_STORES.some(store => !form.restaurant.trim() || store.name.includes(form.restaurant.trim())) && <p className="text-xs text-gray-500 p-2">등록된 가게가 없어요. 이름과 카테고리를 직접 입력할 수 있어요.</p>}
+          </div>}
         </div>
 
         {/* category */}
@@ -1656,6 +1498,7 @@ function CreateScreen({
             style={{ fontFamily: "Noto Sans KR" }}
           />
         </div>
+        <p className="text-xs text-gray-500">등록하면 이 브라우저의 목록·지도에 표시되고 새로고침 후에도 유지돼요. 다른 기기와 공유되지는 않아요.</p>
 
         <button
           disabled={active}
@@ -1667,7 +1510,7 @@ function CreateScreen({
                   CATEGORIES.find((c) => c.id === form.category)?.label || "",
               })
             )
-              push("applicants")
+              { setNotice("모집글을 등록했어요. 목록과 지도에서도 확인할 수 있어요."); push("detail") }
           }}
           className="w-full h-12 rounded-2xl font-bold text-white text-sm active:opacity-90"
           style={{
@@ -1823,6 +1666,7 @@ function ApplicantProfileScreen({ pop }: { pop: () => void }) {
         </div>
 
         {/* tags */}
+        {a.name !== "나" && <ReportControl key={`${selectedPost.id}-${a.name}`} person={a.name} postId={selectedPost.id} />}
         <div className="bg-white rounded-2xl p-4 border border-gray-100">
           <div
             className="text-xs font-semibold text-gray-500 mb-3"
@@ -1955,6 +1799,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
     tx, active, selectPost, completed, reviews: savedReviews,
     suspended, suspensionUntil, myRating, myTrades,
     couponEligible, couponUsed, advancePenaltyClock, themePreference, setThemePreference,
+    reports, lateIncidentCount,
   } = useFlow()
 
   const history = [
@@ -1965,18 +1810,18 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
       rating: 0,
     })),
 
-    { date: "2024.11.15", place: "BBQ치킨 역삼역점", amount: 26000, rating: 5 },
+    { date: "2024.11.15", place: "bhc 대전궁동점", amount: 26000, rating: 5 },
 
     {
       date: "2024.11.10",
-      place: "도미노피자 강남점",
+      place: "한솥도시락 충남대후문점",
       amount: 18000,
       rating: 5,
     },
 
-    { date: "2024.11.03", place: "맥도날드 역삼점", amount: 12500, rating: 4 },
+    { date: "2024.11.03", place: "써브웨이 대전충남대정문점", amount: 12500, rating: 4 },
 
-    { date: "2024.10.28", place: "홍콩반점 서초점", amount: 15000, rating: 5 },
+    { date: "2024.10.28", place: "홍콩반점0410 궁동점", amount: 15000, rating: 5 },
   ]
 
   const reviews = [
@@ -2022,7 +1867,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
                 className="text-xs text-gray-400 mt-0.5"
                 style={{ fontFamily: "Noto Sans KR" }}
               >
-                역삼동 · 가입 2024.08
+                충남대 주변 · 가입 2024.08
               </div>
             </div>
           </div>
@@ -2092,8 +1937,15 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
             </button>
           </div>
         )}
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 space-y-2">
-          <h2 className="font-bold text-sm">⭐ 우수 참여자 혜택</h2>
+        {!suspended && lateIncidentCount > 0 && <p className="text-xs text-amber-700 bg-amber-50 rounded-xl p-3">수령 지각 경고 {lateIncidentCount}회 · 다음 거래에서도 지각이 확인되면 새 모집·참여가 3일 제한돼요.</p>}
+        <details className="bg-white rounded-xl border border-gray-100 p-4 text-xs">
+          <summary className="font-semibold cursor-pointer">이용 규칙 · 내 신고 내역 {reports.length}건</summary>
+          <p className="text-gray-500 mt-3">신고는 사실 확인과 소명 후 경고 또는 이용 제한하는 방식으로 설계했어요. 여기서는 신고 접수 상태만 시연해요.</p>
+          {!reports.length && <p className="text-gray-400 mt-2">상대 프로필 또는 채팅의 참여자 메뉴에서 신고할 수 있어요.</p>}
+          {reports.map(report => <div key={report.id} className="border-t border-gray-100 mt-3 pt-3 space-y-1"><p className="font-semibold">{report.person} · {report.reason}</p><p className="text-brand">{report.status} (시연)</p>{report.detail && <p className="text-gray-500 break-words">{report.detail}</p>}</div>)}
+        </details>
+        <details className="bg-white rounded-2xl p-4 border border-gray-100 space-y-2">
+          <summary className="font-bold text-sm cursor-pointer">⭐ 우수 참여자 혜택 보기</summary>
           <p className="text-xs text-gray-500">평점 4.8 이상 · 공동배달 5회 이상이면 배달비 1,000원 할인 쿠폰을 받을 수 있어요.</p>
           <p className="text-sm font-semibold text-brand">
             {couponUsed ? "이번 시연 쿠폰 사용 완료" : suspended
@@ -2101,7 +1953,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
               : couponEligible ? "배달비 1,000원 할인 쿠폰 사용 가능 (시연)" : "아직 혜택 조건을 채우지 않았어요"}
           </p>
           <p className="text-[11px] text-gray-400">다음 공동배달의 송금 화면에서 사용할 수 있으며 실제 할인은 발생하지 않아요.</p>
-        </div>
+        </details>
         {/* keywords */}
         <div className="bg-white rounded-2xl p-4 border border-gray-100">
           <div
