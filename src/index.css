@@ -42,3 +42,14 @@ input, textarea, select {
 .app-dark input::placeholder, .app-dark textarea::placeholder { color: #adbac0; }
 .app-dark .bg-green-50 { background-color: #173c34 !important; }
 .app-dark .text-green-800, .app-dark .text-green-700 { color: #9ee2bf !important; }
+.app-dark .prototype-banner { background: #29434a !important; border-color: #46636b !important; }
+.app-dark .bg-amber-100 { background-color: #66481b !important; }
+.app-dark .bg-red-100 { background-color: #703237 !important; }
+.app-dark .bg-green-100 { background-color: #285943 !important; }
+.app-dark .bg-violet-100 { background-color: #4d3e68 !important; }
+.app-dark .bg-yellow-100 { background-color: #665422 !important; }
+.app-dark .bg-sky-100 { background-color: #24546e !important; }
+.app-dark .bg-teal-100 { background-color: #295d5a !important; }
+.app-dark .bg-pink-100 { background-color: #673f59 !important; }
+.app-dark .bg-amber-100, .app-dark .bg-red-100, .app-dark .bg-green-100, .app-dark .bg-violet-100, .app-dark .bg-yellow-100, .app-dark .bg-sky-100, .app-dark .bg-teal-100, .app-dark .bg-pink-100 { color: #f1f4f5 !important; }
+.app-dark .grid button .text-gray-600 { color: #f1f4f5 !important; }

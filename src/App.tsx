@@ -923,7 +923,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
               )
             } else showAllPosts()
           }}
-          className="w-full bg-white rounded-2xl p-4 border border-orange-200 shadow-sm active:scale-[0.98] transition-all text-left"
+          className="prototype-banner w-full bg-white rounded-2xl p-4 border border-orange-200 shadow-sm active:scale-[0.98] transition-all text-left"
           style={{ background: "linear-gradient(135deg, #FFF6EE, #FFE8D6)" }}
         >
           <div className="flex items-center justify-between">
@@ -2113,7 +2113,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
               push(tx.application === "pending" ? "detail" : "chat")
             } else push("list")
           }}
-          className="w-full bg-white rounded-2xl p-4 border border-orange-200 shadow-sm text-left active:scale-[0.98] transition-all"
+          className="prototype-banner w-full bg-white rounded-2xl p-4 border border-orange-200 shadow-sm text-left active:scale-[0.98] transition-all"
           style={{ background: "linear-gradient(135deg, #FFF6EE, #FFE8D6)" }}
         >
           <div
