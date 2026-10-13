@@ -82,6 +82,8 @@ export type Transaction = {
   leaderReady: boolean
   couponDiscount: number
   meeting: string
+  meetingTime: string
+  nearbyDelivery: { requesterId: string; address: string; agreed: boolean; wasClosed: boolean } | null
 }
 export type NotificationTarget = "detail" | "applicants" | "chat" | "payment" | "receipt" | "complete"
 export type FlowEvent = { text: string; target: NotificationTarget }
@@ -104,6 +106,8 @@ export function flowEvents(previous: Transaction | null, next: Transaction): Flo
       add(`${message.sender}: ${message.content}`, "chat")
   if (!previous.closed && next.closed && next.application === "accepted") add("모집이 마감됐어요. 메뉴를 확정해 주세요.", "chat")
   if (!previous.menusFinal && next.menusFinal) add("주문 내용이 확정됐어요. 송금 금액을 확인해 주세요.", "payment")
+  if (!previous.nearbyDelivery && next.nearbyDelivery && next.nearbyDelivery.requesterId !== "me") add("내 근처 수령 제안이 도착했어요. 이동 거리와 배달비를 확인해 주세요.", "chat")
+  if (previous.nearbyDelivery && !previous.nearbyDelivery.agreed && next.nearbyDelivery?.agreed) add("내 근처 수령 방식에 합의했어요. 요청자가 배달비 전액을 부담해요.", "chat")
   if (!previous.ordered && next.ordered) add("배달 주문이 완료됐어요.", "chat")
   if (!previous.arrived && next.arrived) add("음식이 도착했어요. 만남 장소에서 수령해 주세요.", "receipt")
   if (!previous.cancelled && next.cancelled) add("공동배달 참여가 취소됐어요.", "payment")
@@ -146,6 +150,7 @@ export const foodTotal = (p: Person) =>
 export const deliveryFee = 3000
 // Allocate every won exactly once, even when the fee doesn't divide evenly.
 export function feeShare(tx: Transaction, id: string) {
+  if (tx.nearbyDelivery?.agreed) return tx.nearbyDelivery.requesterId === id ? deliveryFee : 0
   const count = tx.people.length
   const index = tx.people.findIndex((p) => p.id === id)
   return index < 0 || !count
@@ -261,6 +266,8 @@ export function makeTransaction(
     leaderReady: false,
     couponDiscount: 0,
     meeting: "",
+    meetingTime: "",
+    nearbyDelivery: null,
   }
 }
 export type Action = {
@@ -290,7 +297,7 @@ export type Action = {
   now: number
 } | { type: "receive" ; id: string } | {
   type: "cancel"
-} | { type: "message" ; message: Message } | { type: "meeting" ; value: string }
+} | { type: "message" ; message: Message } | { type: "meeting" ; value: string } | { type: "meeting-time" ; value: string } | { type: "nearby-propose" ; requesterId: string ; address: string } | { type: "nearby-agree" ; id: string } | { type: "nearby-reset" }
 export function transition(tx: Transaction, action: Action): Transaction {
   if (action.type === "refund-complete")
     return tx.cancelled && tx.refund > 0
@@ -399,7 +406,7 @@ export function transition(tx: Transaction, action: Action): Transaction {
         ? { ...tx, leaderReady: true }
         : tx
     case "apply-coupon":
-      return tx.menusFinal && !tx.ordered && tx.couponDiscount === 0 &&
+      return tx.menusFinal && !tx.ordered && tx.couponDiscount === 0 && feeShare(tx, "me") > 0 &&
         !tx.people.some((p) => p.transferClaimed)
         ? { ...tx, couponDiscount: Math.min(1000, feeShare(tx, "me")) }
         : tx
@@ -441,6 +448,22 @@ export function transition(tx: Transaction, action: Action): Transaction {
     case "message":
       return { ...tx, messages: [...tx.messages, action.message] }
     case "meeting":
-      return { ...tx, meeting: action.value }
+      return tx.nearbyDelivery?.agreed ? tx : { ...tx, meeting: action.value }
+    case "meeting-time":
+      return { ...tx, meetingTime: action.value }
+    case "nearby-propose":
+      return tx.application === "accepted" && tx.people.length === 2 && !tx.menusFinal &&
+        !tx.nearbyDelivery && tx.people.some(p => p.id === action.requesterId) && action.address.trim()
+        ? { ...tx, nearbyDelivery: { requesterId: action.requesterId, address: action.address.trim(), agreed: false, wasClosed: tx.closed } }
+        : tx
+    case "nearby-agree":
+      return tx.nearbyDelivery && !tx.nearbyDelivery.agreed && !tx.menusFinal &&
+        action.id !== tx.nearbyDelivery.requesterId && tx.people.some(p => p.id === action.id)
+        ? { ...tx, nearbyDelivery: { ...tx.nearbyDelivery, agreed: true }, meeting: tx.nearbyDelivery.address, closed: true }
+        : tx
+    case "nearby-reset":
+      return tx.nearbyDelivery && !tx.menusFinal
+        ? { ...tx, nearbyDelivery: null, closed: tx.nearbyDelivery.wasClosed, meeting: tx.nearbyDelivery.agreed ? "" : tx.meeting }
+        : tx
   }
 }

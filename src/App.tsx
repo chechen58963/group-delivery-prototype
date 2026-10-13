@@ -1,6 +1,6 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
-import { FlowProvider, useFlow } from "./FlowContext"
+import { FlowProvider, MENU_BY_CATEGORY, useFlow } from "./FlowContext"
 
 import {
   allReceived,
@@ -8,6 +8,7 @@ import {
   statusOf,
   money,
   due,
+  deliveryFee,
   RECRUITMENT_RADIUS,
 } from "./workflow"
 
@@ -53,6 +54,13 @@ const CATEGORIES = [
 
   { id: "burger", label: "버거", emoji: "🍟" },
 ]
+const CATEGORY_COLOR: Record<string, string> = {
+  치킨: "bg-amber-100 text-amber-800", 피자: "bg-red-100 text-red-800", 한식: "bg-green-100 text-green-800",
+  중식: "bg-violet-100 text-violet-800", 패스트푸드: "bg-yellow-100 text-yellow-900", 일식: "bg-sky-100 text-sky-800",
+  카페: "bg-teal-100 text-teal-800", 분식: "bg-pink-100 text-pink-800",
+}
+const categoryStyle = (category: string) => CATEGORY_COLOR[category === "버거" ? "패스트푸드" : category] ?? "bg-gray-100 text-gray-700"
+let lastListScroll = 0
 
 const POSTS = [
   {
@@ -616,6 +624,10 @@ function PostCard({
 
       {/* details */}
       <div className="p-3 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className={`px-2 py-1 rounded-md text-xs font-semibold ${categoryStyle(post.category)}`}>{post.emoji} {post.category}</span>
+          <span className="text-xs font-semibold text-green-700">배달비 약 {money(deliveryFee - Math.ceil(deliveryFee / (post.currentMembers + 1)))} 절약</span>
+        </div>
         {/* progress */}
         <div>
           <div className="flex justify-between items-center mb-1.5">
@@ -796,6 +808,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
   const [locationOpen, setLocationOpen] = useState(false)
   const [locationDraft, setLocationDraft] = useState(myLocation)
   const showAllPosts = () => {
+    lastListScroll = 0
     setCategory("all")
     setQuery("")
     push("list")
@@ -877,11 +890,12 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
               <button
                 key={c.id}
                 onClick={() => {
+                  lastListScroll = 0
                   setCategory(c.id)
                   setQuery("")
                   push("list")
                 }}
-                className="flex flex-col items-center gap-1.5 p-2 bg-white rounded-2xl shadow-sm border border-gray-100 active:scale-95 transition-all"
+                className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl shadow-sm border border-gray-100 active:scale-95 transition-all ${c.id === "all" ? "bg-white" : categoryStyle(c.label)}`}
               >
                 <span className="text-xl">{c.emoji}</span>
                 <span
@@ -1021,6 +1035,7 @@ function CategoryScreen({
             <button
               key={c.id}
               onClick={() => {
+                lastListScroll = 0
                 setSel(c.id)
                 setQuery("")
                 push("list")
@@ -1074,6 +1089,11 @@ function ListScreen({
     query,
     setQuery,
   } = useFlow()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = lastListScroll
+  }, [])
+  const normalizedQuery = query.trim().toLocaleLowerCase("ko-KR")
 
   const visible = posts
     .filter(
@@ -1082,12 +1102,13 @@ function ListScreen({
         p.status === "recruiting" &&
         (activeCat === "all" ||
           p.category === (activeCat === "burger" ? "패스트푸드" : CATEGORIES.find((c) => c.id === activeCat)?.label)) &&
-        p.restaurant.includes(query.trim()),
+        (!normalizedQuery || [p.restaurant, p.category, ...(MENU_BY_CATEGORY[p.category] ?? []).map(item => item.name)]
+          .some(value => value.toLocaleLowerCase("ko-KR").includes(normalizedQuery))),
     )
     .sort((a, b) => a.distance - b.distance)
 
   return (
-    <div className="flex-1 overflow-y-auto bg-brand-50">
+    <div ref={scrollRef} onScroll={event => { lastListScroll = event.currentTarget.scrollTop }} className="flex-1 overflow-y-auto bg-brand-50">
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="flex items-center gap-3 px-4 h-14">
           <button
@@ -1102,23 +1123,25 @@ function ListScreen({
               aria-label="음식점 검색"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="음식점 검색"
+              placeholder="음식점·음식 종류·메뉴 검색"
               className="w-full min-w-0 bg-transparent text-sm outline-none text-gray-700"
             />
           </div>
+          {query && <button aria-label="검색어 지우기" onClick={() => setQuery("")} className="text-sm text-gray-500 px-2">×</button>}
         </div>
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto">
           {CATEGORIES.map((c) => (
             <button
               key={c.id}
               onClick={() => {
+                lastListScroll = 0
                 setActiveCat(c.id)
                 setQuery("")
               }}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeCat === c.id
                   ? "bg-brand text-white"
-                  : "bg-gray-100 text-gray-600"
+                  : c.id === "all" ? "bg-gray-100 text-gray-600" : categoryStyle(c.label)
               }`}
               style={{ fontFamily: "Noto Sans KR" }}
             >
@@ -1276,6 +1299,12 @@ function DetailScreen({
         </div>
 
         {/* info grid */}
+        <div className="bg-green-50 rounded-lg p-3 text-sm text-green-800">
+          <p className="font-bold">혼자 주문할 때보다 배달비 약 {money(deliveryFee - Math.ceil(deliveryFee / (post.currentMembers + 1)))} 절약</p>
+          <p className="text-xs mt-1">일반 수령 기준: 혼자 {money(deliveryFee)} → 참여 시 예상 {money(Math.ceil(deliveryFee / (post.currentMembers + 1)))} · 최종 인원에 따라 달라져요.</p>
+          <p className="text-xs mt-1">수령을 위해 리더 근처까지 약 {post.distance}m 이동 · 도보 약 {Math.max(1, Math.round(post.distance / 75))}분 (시연 추정)</p>
+          <p className="text-xs mt-1">2인 거래에서는 ‘내 근처에서 받기’를 합의할 수도 있어요.</p>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           {[
             {
@@ -1901,7 +1930,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
   const {
     tx, active, selectPost, completed, reviews: savedReviews,
     suspended, suspensionUntil, myRating, myTrades,
-    couponEligible, couponUsed, advancePenaltyClock,
+    couponEligible, couponUsed, advancePenaltyClock, themePreference, setThemePreference,
   } = useFlow()
 
   const history = [
@@ -2019,6 +2048,14 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
       </div>
 
       <div className="p-4 space-y-4">
+        <div className="bg-white rounded-lg p-4 border border-gray-100">
+          <h2 className="text-sm font-bold mb-2">화면 테마</h2>
+          <div className="grid grid-cols-3 gap-2">
+            {([['light', '라이트'], ['dark', '다크'], ['system', '기기 설정']] as const).map(([value, label]) => (
+              <button key={value} aria-pressed={themePreference === value} onClick={() => setThemePreference(value)} className={`rounded-lg border px-2 py-2 text-xs ${themePreference === value ? "border-brand text-brand font-bold" : "border-gray-200 text-gray-500"}`}>{label}</button>
+            ))}
+          </div>
+        </div>
         {suspended && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
             <h2 className="font-bold text-amber-800 text-sm">수령 지각 · 새 거래 3일 제한</h2>
@@ -2232,6 +2269,16 @@ export default function App() {
 
 function PrototypeApp() {
   const flow = useFlow()
+  const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<number | null>(null)
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+    const update = () => setKeyboardViewportHeight(
+      viewport.height < window.innerHeight - 100 ? viewport.height : null,
+    )
+    viewport.addEventListener("resize", update)
+    return () => viewport.removeEventListener("resize", update)
+  }, [])
 
   const [history, setHistory] = useState<Screen[]>(["main"])
 
@@ -2284,8 +2331,8 @@ function PrototypeApp() {
   return (
     <div className="min-h-dvh bg-stone-200 flex items-start justify-center sm:items-center sm:p-4">
       <div
-        className="relative w-full sm:w-[390px] h-dvh sm:h-[calc(100dvh-2rem)] bg-[#FFF6EE] flex flex-col overflow-hidden sm:rounded-[40px] sm:shadow-2xl"
-        style={{ maxHeight: "900px" }}
+        className={`relative w-full sm:w-[390px] h-dvh sm:h-[calc(100dvh-2rem)] bg-[#FFF6EE] flex flex-col overflow-hidden sm:rounded-[40px] sm:shadow-2xl ${flow.isDark ? "app-dark" : ""}`}
+        style={{ maxHeight: "900px", ...(keyboardViewportHeight ? { height: `${keyboardViewportHeight}px` } : {}) }}
       >
         {/* Status bar */}
         <div className="flex-shrink-0 h-10 flex items-center justify-between px-7 bg-white">

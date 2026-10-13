@@ -86,6 +86,7 @@ export const MENU_BY_CATEGORY: Record<string, MenuItem[]> = {
 }
 
 export type Review = { stars: number ; comment: string ; tags: string[] }
+export type ThemePreference = "light" | "dark" | "system"
 
 function useFlowState(initialPosts: Post[]) {
   const [posts, setPosts] = useState<Post[]>(() =>
@@ -101,6 +102,18 @@ function useFlowState(initialPosts: Post[]) {
 
   const [query, setQuery] = useState("")
   const [myLocation, setMyLocation] = useState("강남구 역삼동")
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
+    const stored = window.localStorage.getItem("group-delivery-theme")
+    return stored === "light" || stored === "dark" ? stored : "system"
+  })
+  const [systemDark, setSystemDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches)
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const update = () => setSystemDark(media.matches)
+    media.addEventListener("change", update)
+    return () => media.removeEventListener("change", update)
+  }, [])
+  useEffect(() => window.localStorage.setItem("group-delivery-theme", themePreference), [themePreference])
 
   const [tx, setTx] = useState<Transaction | null>(null)
 
@@ -385,6 +398,9 @@ function useFlowState(initialPosts: Post[]) {
     setQuery,
     myLocation,
     setMyLocation,
+    themePreference,
+    setThemePreference,
+    isDark: themePreference === "dark" || (themePreference === "system" && systemDark),
     tx,
     active,
     menu,

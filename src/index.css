@@ -31,3 +31,14 @@ html, body {
 input, textarea, select {
   font-family: inherit;
 }
+
+.app-dark { background: #151c20; color: #ecf0f1; }
+.app-dark .bg-white, .app-dark .bg-gray-50, .app-dark .bg-brand-50, .app-dark .bg-\[\#FFF6EE\] { background-color: #202b30 !important; }
+.app-dark .bg-gray-100, .app-dark .bg-brand-100 { background-color: #304047 !important; }
+.app-dark .border-gray-100, .app-dark .border-gray-200 { border-color: #405059 !important; }
+.app-dark .text-gray-900, .app-dark .text-gray-800, .app-dark .text-gray-700, .app-dark .text-gray-600 { color: #e8eef0 !important; }
+.app-dark .text-gray-500, .app-dark .text-gray-400 { color: #bac7cc !important; }
+.app-dark input, .app-dark select, .app-dark textarea { color: #f2f5f6; }
+.app-dark input::placeholder, .app-dark textarea::placeholder { color: #adbac0; }
+.app-dark .bg-green-50 { background-color: #173c34 !important; }
+.app-dark .text-green-800, .app-dark .text-green-700 { color: #9ee2bf !important; }

@@ -612,13 +612,20 @@ function MeetingRecommendations({
 }
 
 export function Chat({ pop, push }: Navigation) {
-  const { tx, dispatch, setNotice } = useFlow()
+  const { tx, dispatch, setNotice, myLocation, setSelectedApplicant } = useFlow()
   const [text, setText] = useState("")
   const [place, setPlace] = useState(tx?.meeting ?? "")
+  const [meetingTimeDraft, setMeetingTimeDraft] = useState(tx?.meetingTime ?? "")
+  const [nearbyAddress, setNearbyAddress] = useState(myLocation)
+  const [newMessages, setNewMessages] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
+  const followBottom = useRef(true)
   const bottom = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (tx?.messages.length) bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    if (!tx?.messages.length) return
+    if (followBottom.current) bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    else setNewMessages(true)
   }, [tx?.messages.length])
 
   if (!tx || tx.cancelled || tx.application !== "accepted")
@@ -642,6 +649,8 @@ export function Chat({ pop, push }: Navigation) {
 
   const send = () => {
     if (!text.trim()) return
+    followBottom.current = true
+    setNewMessages(false)
     dispatch({
       type: "message",
       message: {
@@ -696,7 +705,18 @@ export function Chat({ pop, push }: Navigation) {
           </button>
         ))}
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-shrink-0 bg-white px-4 py-2 border-b border-gray-100 text-xs text-gray-600">
+        <div className="flex justify-between gap-2"><span>{statusOf(tx)} · {tx.people.length}명</span><span>내 예상 부담 {money(due(tx, "me"))}</span></div>
+        <p className="mt-1 truncate">수령 {tx.nearbyDelivery?.agreed ? tx.nearbyDelivery.address : tx.meeting || "장소 조율 중"} · {tx.meetingTime || "시간 조율 중"}</p>
+      </div>
+      <div ref={listRef} onScroll={(event) => {
+        const element = event.currentTarget
+        followBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80
+        if (followBottom.current) setNewMessages(false)
+      }} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3">
+        <details className="rounded-lg bg-white border border-gray-100 p-3">
+          <summary className="cursor-pointer font-semibold text-sm">주문·장소 설정 열기</summary>
+          <div className="pt-3 space-y-3">
         <Card>
           <p className="text-sm font-bold">
             {!tx.closed
@@ -773,6 +793,27 @@ export function Chat({ pop, push }: Navigation) {
             ))}
         </Card>
         <OrderSummary tx={tx} />
+        <div className="bg-white border border-gray-100 rounded-lg p-3 text-xs space-y-2">
+          <p className="font-semibold">수령 방식과 배달비</p>
+          <p>함께 만나요: 배달비 {money(feeShare(tx, "me"))} · 내 근처에서 받기: 요청자가 배달비 3,000원 전액 부담</p>
+          {tx.people.length === 2 && !tx.menusFinal && !tx.nearbyDelivery && (
+            <div className="space-y-2">
+              <label className="block">내 근처 수령 장소 (상세 집 주소 대신 건물 앞 권장)
+                <input aria-label="내 근처 배달 주소" value={nearbyAddress} onChange={event => setNearbyAddress(event.target.value)} className="w-full mt-1 border border-gray-200 p-2 rounded-lg" />
+              </label>
+              <Button secondary disabled={!nearbyAddress.trim()} onClick={() => dispatch({ type: "nearby-propose", requesterId: "me", address: nearbyAddress })}>내 근처에서 받기 제안</Button>
+              <Demo><Button secondary onClick={() => dispatch({ type: "nearby-propose", requesterId: tx.people.find(p => p.id !== "me")!.id, address: "상대방 근처 건물 앞 (시연)" })}>상대가 자기 근처 수령 제안</Button></Demo>
+            </div>
+          )}
+          {tx.nearbyDelivery && <div className="space-y-2">
+            <p>{tx.nearbyDelivery.agreed ? "합의 완료" : "상대 동의 대기"} · 배달 주소: {tx.nearbyDelivery.address}</p>
+            <p>요청자 배달비 3,000원 · 이동하는 사람 배달비 0원 · 이동 약 {tx.post.distance}m (시연 거리)</p>
+            {!tx.nearbyDelivery.agreed && tx.nearbyDelivery.requesterId !== "me" && <Button secondary onClick={() => dispatch({ type: "nearby-agree", id: "me" })}>이동 조건에 동의하기</Button>}
+            {!tx.nearbyDelivery.agreed && tx.nearbyDelivery.requesterId === "me" && <Demo><Button secondary onClick={() => dispatch({ type: "nearby-agree", id: tx.people.find(p => p.id !== "me")!.id })}>상대가 이동 조건에 동의하기</Button></Demo>}
+            {!tx.menusFinal && <Button secondary onClick={() => dispatch({ type: "nearby-reset" })}>일반 수령으로 되돌리기</Button>}
+          </div>}
+          {tx.people.length !== 2 && <p className="text-gray-500">내 근처에서 받기는 2인 공동배달에서 사용할 수 있어요.</p>}
+        </div>
         <Demo>
           <Button secondary onClick={() => {
             const sender = tx.people.find(person => person.id !== "me")!
@@ -798,9 +839,13 @@ export function Chat({ pop, push }: Navigation) {
                 ))}
             </Demo>
           )}
-        <p className="text-xs text-center text-gray-400">
-          공동 채팅방에 참여했어요. 메뉴와 만남 장소를 이야기해 보세요.
-        </p>
+          </div>
+        </details>
+        {tx.people.length > 1 && <button onClick={() => {
+          const other = tx.people.find(person => person.id !== "me")!
+          setSelectedApplicant(tx.role === "leader" ? Number(other.id.split("-")[1]) || 1 : 0)
+          push("applicantProfile")
+        }} className="text-xs text-brand underline">{tx.role === "leader" ? "참여자" : "리더"} 평점·거래 이력 보기</button>}
         {tx.messages.map((m) => (
           <div
             key={m.id}
@@ -820,6 +865,7 @@ export function Chat({ pop, push }: Navigation) {
             </div>
           </div>
         ))}
+        <details className="rounded-lg bg-white border border-gray-100 p-3"><summary className="cursor-pointer text-sm font-semibold">위치 추천·수령 장소 조율</summary><div className="pt-3 space-y-3">
         <MeetingRecommendations tx={tx} setPlace={setPlace} setText={setText} />
         <Card>
           <h2 className="text-xs font-bold text-gray-500">
@@ -847,10 +893,16 @@ export function Chat({ pop, push }: Navigation) {
             추천을 참고해 채팅으로 합의하거나 직접 장소를 적어도 돼요.
           </p>
         </Card>
+        <label className="block text-xs text-gray-600">수령 약속 시간
+          <input aria-label="수령 약속 시간" type="time" value={meetingTimeDraft} onChange={event => setMeetingTimeDraft(event.target.value)} className="block w-full mt-1 border border-gray-200 rounded-lg p-2" />
+        </label>
+        <Button secondary disabled={!meetingTimeDraft} onClick={() => dispatch({ type: "meeting-time", value: meetingTimeDraft })}>수령 시간 저장</Button>
+        </div></details>
         <CancelControl push={push} />
         <div ref={bottom} />
       </div>
-      <div className="flex-shrink-0 bg-white border-t border-gray-100 p-3 flex gap-2">
+      {newMessages && <button onClick={() => { followBottom.current = true; setNewMessages(false); bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }) }} className="flex-shrink-0 bg-brand text-white text-xs py-2">새 메시지 보기 ↓</button>}
+      <div className="flex-shrink-0 bg-white border-t border-gray-100 p-3 flex gap-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <input
           aria-label="채팅 메시지"
           value={text}
@@ -932,12 +984,12 @@ export function Menu({ pop, push }: Navigation) {
         ))}
         <Row label="내 음식값" value={money(foodTotal(mine))} />
         <Row
-          label={`배달비 (${tx.people.length}명 분담)`}
+          label={tx.nearbyDelivery?.agreed ? "내 배달비 (내 근처 수령)" : `배달비 (${tx.people.length}명 분담)`}
           value={money(feeShare(tx, "me"))}
         />
         <Row label="내 예상 송금 금액" value={money(due(tx, "me"))} strong />
         <p className="text-xs text-gray-400">
-          배달비는 총 3,000원을 참여 인원에 따라 나눠요. 최종 주문 확정 전까지
+          {tx.nearbyDelivery?.agreed ? "수령 장소 요청자가 배달비 전액을 내요." : "배달비 총 3,000원을 참여 인원에 따라 나눠요."} 최종 주문 확정 전까지
           금액이 달라질 수 있어요.
         </p>
         <Button
@@ -1035,6 +1087,7 @@ export function Payment({ pop, push }: Navigation) {
         <Card>
           <Row label="내 음식값" value={money(foodTotal(mine))} />
           <Row label="내 배달비" value={money(feeShare(tx, "me"))} />
+          {tx.nearbyDelivery?.agreed && <p className="text-xs text-gray-500">배달 주소: {tx.nearbyDelivery.address} · 요청자가 배달비 전액 부담</p>}
           {tx.couponDiscount > 0 && (
             <Row label="우수 참여자 쿠폰" value={`−${money(tx.couponDiscount)}`} />
           )}
@@ -1044,7 +1097,7 @@ export function Payment({ pop, push }: Navigation) {
             strong
           />
         </Card>
-        {canUseCoupon && tx.couponDiscount === 0 &&
+        {canUseCoupon && feeShare(tx, "me") > 0 && tx.couponDiscount === 0 &&
           !tx.people.some((p) => p.transferClaimed) && (
             <Button secondary onClick={() => dispatch({ type: "apply-coupon" })}>
               배달비 1,000원 할인 쿠폰 사용 (시연)
@@ -1187,7 +1240,7 @@ export function Delivery({ pop, push }: Navigation) {
           </p>
           <p className="text-sm text-center text-gray-500">
             {tx.arrived
-              ? "채팅에서 정한 장소에서 음식을 전달받아 주세요."
+              ? tx.nearbyDelivery?.agreed ? "합의한 요청자 근처 주소에서 각자 음식을 받아 주세요." : "채팅에서 정한 장소에서 음식을 전달받아 주세요."
               : `배달 예정 ${tx.post.deliveryTime || "18:35"} · 시연 정보`}
           </p>
         </Card>
@@ -1210,12 +1263,16 @@ export function Delivery({ pop, push }: Navigation) {
         </Card>
         <Card>
           <h2 className="text-xs text-brand font-bold">
-            채팅에서 정한 만남 장소
+            {tx.nearbyDelivery?.agreed ? "배달 주소와 수령 안내" : "채팅에서 정한 만남 장소"}
           </h2>
           <p className="text-sm">
-            {tx.meeting ||
+            {tx.nearbyDelivery?.agreed ? tx.nearbyDelivery.address : tx.meeting ||
               "아직 메모된 장소가 없어요. 채팅방에서 자유롭게 정해 주세요."}
           </p>
+          <p className="text-xs text-gray-500">{tx.meetingTime ? `${tx.meetingTime} 수령 약속` : "수령 시간 조율 중"} · 채팅에서 닉네임과 메뉴를 확인하고 각자 수령 완료를 눌러 주세요.</p>
+          <div className="border-t border-gray-100 pt-2 space-y-1">
+            {tx.people.map(person => <p key={person.id} className="text-xs text-gray-600">{person.name}: {person.items.filter(item => (person.quantities[item.id] ?? 0) > 0).map(item => `${item.name} ${person.quantities[item.id]}개`).join(", ") || "메뉴 확인 중"}</p>)}
+          </div>
           <Button secondary onClick={() => push("chat")}>
             채팅방에서 장소 / 시간 이야기하기
           </Button>
@@ -1257,6 +1314,11 @@ export function Receipt({ pop, push }: Navigation) {
     <div className="flex-1 overflow-y-auto bg-gray-50">
       <Top title="수령 확인" pop={pop} />
       <div className="p-4 space-y-4">
+        <div className="bg-white border border-gray-100 rounded-lg p-3 text-sm">
+          <p className="font-semibold">수령 안내</p>
+          <p>{tx.nearbyDelivery?.agreed ? tx.nearbyDelivery.address : tx.meeting || "채팅에서 합의한 장소 확인"} · {tx.meetingTime || "시간은 채팅에서 조율"}</p>
+          <p className="text-xs text-gray-500 mt-1">서로의 닉네임과 메뉴를 확인한 뒤 각자 수령 완료를 눌러 주세요.</p>
+        </div>
         <Card>
           <p className="text-5xl text-center">🛍️</p>
           <h2 className="font-bold text-center">수령 확인 현황</h2>
