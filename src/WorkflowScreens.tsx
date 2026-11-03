@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 import { useFlow } from "./FlowContext"
 import ParticipantLocations from "./ParticipantLocations"
 import { ReportControl } from "./ReportControl"
+import { SharedDetailActions, useSharedDelivery } from './SharedDelivery'
 
 import {
   allPaid,
@@ -98,6 +99,8 @@ function Row({
 }
 
 export function Demo({ children }: { children: ReactNode }) {
+  const shared = useSharedDelivery()
+  if (shared.live) return null
   return (
     <details className="rounded-xl border border-dashed border-orange-200 bg-orange-50/50 p-3 text-xs">
       <summary className="cursor-pointer text-gray-500">
@@ -109,9 +112,10 @@ export function Demo({ children }: { children: ReactNode }) {
 }
 
 export function FlowBar() {
-  const { tx } = useFlow()
+  const { tx, shared } = useFlow()
 
   if (!tx || tx.cancelled || tx.application === "rejected") return null
+  if (shared.live) return <div className="px-4 py-2 bg-brand-50 text-xs border-b border-orange-100"><b className="text-brand">{tx.application === 'pending' ? '신청 대기' : tx.closed ? '모집 마감 · 대화 중' : '모집 중'}</b><span className="float-right text-gray-500">{tx.role === 'leader' ? '리더' : '참여자'} · {tx.people.length}명</span></div>
 
   const labels = ["참여·모집", "메뉴·송금", "배달·수령", "완료"]
 
@@ -239,6 +243,7 @@ export function CancelControl({ push }: { push: Navigation["push"] }) {
 
 export function DetailActions({ push }: { push: Navigation["push"] }) {
   const flow = useFlow()
+  if (flow.shared.live) return <SharedDetailActions push={push} />
   const { tx, selectedPost, active, dispatch, menu, now } = flow
 
   const mine =
@@ -314,8 +319,8 @@ export function DetailActions({ push }: { push: Navigation["push"] }) {
     <div className="space-y-2">
       <Button
         disabled={closed || active}
-        onClick={() => {
-          if (flow.apply(selectedPost))
+        onClick={async () => {
+          if (await flow.apply(selectedPost))
             flow.setNotice("동참 신청을 보냈어요. 리더의 승인을 기다려 주세요.")
         }}
       >

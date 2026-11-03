@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import type { MapPin } from "./LocationMap"
 import { CAMPUS_POSTS, CAMPUS_STORES, WALKING_NOTE, MENU_CHECKED_ON } from "./campus"
 import { ReportControl } from "./ReportControl"
+import { SharedAccountControl, SharedApplicants, SharedChat, useSharedDelivery } from './SharedDelivery'
 
 import { FlowProvider, MENU_BY_CATEGORY, useFlow } from "./FlowContext"
 
@@ -460,7 +461,7 @@ function PostCard({
           <span className={`px-2 py-1 rounded-md text-xs font-semibold ${categoryStyle(post.category)}`}>{post.emoji} {post.category}</span>
           <span className="text-xs font-semibold text-green-700">배달비 약 {money(deliveryFee - Math.ceil(deliveryFee / Math.min(post.currentMembers + 1, post.maxMembers)))} 절약</span>
         </div>
-        <p className="text-xs text-gray-600">수령 이동 약 {post.distance}m · 도보 약 {Math.max(1, Math.ceil(post.distance / 75))}분 <span className="text-gray-400">(시연 추정)</span></p>
+        <p className="text-xs text-gray-600">{post.sharedId ? '참여자 등록 모집글 · 수령 장소와 이동 거리는 채팅에서 확인해요.' : <>수령 이동 약 {post.distance}m · 도보 약 {Math.max(1, Math.ceil(post.distance / 75))}분 <span className="text-gray-400">(시연 추정)</span></>}</p>
         {/* progress */}
         <div>
           <div className="flex justify-between items-center mb-1.5">
@@ -516,7 +517,7 @@ function PostCard({
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-500">
             <IcLocation />
-            <span style={{ fontFamily: "Outfit" }}>{post.distance}m</span>
+            <span style={{ fontFamily: "Outfit" }}>{post.sharedId ? '거리 미확인' : `${post.distance}m`}</span>
           </div>
         </div>
 
@@ -535,7 +536,7 @@ function PostCard({
               className="text-xs text-gray-600"
               style={{ fontFamily: "Outfit" }}
             >
-              {post.leaderRating} · {post.leaderTrades}회
+              {post.sharedId ? '평가 전' : `${post.leaderRating} · ${post.leaderTrades}회`}
             </span>
           </div>
         </div>
@@ -637,7 +638,8 @@ function BottomNav({ tab, onTab }: { tab: Tab ; onTab: (t: Tab) => void }) {
 // ─── SCREEN 1: MAIN ───────────────────────────────────────────────────────────
 
 function MainScreen({ push }: { push: (s: Screen) => void }) {
-  const { posts, tx, active, selectPost, setCategory, setQuery, myLocation, setMyLocation, setNotice, setBrowseView } = useFlow()
+  const shared = useSharedDelivery()
+  const { posts, tx, active, selectPost, setCategory, setQuery, myLocation, setMyLocation, setNotice, setBrowseView, currentLocation } = useFlow()
   const [locationOpen, setLocationOpen] = useState(false)
   const [locationDraft, setLocationDraft] = useState(myLocation)
   const showAllPosts = () => {
@@ -652,7 +654,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
       {/* top bar */}
       {locationOpen && (
         <div className="absolute inset-0 z-40 bg-black/30 flex items-center justify-center p-5" onKeyDown={event => { if (event.key === "Escape") setLocationOpen(false) }}>
-          <form role="dialog" aria-modal="true" aria-labelledby="location-title" className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onSubmit={event => {
+          <form role="dialog" aria-modal="true" aria-labelledby="location-title" className="w-full max-w-sm max-h-[90%] overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onSubmit={event => {
             event.preventDefault()
             const value = locationDraft.trim()
             if (!value) return
@@ -660,13 +662,26 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
             setLocationOpen(false)
             setNotice("내 위치를 저장했어요.")
           }}>
-            <h2 id="location-title" className="font-bold text-lg">내 위치 입력</h2>
+            <div className="flex items-center justify-between"><h2 id="location-title" className="font-bold text-lg">내 위치 설정</h2><button type="button" aria-label="위치 설정 닫기" onClick={() => setLocationOpen(false)} className="p-2">✕</button></div>
+            <button type="button" disabled={currentLocation.loading} onClick={currentLocation.request} className="mt-4 w-full rounded-xl bg-brand py-3 text-white text-sm font-bold disabled:opacity-50">{currentLocation.loading ? '현재 위치를 확인하고 있어요…' : '◎ 현재 위치 가져오기'}</button>
+            <p className="mt-2 text-xs text-gray-500">위치 권한을 허용하면 기기의 현재 위치를 가져와요.</p>
+            {currentLocation.error && <p role="alert" className="mt-3 text-xs text-red-600 leading-relaxed">{currentLocation.error}</p>}
+            {currentLocation.coordinates && <div className="mt-4 space-y-2">
+              <p role="status" className="text-xs font-semibold text-green-700">현재 위치를 불러왔어요 · 정확도 약 {Math.ceil(currentLocation.coordinates.accuracy).toLocaleString()}m</p>
+              <div className="h-56 flex rounded-xl overflow-hidden"><Suspense fallback={<div className="w-full p-5 text-sm text-gray-500">현재 위치 지도 불러오는 중…</div>}><LocationMap
+                center={currentLocation.coordinates}
+                pins={[{id:'current-gps',point:{x:0,y:0},coordinates:currentLocation.coordinates,label:'기기에서 확인한 내 위치',symbol:'나',kind:'me'}]}
+                selectedId="current-gps" onSelect={() => {}} title="내 현재 위치 지도"
+              /></Suspense></div>
+              <p className="text-[11px] text-gray-500">위도 {currentLocation.coordinates.lat.toFixed(5)} · 경도 {currentLocation.coordinates.lng.toFixed(5)}<br />확인 시간 {new Date(currentLocation.coordinates.updatedAt).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',hour12:false})}</p>
+              <button type="button" onClick={() => {setLocationOpen(false);setNotice('불러온 현재 위치를 사용해요.')}} className="w-full rounded-xl border border-brand/30 py-2.5 text-brand text-sm font-semibold">이 위치로 계속하기</button>
+            </div>}
             <label htmlFor="my-location" className="block text-sm text-gray-600 mt-4 mb-2">주소 또는 동네 이름</label>
             <input id="my-location" autoFocus required maxLength={100} value={locationDraft} onChange={event => setLocationDraft(event.target.value)} placeholder="예: 대전 유성구 궁동" className="w-full min-w-0 rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none focus:border-brand" />
-            <p className="mt-2 text-xs text-gray-500">모집글 거리는 시연용이며 입력한 주소로 실제 거리를 계산하지 않아요.</p>
+            <p className="mt-2 text-xs text-gray-500">직접 입력한 주소는 위치 이름으로 저장해요. 모집글 거리는 아직 실제 현재 위치를 반영하지 않아요.</p>
             <div className="flex gap-2 mt-5">
               <button type="button" onClick={() => setLocationOpen(false)} className="flex-1 rounded-xl border border-gray-200 py-3 text-sm">취소</button>
-              <button type="submit" disabled={!locationDraft.trim()} className="flex-1 rounded-xl bg-brand text-white py-3 text-sm font-bold disabled:opacity-40">위치 저장</button>
+              <button type="submit" disabled={!locationDraft.trim()} className="flex-1 rounded-xl bg-brand text-white py-3 text-sm font-bold disabled:opacity-40">입력한 위치로 설정</button>
             </div>
           </form>
         </div>
@@ -686,7 +701,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
               className="font-semibold text-base truncate max-w-[230px]"
               style={{ fontFamily: "Noto Sans KR" }}
             >
-              {myLocation}
+              {currentLocation.loading ? '위치 확인 중…' : myLocation}
             </span>
             <svg
               viewBox="0 0 24 24"
@@ -699,9 +714,10 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
             </svg>
           </button>
           <div className="flex gap-2">
-            <span className="text-xs text-gray-400">주변 700m</span>
+            <span className="text-xs text-gray-400">{shared.live ? '참여자 모집' : '주변 700m'}</span>
           </div>
         </div>
+        {currentLocation.error && <button onClick={() => {setLocationDraft(myLocation);setLocationOpen(true)}} className="text-[11px] text-amber-700 mb-3 text-left">현재 위치를 확인하지 못했어요 · 위치 설정 열기</button>}
         {/* search */}
         <button
           onClick={showAllPosts}
@@ -715,6 +731,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
       </div>
 
       <div className="px-4 py-4 space-y-5">
+        {!shared.live && <div className="text-xs text-gray-500">예시 모집글을 보고 있어요. {shared.session ? '상단의 ‘실제 참여로’를 누르면 참여자 모집글을 볼 수 있어요.' : <button className="text-brand font-semibold underline" onClick={() => shared.setLoginOpen(true)}>로그인하고 실제 모집하기</button>}</div>}
         {!active && <section className="campus-value rounded-2xl p-5 space-y-3">
           <p className="text-xs font-semibold text-brand">충남대에서 함께 주문해요</p>
           <h1 className="font-bold text-xl leading-snug">잠깐 걸어서 만나고,<br />배달비는 함께 나눠요.</h1>
@@ -722,9 +739,9 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
           <p className="text-[11px] text-gray-500">수령 장소와 도보 시간을 확인하고 참여하세요. 금액·거리는 시연용 예상치예요.</p>
           <button onClick={showAllPosts} className="w-full rounded-xl bg-brand py-3 text-white text-sm font-bold">가까운 모집글 둘러보기</button>
         </section>}
-        <button onClick={() => { setBrowseView("map"); showAllPosts() }} className="map-entry w-full rounded-2xl p-4 flex items-center justify-between text-left">
+        {!shared.live && <button onClick={() => { setBrowseView("map"); showAllPosts() }} className="map-entry w-full rounded-2xl p-4 flex items-center justify-between text-left">
           <div><p className="font-bold text-sm">🗺️ 지도에서 모집글 찾기</p><p className="text-xs text-gray-500 mt-1">주변 700m · 음식 아이콘을 눌러 확인해요</p></div><span aria-hidden="true">›</span>
-        </button>
+        </button>}
         {/* categories */}
         <div>
           <button onClick={() => push("category")} className="font-bold text-gray-900 mb-3" style={{ fontFamily: "Noto Sans KR" }}>카테고리</button>
@@ -820,7 +837,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
               className="font-bold text-gray-900"
               style={{ fontFamily: "Noto Sans KR" }}
             >
-              근처 모집 중
+              {shared.live ? '참여자 모집 중' : '근처 모집 중'}
             </h2>
             <button
               onClick={showAllPosts}
@@ -831,6 +848,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
             </button>
           </div>
           <div className="space-y-3">
+            {shared.live && !posts.some(p => p.status === 'recruiting') && <div className="bg-white border border-gray-100 rounded-2xl p-6 text-center text-sm text-gray-500">{shared.ready ? '아직 모집 중인 글이 없어요. 모집하기에서 첫 글을 올려보세요.' : '모집글을 불러오고 있어요.'}</div>}
             {posts
               .filter((p) => p.distance <= RECRUITMENT_RADIUS && p.status === "recruiting")
               .sort((a, b) => a.distance - b.distance)
@@ -931,11 +949,13 @@ function ListScreen({
     selectPost,
     query,
     setQuery,
-    browseView,
+    browseView: savedBrowseView,
     setBrowseView,
     selectedId,
   } = useFlow()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const shared = useSharedDelivery()
+  const browseView = shared.live ? 'list' : savedBrowseView
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = lastListScroll
   }, [])
@@ -1008,16 +1028,16 @@ function ListScreen({
           className="text-sm text-gray-500"
           style={{ fontFamily: "Noto Sans KR" }}
         >
-          주변{" "}
+          {shared.live ? '참여자 모집글 ' : '주변 '}
           <span
             className="font-semibold text-gray-800"
             style={{ fontFamily: "Outfit" }}
           >
-            700m
+            {shared.live ? '' : '700m'}
           </span>{" "}
-          이내 · {visible.length}개
+          {shared.live ? '' : '이내 · '}{visible.length}개
         </span>
-        <div className="map-view-toggle flex gap-1 rounded-xl p-1" aria-label="모집글 보기 방식">
+        <div hidden={shared.live} className="map-view-toggle flex gap-1 rounded-xl p-1" aria-label="모집글 보기 방식" style={shared.live ? {display:'none'} : undefined}>
           {(["list", "map"] as const).map(view => <button key={view} aria-pressed={browseView === view} onClick={() => { setBrowseView(view); if (view === "list") requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = lastListScroll }) }} className={`px-3 py-1.5 rounded-lg text-xs ${browseView === view ? "map-view-active font-bold" : "text-gray-500"}`}>{view === "map" ? "지도" : "목록"}</button>)}
         </div>
       </div>
@@ -1116,9 +1136,9 @@ function DetailScreen({
       <div className="p-4 space-y-4">
         <section className="campus-value rounded-2xl p-4 text-sm space-y-2">
           <h2 className="font-bold text-lg text-green-700">예상 배달비 {money(deliveryFee - estimatedFee)} 절약</h2>
-          <p className="font-semibold">수령 이동 약 {post.distance}m · 도보 약 {Math.max(1, Math.ceil(post.distance / 75))}분</p>
+          <p className="font-semibold">{post.sharedId ? '수령 장소와 이동 거리는 참여자끼리 확인해 주세요.' : `수령 이동 약 ${post.distance}m · 도보 약 ${Math.max(1, Math.ceil(post.distance / 75))}분`}</p>
           <p className="text-xs text-gray-500">혼자 {money(deliveryFee)} → 내 배달비 약 {money(estimatedFee)} · {estimatedPeople}명 기준</p>
-          <p className="text-[11px] text-gray-500">{WALKING_NOTE}</p>
+          <p className="text-[11px] text-gray-500">{post.sharedId ? '표시된 절약액은 배달비 3,000원 가정의 예상치예요.' : WALKING_NOTE}</p>
           <details className="text-xs text-gray-600"><summary className="cursor-pointer py-1">이동이 부담된다면?</summary><p className="pt-2">2인 거래에서 ‘내 근처에서 받기’를 합의할 수 있어요. 요청자 근처로 배달 주소를 정하고, 요청자가 배달비 3,000원 전액을 부담해요. 이동하는 사람의 배달비는 0원이에요.</p></details>
         </section>
         <div className="text-[11px] text-gray-500 space-y-1">
@@ -1186,7 +1206,7 @@ function DetailScreen({
 
             { label: "모집 마감", value: post.deadline, icon: "⏰" },
 
-            { label: "예상 거리", value: `${post.distance}m`, icon: "📍" },
+            { label: "예상 거리", value: post.sharedId ? '채팅에서 확인' : `${post.distance}m`, icon: "📍" },
 
             {
               label: "배달 예정",
@@ -1231,15 +1251,16 @@ function DetailScreen({
             >
               {post.leaderName}
             </div>
-            <Stars rating={post.leaderRating} />
+            {post.sharedId ? <p className="text-xs text-gray-500">테스트 참여자 · 평가 전</p> : <Stars rating={post.leaderRating} />}
             <div
               className="text-xs text-gray-400 mt-0.5"
               style={{ fontFamily: "Noto Sans KR" }}
             >
-              공동배달 {post.leaderTrades}회
+              {post.sharedId ? '거래 이력 없음' : `공동배달 ${post.leaderTrades}회`}
             </div>
           </div>
           <button
+            disabled={!!post.sharedId}
             onClick={() => {
               setSelectedApplicant(0)
               push("applicantProfile")
@@ -1291,7 +1312,7 @@ function DetailScreen({
                   className="text-xs text-gray-400"
                   style={{ fontFamily: "Noto Sans KR" }}
                 >
-                  신청자 3명 대기 중
+                  {post.sharedId ? '실제 신청자 확인하기' : '신청자 3명 대기 중'}
                 </div>
               </div>
             </div>
@@ -1324,7 +1345,7 @@ function CreateScreen({
   pop: () => void
   push: (s: Screen) => void
 }) {
-  const { create, active, setNotice, now } = useFlow()
+  const { create, active, setNotice, now, shared } = useFlow()
   const [storeSearchOpen, setStoreSearchOpen] = useState(false)
   const defaultTime = new Date(now + 30 * 60 * 1000).toTimeString().slice(0, 5)
 
@@ -1511,19 +1532,19 @@ function CreateScreen({
             style={{ fontFamily: "Noto Sans KR" }}
           />
         </div>
-        <p className="text-xs text-gray-500">등록하면 이 브라우저의 목록·지도에 표시되고 새로고침 후에도 유지돼요. 다른 기기와 공유되지는 않아요.</p>
+        <p className="text-xs text-gray-500">{shared.sample ? '예시 모드에서는 이 브라우저에 시연용 글을 저장해요.' : '로그인 후 등록하면 다른 테스트 참여자에게도 표시돼요. 모집 인원은 리더 포함 2~5명이며, 배달비는 3,000원으로 가정해요.'}</p>
 
         <button
-          disabled={active}
-          onClick={() => {
+          disabled={active || shared.busy}
+          onClick={async () => {
             if (
-              create({
+              await create({
                 ...form,
                 category:
                   CATEGORIES.find((c) => c.id === form.category)?.label || "",
               })
             )
-              { setNotice("모집글을 등록했어요. 목록과 지도에서도 확인할 수 있어요."); push("detail") }
+              { setNotice(shared.live ? '모집글을 등록했어요. 다른 참여자도 같은 목록에서 볼 수 있어요.' : '모집글을 등록했어요. 목록과 지도에서도 확인할 수 있어요.'); push("detail") }
           }}
           className="w-full h-12 rounded-2xl font-bold text-white text-sm active:opacity-90"
           style={{
@@ -1814,6 +1835,13 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
     couponEligible, couponUsed, advancePenaltyClock, themePreference, setThemePreference,
     reports, lateIncidentCount,
   } = useFlow()
+  const shared = useSharedDelivery()
+  if (shared.live) return <div className="flex-1 overflow-y-auto bg-gray-50 p-5 space-y-5">
+    <h1 className="font-bold text-xl">내 정보</h1><section className="bg-white border border-gray-100 rounded-2xl p-5 space-y-2"><p className="text-3xl">🧑</p><h2 className="font-bold text-lg">{shared.me?.nickname ?? '참여자'}</h2><p className="text-xs text-gray-500">충남대 공동배달 테스트 참여자</p><p className="text-sm text-gray-500">평점과 거래 이력은 아직 없어요.</p></section>
+    <section className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3"><h2 className="font-bold text-sm">화면 테마</h2><div className="flex gap-2">{([{id:'light',label:'라이트'},{id:'dark',label:'다크'},{id:'system',label:'기기 설정'}] as const).map(t=><button key={t.id} onClick={()=>setThemePreference(t.id)} className={`flex-1 rounded-xl py-3 text-xs ${themePreference===t.id?'bg-brand text-white':'bg-gray-100 text-gray-600'}`}>{t.label}</button>)}</div></section>
+    {active&&tx&&<button className="w-full bg-brand text-white rounded-2xl py-3 font-bold text-sm" onClick={()=>{selectPost(tx.post.id);push(tx.application==='pending'?'detail':tx.role==='leader'?'applicants':'chat')}}>내 진행 중인 공동배달</button>}
+    <button className="w-full border border-gray-200 rounded-2xl py-3 text-sm" onClick={()=>void shared.logout()}>로그아웃</button>
+  </div>
 
   const history = [
     ...completed.map((t) => ({
@@ -2172,6 +2200,9 @@ function PrototypeApp() {
   const [history, setHistory] = useState<Screen[]>(["main"])
 
   const [tab, setTab] = useState<Tab>("explore")
+  useEffect(() => {
+    setHistory(['main']); setTab('explore')
+  }, [flow.shared.live, flow.shared.session?.user.id, flow.shared.sample])
 
   const screen = history[history.length - 1]
 
@@ -2224,11 +2255,14 @@ function PrototypeApp() {
         style={{ maxHeight: "900px", ...(keyboardViewportHeight ? { height: `${keyboardViewportHeight}px` } : {}) }}
       >
         {screen !== "chat" && <div className="flex-shrink-0 flex justify-end bg-white px-4 border-b border-gray-100">
+          <SharedAccountControl />
           <button aria-label={`알림 열기, 읽지 않은 알림 ${flow.unreadCount}개`} onClick={() => flow.setNotificationsOpen(true)} className="flex items-center gap-2 py-2 text-xs text-gray-600">
             <IcBell /> 알림
             {flow.unreadCount > 0 && <span className="rounded-full bg-red-500 px-1.5 text-white font-bold">{flow.unreadCount}</span>}
           </button>
         </div>}
+        {flow.shared.error && !flow.shared.loginOpen && <div role="alert" className="shrink-0 bg-red-50 text-red-700 px-4 py-3 text-xs flex gap-2"><span className="flex-1">{flow.shared.error}</span><button aria-label="오류 안내 닫기" onClick={()=>flow.shared.setError('')}>×</button></div>}
+        {flow.shared.notice && <div role="status" className="shrink-0 bg-gray-800 text-white px-4 py-2 text-xs flex gap-2"><span className="flex-1">{flow.shared.notice}</span><button aria-label="안내 닫기" onClick={()=>flow.shared.setNotice('')}>×</button></div>}
         {flow.notice && (
           <div
             role="status"
@@ -2248,18 +2282,19 @@ function PrototypeApp() {
         ].includes(screen) && (screen !== "detail" || flow.tx?.post.id === flow.selectedId) && <FlowBar />}
         {/* Screen content */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {flow.shared.live && !flow.shared.allowed ? <div className="p-6 space-y-4"><h1 className="font-bold text-lg">{flow.shared.ready?'참여자 등록을 확인해 주세요':'참여자 확인 중…'}</h1><p className="text-sm text-gray-500">{flow.shared.ready?'로그인 계정에 테스트 접근 권한이 필요해요. 진행자에게 계정 등록을 요청해 주세요.':'모집글을 불러오고 있어요.'}</p></div> : <>
           {screen === "main" && <MainScreen push={push} />}
           {screen === "category" && <CategoryScreen {...screenProps} />}
           {screen === "list" && <ListScreen {...screenProps} />}
           {screen === "detail" && <DetailScreen {...screenProps} />}
           {screen === "create" && <CreateScreen {...screenProps} />}
           {screen === "applicants" && (
-            <ApplicantsScreen {...screenProps} applicants={APPLICANTS} />
+            flow.shared.live ? <SharedApplicants {...screenProps} /> : <ApplicantsScreen {...screenProps} applicants={APPLICANTS} />
           )}
           {screen === "applicantProfile" && (
             <ApplicantProfileScreen pop={pop} />
           )}
-          {screen === "chat" && <ChatScreen {...screenProps} />}
+          {screen === "chat" && (flow.shared.live ? <SharedChat {...screenProps} /> : <ChatScreen {...screenProps} />)}
           {screen === "menu" && <MenuScreen {...screenProps} />}
           {screen === "payment" && <PaymentScreen {...screenProps} />}
           {screen === "delivery" && <DeliveryScreen {...screenProps} />}
@@ -2267,9 +2302,10 @@ function PrototypeApp() {
           {screen === "complete" && <CompleteScreen push={push} />}
           {screen === "rating" && <RatingScreen {...screenProps} />}
           {screen === "profile" && <ProfileScreen push={push} />}
+          </>}
         </div>
 
-        {["detail", "applicants", "receipt"].includes(screen) && (
+        {!flow.shared.live && ["detail", "applicants", "receipt"].includes(screen) && (
           <details className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-1 text-[10px] text-gray-400">
             <summary className="cursor-pointer">시연 시간 조절</summary>
             <button className="text-brand py-2" onClick={flow.advanceClock}>

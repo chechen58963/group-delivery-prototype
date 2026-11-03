@@ -1,6 +1,7 @@
 export const RECRUITMENT_RADIUS = 700
 export type Post = {
   id: number
+  sharedId?: string
   restaurant: string
   category: string
   emoji: string

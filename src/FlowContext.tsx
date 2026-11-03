@@ -26,6 +26,8 @@ import {
 } from "./workflow"
 import { CAMPUS_LOCATION, CAMPUS_STORES, CATEGORY_PHOTOS, mergeCampusPosts } from "./campus"
 import { loadSnapshot, saveSnapshot } from "./prototypeStorage"
+import { useSharedDelivery } from "./SharedDelivery"
+import { useCurrentLocation } from './useCurrentLocation'
 
 const START = new Date(2026, 9, 13, 17, 30).getTime()
 
@@ -97,6 +99,7 @@ export type ThemePreference = "light" | "dark" | "system"
 export type UserReport = { id: number; postId: number; person: string; reason: string; detail: string; status: "검토 대기"; createdAt: number }
 
 function useFlowState(initialPosts: Post[]) {
+  const shared = useSharedDelivery()
   const [saved] = useState(() => loadSnapshot())
   const [posts, setPosts] = useState<Post[]>(() =>
     mergeCampusPosts(saved?.posts ?? [], initialPosts, saved?.tx?.post.id).map((p) => ({
@@ -111,7 +114,9 @@ function useFlowState(initialPosts: Post[]) {
 
   const [query, setQuery] = useState("")
   const [browseView, setBrowseView] = useState<"list" | "map">("list")
-  const [myLocation, setMyLocation] = useState(saved?.myLocation ?? CAMPUS_LOCATION)
+  const currentLocation = useCurrentLocation(saved?.myLocation ?? CAMPUS_LOCATION)
+  const myLocation = currentLocation.label
+  const setMyLocation = currentLocation.manual
   const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
     try {
       const stored = window.localStorage.getItem("group-delivery-theme")
@@ -165,11 +170,12 @@ function useFlowState(initialPosts: Post[]) {
   const now = START + elapsed + clockOffset
   const storageFailed = useRef(false)
   useEffect(() => {
+    if (shared.live) return
     if (!saveSnapshot({ posts, selectedId, tx, completed, reviews, myLocation, clockOffset: clockOffset + elapsed, suspensionUntil, couponUsed, reports }) && !storageFailed.current) {
       storageFailed.current = true
       setNotice("이 브라우저에서는 저장이 제한돼요. 새로고침하면 진행 상태가 초기화될 수 있어요.")
     }
-  }, [posts, selectedId, tx, completed, reviews, myLocation, clockOffset, suspensionUntil, couponUsed, reports, Math.floor(elapsed / 10000)])
+  }, [shared.live, posts, selectedId, tx, completed, reviews, myLocation, clockOffset, suspensionUntil, couponUsed, reports, Math.floor(elapsed / 10000)])
   useEffect(() => {
     if (tx) {
       const events = flowEvents(previousTx.current, tx)
@@ -429,6 +435,7 @@ function useFlowState(initialPosts: Post[]) {
     setBrowseView,
     myLocation,
     setMyLocation,
+    currentLocation,
     themePreference,
     setThemePreference,
     isDark: themePreference === "dark" || (themePreference === "system" && systemDark),
@@ -476,6 +483,28 @@ function useFlowState(initialPosts: Post[]) {
     reviewDrafts,
     setReviewDrafts,
     reputation,
+    shared,
+    ...(!shared.sample ? {
+      tx: shared.live ? shared.tx : null,
+      active: shared.live && shared.active,
+      apply: shared.apply,
+      create: shared.create,
+      ...(shared.live ? {
+        posts: shared.posts,
+        selectedId: shared.selectedId ?? shared.tx?.post.id ?? shared.posts[0]?.id ?? initialPosts[0].id,
+        selectedPost: shared.posts.find(p => p.id === shared.selectedId) ?? shared.tx?.post ?? shared.posts[0] ?? initialPosts[0],
+        selectPost: shared.selectPost,
+        now: Date.now(),
+        dispatch: shared.dispatch,
+        menu: shared.tx?.post.menus ?? shared.posts.find(p => p.id === shared.selectedId)?.menus ?? MENU_BY_CATEGORY[shared.selectedRaw?.category ?? '치킨'],
+        notifications: shared.notifications,
+        unreadCount: shared.notifications.filter(item => !item.read).length,
+        readNotification: (id: number) => shared.setNotifications(list => list.map(item => item.id === id ? { ...item, read: true } : item)),
+        readAllNotifications: () => shared.setNotifications(list => list.map(item => ({ ...item, read: true }))),
+        myRating: 0, myTrades: 0, completed: [], reviews: {}, suspended: false,
+        couponEligible: false, canUseCoupon: false, lateIncidentCount: 0, reports: [],
+      } : {}),
+    } : {}),
   }
 }
 

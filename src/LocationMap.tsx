@@ -6,26 +6,28 @@ import { CAMPUS_CENTER } from "./campus"
 export type MapPin = {
   id: string
   point: Point
+  coordinates?: { lat: number; lng: number }
   label: string
   symbol: string
   kind: "post" | "me" | "person" | "meeting"
 }
 
-// Only simulated positions are converted; typed addresses are never geocoded.
+// Demo points use campus offsets; an explicit GPS coordinate is used unchanged.
 const DEMO_CENTER = CAMPUS_CENTER
-const toLatLng = (point: Point): L.LatLngTuple => [
-  DEMO_CENTER.lat + point.y / 111320,
-  DEMO_CENTER.lng + point.x / (111320 * Math.cos(DEMO_CENTER.lat * Math.PI / 180)),
+const toLatLng = (point: Point, center = DEMO_CENTER): L.LatLngTuple => [
+  center.lat + point.y / 111320,
+  center.lng + point.x / (111320 * Math.cos(center.lat * Math.PI / 180)),
 ]
 
 export default function LocationMap({
-  pins, selectedId, onSelect, radius, title,
+  pins, selectedId, onSelect, radius, title, center = DEMO_CENTER,
 }: {
   pins: MapPin[]
   selectedId?: string
   onSelect: (id: string) => void
   radius?: number
   title: string
+  center?: { lat: number; lng: number }
 }) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -43,7 +45,7 @@ export default function LocationMap({
   useEffect(() => {
     if (!container.current) return
     const map = L.map(container.current, {
-      center: toLatLng({ x: 0, y: 0 }), zoom: 16,
+      center: toLatLng({ x: 0, y: 0 }, center), zoom: 16,
       minZoom: 13, maxZoom: 19, zoomControl: false,
       scrollWheelZoom: false, zoomSnap: 0.25,
     })
@@ -75,7 +77,7 @@ export default function LocationMap({
     if (!map) return
     const layer = L.layerGroup().addTo(map)
     markers.current.clear()
-    if (radius) L.circle(toLatLng({ x: 0, y: 0 }), {
+    if (radius) L.circle(toLatLng({ x: 0, y: 0 }, center), {
       radius, color: "#dc7942", weight: 1.5, dashArray: "6 6", fillOpacity: 0.045,
       interactive: false,
     }).addTo(layer)
@@ -84,7 +86,7 @@ export default function LocationMap({
       content.className = "map-pin-content"
       content.textContent = pin.symbol
       content.dataset.symbol = pin.symbol
-      const marker = L.marker(toLatLng(pin.point), {
+      const marker = L.marker(pin.coordinates ? [pin.coordinates.lat, pin.coordinates.lng] : toLatLng(pin.point, center), {
         icon: L.divIcon({
           html: content, className: `map-pin map-pin-${pin.kind}`,
           iconSize: [36, 40], iconAnchor: [18, 40],
@@ -97,16 +99,16 @@ export default function LocationMap({
       markers.current.set(pin.id, marker)
     }
     const fit = () => {
-      const coordinates = pinsRef.current.map(pin => toLatLng(pin.point))
+      const coordinates = pinsRef.current.map(pin => pin.coordinates ? [pin.coordinates.lat, pin.coordinates.lng] as L.LatLngTuple : toLatLng(pin.point, center))
       if (radius) {
-        coordinates.push(toLatLng({ x: -radius, y: -radius }), toLatLng({ x: radius, y: radius }))
+        coordinates.push(toLatLng({ x: -radius, y: -radius }, center), toLatLng({ x: radius, y: radius }, center))
       }
       if (coordinates.length) map.fitBounds(L.latLngBounds(coordinates), { padding: [45, 45], maxZoom: 17, animate: false })
     }
     fitRef.current = fit
     fit()
     return () => { map.removeLayer(layer); markers.current.clear() }
-  }, [geometry, radius, version])
+  }, [geometry, radius, version, center.lat, center.lng])
 
   useEffect(() => {
     for (const [id, marker] of markers.current) {
