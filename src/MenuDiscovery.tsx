@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useFlow } from './FlowContext'
 import { useSharedDelivery } from './SharedDelivery'
 import { FOOD_CHOICES, PICKUP_AREAS, areaName, formatWindow, money, useMenuDiscovery, type MenuStore } from './MenuDiscoveryContext'
 import { CAMPUS_STORES } from './campus'
 import type { Screen } from './WorkflowScreens'
+import type { MatchLocation } from './matchingLocation'
+import { distanceM, useDeliveryLifecycle } from './DeliveryLifecycle'
+import type { MapPin } from './LocationMap'
+const BrowseMap=lazy(()=>import('./LocationMap'))
+const MatchLocationPicker=lazy(()=>import('./MatchLocationPicker'))
 
 export function SmallIcon({name}:{name:'home'|'people'|'chat'|'profile'|'bell'|'pin'|'back'|'close'|'clock'|'plus'}){
   const paths={home:'m3 10 9-7 9 7v10H3V10Zm6 10v-7h6v7',people:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3a4 4 0 0 1 0 8M22 21v-2a4 4 0 0 0-3-3.87',chat:'M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z',profile:'M20 21v-2a7 7 0 0 0-14 0v2M17 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',bell:'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',pin:'M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0ZM15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',back:'m15 18-6-6 6-6',close:'m6 6 12 12M6 18 18 6',clock:'M12 8v4l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z',plus:'M12 5v14M5 12h14'}
@@ -18,21 +23,26 @@ function StorePhoto({store}:{store:MenuStore}){
 export function LocationChoice(){
   const d=useMenuDiscovery(),{currentLocation}=useFlow()
   const [open,setOpen]=useState(false)
+  const [pickMap,setPickMap]=useState(false),[point,setPoint]=useState<MatchLocation|null>(null)
   return <>
     <button className="baef-location" onClick={()=>setOpen(true)} aria-label="수령 지역 설정"><SmallIcon name="pin"/><span>{areaName(d.area)}</span><span aria-hidden="true">⌄</span></button>
     {open&&<div className="baef-overlay" role="dialog" aria-modal="true" aria-labelledby="pickup-title" onKeyDown={e=>{if(e.key==='Escape')setOpen(false)}}><section className="baef-sheet baef-small-sheet"><div className="baef-sheet-title"><h2 id="pickup-title">어디에서 받을까요?</h2><button className="baef-icon-button" aria-label="수령 지역 닫기" onClick={()=>setOpen(false)}><SmallIcon name="close"/></button></div>
-      <p className="baef-muted">같은 수령 지역을 고른 사람과 연결해요.</p>
+      <p className="baef-muted">수령 지역이 달라도, 각자 400m 이내에서 만날 수 있는 배프를 찾아요.</p>
       {PICKUP_AREAS.map(a=><button key={a.id} className={`baef-area-option ${a.id===d.area?'selected':''}`} onClick={()=>{d.setArea(a.id);setOpen(false)}}><span><b>{a.name}</b><small>{a.detail}</small></span><span>{a.id===d.area?'✓':'›'}</span></button>)}
-      <button disabled={currentLocation.loading} className="baef-button secondary" onClick={currentLocation.request}><SmallIcon name="pin"/>{currentLocation.loading?'현재 위치 확인 중…':'현재 위치 확인'}</button>
-      {currentLocation.coordinates&&<p className="baef-muted">현재 위치 · {currentLocation.coordinates.lat.toFixed(4)}, {currentLocation.coordinates.lng.toFixed(4)}<br/>정확도 약 {Math.ceil(currentLocation.coordinates.accuracy)}m · 수령 지역은 위에서 선택해 주세요.</p>}
+      <p className="baef-muted">지역은 희망 수령 장소예요. 매칭은 아래의 내 출발 위치를 기준으로 해요.<br/>거리 기준은 직선거리이며, 실제 걷는 경로와 수령 장소는 함께 확인해 주세요.</p>
+      <button disabled={currentLocation.loading} className="baef-button secondary" onClick={()=>{d.setMatchLocation(null);setPickMap(false);currentLocation.request()}}><SmallIcon name="pin"/>{currentLocation.loading?'현재 위치 확인 중…':'현재 위치 사용'}</button>
+      <button className="baef-button secondary" onClick={()=>{setPoint(d.matchLocation);setPickMap(v=>!v)}}>지도에서 내 출발 위치 지정</button>
+      {pickMap&&<><p className="baef-muted">지도에서 내가 출발할 곳을 눌러 주세요.</p><Suspense fallback={<p className="baef-muted">지도 불러오는 중…</p>}><MatchLocationPicker point={point} onChange={setPoint}/></Suspense><button className="baef-button" disabled={!point} onClick={()=>{d.setMatchLocation(point);setPickMap(false)}}>이 위치를 출발점으로 사용</button></>}
+      {d.manualLocation&&<p className="baef-muted">지도에 지정한 출발 위치를 사용 중이에요.</p>}
+      {currentLocation.coordinates&&<p className="baef-muted">현재 위치 · {currentLocation.coordinates.lat.toFixed(4)}, {currentLocation.coordinates.lng.toFixed(4)}<br/>정확도 약 {Math.ceil(currentLocation.coordinates.accuracy)}m · 출발 위치를 기준으로 매칭해요.</p>}
       {currentLocation.error&&<p role="alert" className="baef-error">{currentLocation.error}</p>}
     </section></div>}
   </>
 }
 
-function StoreRows({onSelect}:{onSelect:(store:MenuStore)=>void}){
+function StoreRows({onSelect,browse=false}:{onSelect:(store:MenuStore)=>void;browse?:boolean}){
   const d=useMenuDiscovery(),s=useSharedDelivery()
-  const visible=d.menus.length?d.candidateStores:d.catalog
+  const visible=(browse?d.catalog:d.menus.length?d.candidateStores:d.catalog).filter(c=>!browse||((d.browseCategory==='all'||c.menu_key===d.browseCategory)&&`${c.store_name} ${foodName(c.menu_key)} ${c.menus.map(m=>m.name).join(' ')}`.toLowerCase().includes(d.search.trim().toLowerCase())))
   return <div className="baef-store-list">{visible.map(store=>{
     const count=d.visibleMatches.find(m=>m.store_name===store.store_name)?.people_count??0
     const groups=s.posts.filter(p=>p.restaurant===store.store_name&&p.status==='recruiting')
@@ -54,6 +64,7 @@ export function MenuHome({push}:{push:(s:Screen)=>void}){
     {!!d.candidateStores.length&&<details className="baef-store-preferences"><summary>가능한 가게 {d.stores.length}곳 <span>변경</span></summary><p className="baef-muted">주문해도 괜찮은 가게를 남겨주세요.</p>{d.candidateStores.map(c=><label key={c.store_name}><input type="checkbox" checked={d.stores.includes(c.store_name)} onChange={()=>d.toggleStore(c.store_name)}/><span>{c.store_name}</span></label>)}</details>}
     <button className="baef-button" disabled={d.saving||s.active||!d.menus.length||!d.stores.length} onClick={()=>void d.save()}>{d.saving?'선택 저장 중…':s.active?'진행 중인 주문이 있어요':'이 메뉴로 배프 찾기'}<span aria-hidden="true">→</span></button>
     {d.intent&&<div className="baef-saved-intent"><span className="baef-pulse"/><div><b>{d.intent.menus.map(foodName).join(' · ')} 기다리는 중</b><p>{formatWindow(d.intent.starts_at,d.intent.ends_at)} · {areaName(d.intent.area_id)}</p></div><button aria-label="메뉴 기다리기 취소" onClick={()=>void d.cancel()}>취소</button></div>}
+    {d.intent&&d.intent.latitude==null&&<p className="baef-muted">거리 기준으로 배프를 찾으려면 출발 위치를 정한 뒤 선택을 다시 저장해 주세요.</p>}
     {d.error&&<p role="alert" className="baef-error">{d.error}</p>}
     <div className="baef-section-title baef-browse-title"><h2>{d.menus.length?'선택한 메뉴가 있는 가게':'한 잔, 한 끼를 함께할 가게'}</h2><button onClick={()=>push('list')}>모두 보기</button></div>
     <StoreRows onSelect={setStore}/>
@@ -63,18 +74,35 @@ export function MenuHome({push}:{push:(s:Screen)=>void}){
 
 export function TogetherScreen({push}:{push:(s:Screen)=>void}){
   const d=useMenuDiscovery(),s=useSharedDelivery()
-  const [view,setView]=useState<'groups'|'stores'>('groups'),[store,setStore]=useState<MenuStore|null>(null)
-  const groups=s.posts.filter(p=>p.status==='recruiting'&&d.catalog.some(c=>c.store_name===p.restaurant)&&(!d.menus.length||d.candidateStores.some(c=>c.store_name===p.restaurant)))
-  return <div className="baef-scroll"><div className="baef-page"><div className="baef-section-title"><h1 className="baef-page-title">함께 주문</h1><button className="baef-text-action" onClick={()=>push('create')}><SmallIcon name="plus"/>직접 모집</button></div><p className="baef-muted">원하는 가게의 모집에 합류하거나 먼저 시작해 보세요.</p><div className="baef-tabs"><button className={view==='groups'?'active':''} onClick={()=>setView('groups')}>모집 중 {groups.length}</button><button className={view==='stores'?'active':''} onClick={()=>setView('stores')}>가게 찾기</button></div>
+  const [store,setStore]=useState<MenuStore|null>(null)
+  const scroll=useRef<HTMLDivElement>(null)
+  useEffect(()=>{if(scroll.current)scroll.current.scrollTop=d.listScroll.current;return()=>{}},[])
+  const search=d.search.trim().toLowerCase()
+  const groups=s.posts.filter(p=>p.status==='recruiting'&&d.catalog.some(c=>c.store_name===p.restaurant&&(d.browseCategory==='all'||c.menu_key===d.browseCategory))&&`${p.restaurant} ${p.category} ${p.description} ${p.menus?.map(m=>m.name).join(' ')}`.toLowerCase().includes(search))
+  const pointFor=(id:string|undefined)=>{const p=s.rawPosts.find(p=>p.id===id);return p?.pickup_lat!=null&&p.pickup_lng!=null?{lat:p.pickup_lat,lng:p.pickup_lng}:null}
+  const distanceFor=(id:string|undefined)=>{const p=pointFor(id);return p&&d.matchLocation?distanceM(p,d.matchLocation):Infinity}
+  if(d.sort==='near')groups.sort((a,b)=>distanceFor(a.sharedId)-distanceFor(b.sharedId))
+  const pins:MapPin[]=groups.flatMap(p=>{const point=pointFor(p.sharedId);return point?[{id:String(p.id),point:{x:0,y:0},coordinates:point,label:p.restaurant,symbol:p.emoji,kind:'post' as const}]:[]})
+  if(d.matchLocation)pins.push({id:'me',point:{x:0,y:0},coordinates:d.matchLocation,label:'내 출발점',symbol:'나',kind:'me'})
+  const resetScroll=()=>{d.listScroll.current=0;if(scroll.current)scroll.current.scrollTop=0}
+  return <div ref={scroll} onScroll={e=>{d.listScroll.current=e.currentTarget.scrollTop}} className="baef-scroll"><div className="baef-page"><div className="baef-section-title"><h1 className="baef-page-title">함께 주문</h1><button className="baef-text-action" onClick={()=>push('create')}><SmallIcon name="plus"/>직접 모집</button></div><p className="baef-muted">원하는 가게의 모집에 합류하거나 먼저 시작해 보세요.</p>
+    <div className="baef-search"><input aria-label="음식점·메뉴 검색" value={d.search} onChange={e=>{d.setSearch(e.target.value);resetScroll()}} placeholder="가게, 음식 종류, 메뉴 검색"/>{d.search&&<button aria-label="검색어 지우기" onClick={()=>{d.setSearch('');resetScroll()}}>×</button>}</div>
+    <div className="baef-browse-controls"><select aria-label="음식 카테고리" value={d.browseCategory} onChange={e=>{d.setBrowseCategory(e.target.value);resetScroll()}}><option value="all">전체 메뉴</option>{FOOD_CHOICES.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select><select aria-label="모집 정렬" value={d.sort} onChange={e=>{d.setSort(e.target.value as 'recent'|'near');resetScroll()}}><option value="recent">최근 모집순</option><option value="near">수령 장소 가까운 순</option></select></div>
+    <div className="baef-tabs"><button className={d.browseTab==='groups'?'active':''} onClick={()=>d.setBrowseTab('groups')}>모집 중 {groups.length}</button><button className={d.browseTab==='stores'?'active':''} onClick={()=>d.setBrowseTab('stores')}>가게 찾기</button></div>
     {s.active&&s.tx&&<button className="baef-progress" onClick={()=>{s.selectPost(s.tx!.post.id);push('detail')}}><span><small>내 진행 상황</small><b>{s.tx.post.restaurant}</b></span><span>›</span></button>}
-    {view==='stores'?<StoreRows onSelect={setStore}/>:groups.length?groups.map(p=><button key={p.id} className="baef-group-row" onClick={()=>{s.selectPost(p.id);push('detail')}}><div className="baef-group-head"><span className="baef-tag">{p.category}</span><span>{p.currentMembers}/{p.maxMembers}명</span></div><h2>{p.restaurant}</h2><p>{p.description.split('\n').find(v=>v.includes('수령'))??'수령 장소는 함께 정해요'}</p><div className="baef-group-foot"><b>목표 주문금액 {money(p.minOrderAmount)}</b><span>{p.deadline} 마감</span></div></button>):<div className="baef-empty"><SmallIcon name="people"/><h3>아직 열린 모집이 없어요</h3><p>먹고 싶은 메뉴를 남기면<br/>조건이 맞는 사람이 생길 때 알려드릴게요.</p><button className="baef-button secondary" onClick={()=>push('main')}>메뉴 고르러 가기</button></div>}
+    {d.browseTab==='stores'?<StoreRows browse onSelect={setStore}/>:<><div className="baef-tabs"><button className={d.browseView==='list'?'active':''} onClick={()=>d.setBrowseView('list')}>목록</button><button className={d.browseView==='map'?'active':''} onClick={()=>d.setBrowseView('map')}>지도</button></div>
+      {d.browseView==='map'&&<><div className="baef-public-map"><Suspense fallback={<p>지도 불러오는 중…</p>}><BrowseMap pins={pins} title="지도에서 모집글 찾기" onSelect={id=>{if(id==='me')return;s.selectPost(Number(id));push('detail')}}/></Suspense></div><p className="baef-muted">모집자가 공개 수령점을 지정한 모임만 지도에 표시해요. 나머지는 아래 목록에서 볼 수 있어요.</p></>}
+      {groups.length?groups.map(p=>{const distance=distanceFor(p.sharedId),nextCount=Math.min(p.maxMembers,p.currentMembers+1),fee=s.rawPosts.find(v=>v.id===p.sharedId)?.delivery_fee??3000;return <button key={p.id} className="baef-group-row" onClick={()=>{s.selectPost(p.id);push('detail')}}><div className="baef-group-head"><span className="baef-tag">{p.category}</span><span>{p.currentMembers}/{p.maxMembers}명</span></div><h2>{p.restaurant}</h2><p>{p.description.split('\n').find(v=>v.includes('수령'))??'수령 장소는 함께 정해요'}</p><p className="baef-savings">균등 분담 시 배달비 약 {money(Math.max(0,fee-Math.ceil(fee/nextCount)))} 절약 예상</p><p className="baef-muted">{Number.isFinite(distance)?`수령점까지 직선 약 ${Math.ceil(distance)}m · 도보 경로 확인 필요`:'공개 수령점 위치 미지정'}</p><div className="baef-group-foot"><b>목표 주문금액 {money(p.minOrderAmount)}</b><span>{p.deadline} 마감</span></div></button>}):<div className="baef-empty"><SmallIcon name="people"/><h3>{search?'검색 결과가 없어요':'아직 열린 모집이 없어요'}</h3><p>다른 메뉴를 검색하거나<br/>먹고 싶은 메뉴를 남겨 보세요.</p><button className="baef-button secondary" onClick={()=>push('main')}>메뉴 고르러 가기</button></div>}</>}
     {store&&<StoreSheet store={store} close={()=>setStore(null)} push={push}/>}
   </div></div>
 }
 
 export function StoreSheet({store,close,push,targetPostId}:{store:MenuStore;close:()=>void;push:(s:Screen)=>void;targetPostId?:string}){
   const d=useMenuDiscovery(),s=useSharedDelivery()
-  const [quantities,setQuantities]=useState<Record<number,number>>({}),[goal,setGoal]=useState(String(store.goal_amount)),[pending,setPending]=useState(false),[problem,setProblem]=useState('')
+  const [quantities,setQuantities]=useState<Record<number,number>>({}),[goal,setGoal]=useState(String(store.goal_amount)),[maxMembers,setMaxMembers]=useState(2),[pending,setPending]=useState(false),[problem,setProblem]=useState('')
+  const [fee,setFee]=useState('3000'),[meeting,setMeeting]=useState<string>(areaName(d.area)),[note,setNote]=useState(''),[deliveryTime,setDeliveryTime]=useState(`${d.hour}:00–${d.hour+1}:00`)
+  const [deadline,setDeadline]=useState(()=>{const date=new Date();date.setDate(date.getDate()+d.day);date.setHours(d.hour+1,0,0,0);return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16)})
+  const [publicPoint,setPublicPoint]=useState<MatchLocation|null>(null),[mapOpen,setMapOpen]=useState(false)
   const sum=store.menus.reduce((v,m)=>v+m.price*(quantities[m.id]??0),0)
   const items=store.menus.filter(m=>(quantities[m.id]??0)>0).map(m=>({id:m.id,quantity:quantities[m.id]}))
   const groups=s.posts.filter(p=>p.restaurant===store.store_name&&p.status==='recruiting'&&(!targetPostId||p.sharedId===targetPostId))
@@ -90,10 +118,12 @@ export function StoreSheet({store,close,push,targetPostId}:{store:MenuStore;clos
     if(end.getTime()<=Date.now()){setProblem('희망 수령 시간이 지났어요. 홈에서 시간을 다시 골라 주세요.');setPending(false);return}
     const target=Number(goal)
     if(!postId&&(!Number.isInteger(target)||target<=0||target>1000000)){setProblem('목표 주문금액을 확인해 주세요.');setPending(false);return}
+    const cutoff=new Date(deadline),deliveryFee=Number(fee)
+    if(!postId&&(!Number.isFinite(cutoff.getTime())||cutoff.getTime()<=Date.now()||cutoff.getTime()>Date.now()+7*86400000||!Number.isInteger(deliveryFee)||deliveryFee<0||deliveryFee>100000||!meeting.trim()||!deliveryTime.trim())){setProblem('마감 시간, 배달비, 수령 장소와 희망 시간을 확인해 주세요.');setPending(false);return}
     try{
-      const result=await s.act(postId?'apply':'create',postId??null,postId?{}:{restaurant:store.store_name,category:store.menu_key==='coffee'?'카페':store.menu_key==='burger'?'버거':'패스트푸드',max_members:5,
-        deadline:end.toISOString(),delivery_fee:3000,min_order:target,meeting:areaName(d.area),
-        note:JSON.stringify({format:'campus-v1',text:`${formatWindow(start.toISOString(),end.toISOString())} 함께 주문해요.`,currentAmount:sum,deliveryTime:`${d.hour}:00–${d.hour+1}:00`,area_id:d.area,starts_at:start.toISOString(),ends_at:end.toISOString()})})
+      const result=await s.act(postId?'apply':'create',postId??null,postId?{}:{restaurant:store.store_name,category:store.menu_key==='coffee'?'카페':store.menu_key==='burger'?'버거':'패스트푸드',max_members:maxMembers,
+        deadline:cutoff.toISOString(),delivery_fee:deliveryFee,min_order:target,meeting:meeting.trim(),...(publicPoint?{pickup_lat:publicPoint.lat,pickup_lng:publicPoint.lng}:{}),
+        note:JSON.stringify({format:'campus-v1',text:`${formatWindow(start.toISOString(),end.toISOString())} 함께 주문해요.\n${note.trim()}`,currentAmount:sum,deliveryTime:deliveryTime.trim(),area_id:d.area,starts_at:start.toISOString(),ends_at:end.toISOString()})})
       if(!result)return
       const saved=await d.saveBasket(result,items)
       if(!postId)await d.invite(result)
@@ -105,7 +135,7 @@ export function StoreSheet({store,close,push,targetPostId}:{store:MenuStore;clos
     <div className="baef-menu-items">{store.menus.map(m=><div className="baef-menu-item" key={m.id}><div><b>{m.name}</b><span>{money(m.price)}</span></div><div className="baef-quantity"><button aria-label={`${m.name} 줄이기`} disabled={!quantities[m.id]} onClick={()=>setQuantities(q=>({...q,[m.id]:Math.max(0,(q[m.id]??0)-1)}))}>−</button><span>{quantities[m.id]??0}</span><button aria-label={`${m.name} 추가`} disabled={(quantities[m.id]??0)>=10} onClick={()=>setQuantities(q=>({...q,[m.id]:(q[m.id]??0)+1}))}>+</button></div></div>)}</div>
     <div className="baef-order-total"><span>내 메뉴금액</span><b>{money(sum)}</b></div>
     {groups.length>0&&<section className="baef-existing-groups"><h3>지금 참여할 수 있는 모집</h3>{groups.map(p=><div key={p.id}><span>{p.leaderName} · {p.currentMembers}/{p.maxMembers}명 · {p.deadline} 마감</span><button disabled={!sum||pending||s.active} onClick={()=>void submit(p.sharedId)}>참가하기</button></div>)}</section>}
-    {!targetPostId&&<details className="baef-proposal-details" open={!groups.length}><summary>새 모집으로 시작하기</summary><div className="baef-proposal-fields"><label>목표 주문금액<input type="number" min="1" max="1000000" step="100" value={goal} onChange={e=>setGoal(e.target.value)}/></label><p className="baef-muted">{areaName(d.area)} · {d.day?'내일':'오늘'} {d.hour}:00–{d.hour+1}:00<br/>배달비는 총 3,000원 기준으로 나눠요.</p><button className="baef-button" disabled={!sum||pending||s.active} onClick={()=>void submit()}>{pending?'저장 중…':s.session?'이 메뉴로 함께 주문 제안':'로그인하고 함께 주문하기'}</button></div></details>}
+    {!targetPostId&&<details className="baef-proposal-details" open={!groups.length}><summary>새 모집으로 시작하기</summary><div className="baef-proposal-fields"><label>모집 인원 (나 포함)<select value={maxMembers} onChange={e=>setMaxMembers(Number(e.target.value))}>{[2,3,4,5].map(n=><option key={n} value={n}>{n}명</option>)}</select></label><label>목표 주문금액<input type="number" min="1" max="1000000" step="100" value={goal} onChange={e=>setGoal(e.target.value)}/></label><details className="baef-order-details"><summary>모집 조건 자세히 설정</summary><div className="baef-order-form"><label>모집 마감<input type="datetime-local" value={deadline} onChange={e=>setDeadline(e.target.value)}/></label><label>총 배달비<input type="number" min="0" max="100000" value={fee} onChange={e=>setFee(e.target.value)}/></label><label>희망 수령 시간<input value={deliveryTime} maxLength={50} onChange={e=>setDeliveryTime(e.target.value)}/></label><label>수령 제안 장소<input value={meeting} maxLength={200} onChange={e=>setMeeting(e.target.value)}/></label><label>기타 전달사항<textarea value={note} maxLength={500} onChange={e=>setNote(e.target.value)}/></label></div><button className="baef-button secondary" onClick={()=>setMapOpen(v=>!v)}>공개 수령점을 지도에 표시</button>{mapOpen&&<><p className="baef-muted">여기에 찍은 위치는 모집 목록에 공개돼요. 집 주소 대신 함께 만날 공개 장소를 선택해 주세요.</p><Suspense fallback={<p>지도 불러오는 중…</p>}><MatchLocationPicker point={publicPoint} onChange={setPublicPoint}/></Suspense>{publicPoint&&<button className="baef-text-cancel" onClick={()=>setPublicPoint(null)}>공개 위치 제거</button>}</>}</details><p className="baef-muted">{meeting} · {d.day?'내일':'오늘'} {d.hour}:00–{d.hour+1}:00<br/>배달비는 총 {money(Number(fee)||0)} 기준으로 나눠요.</p><button className="baef-button" disabled={!sum||pending||s.active} onClick={()=>void submit()}>{pending?'저장 중…':s.session?'이 메뉴로 함께 주문 제안':'로그인하고 함께 주문하기'}</button></div></details>}
     {problem&&<p className="baef-error" role="alert">{problem}</p>}{d.error&&<p className="baef-error" role="alert">{d.error}</p>}
   </section></div>
 }
@@ -116,7 +146,7 @@ export function DiscoveryCreate({pop,push}:{pop:()=>void;push:(s:Screen)=>void})
 }
 
 export function BasketEditor({postId}:{postId:string}){
-  const s=useSharedDelivery(),d=useMenuDiscovery()
+  const s=useSharedDelivery(),d=useMenuDiscovery(),order=useDeliveryLifecycle()
   const p=s.rawPosts.find(v=>v.id===postId),store=d.catalog.find(v=>v.store_name===p?.restaurant)
   const basket=d.baskets.find(b=>b.post_id===postId&&b.user_id===s.session?.user.id)
   const [quantities,setQuantities]=useState<Record<number,number>>({})
@@ -126,7 +156,7 @@ export function BasketEditor({postId}:{postId:string}){
   const people=s.members.filter(m=>m.post_id===postId&&m.status==='accepted')
   const orders=d.baskets.filter(b=>b.post_id===postId&&people.some(m=>m.user_id===b.user_id))
   const total=orders.reduce((sum,b)=>sum+b.total,0)
-  const active=s.members.some(m=>m.user_id===s.session?.user.id&&m.post_id===postId&&m.active)
+  const active=s.members.some(m=>m.user_id===s.session?.user.id&&m.post_id===postId&&m.active)&&(!order.states.find(v=>v.post_id===postId)||order.states.find(v=>v.post_id===postId)?.phase==='menu')
   const accepted=s.members.some(m=>m.user_id===s.session?.user.id&&m.post_id===postId&&m.status==='accepted')
   return <section className="baef-basket"><div className="baef-section-title"><h3>주문 메뉴</h3><span>{orders.length}/{people.length}명 선택</span></div><details><summary>내 메뉴 {basket?`· ${money(basket.total)}`:'고르기'}</summary><div className="baef-menu-items">{store.menus.map(m=><div className="baef-menu-item" key={m.id}><div><b>{m.name}</b><span>{money(m.price)}</span></div><div className="baef-quantity"><button aria-label={`${m.name} 줄이기`} disabled={!active||!quantities[m.id]} onClick={()=>setQuantities(q=>({...q,[m.id]:Math.max(0,(q[m.id]??0)-1)}))}>−</button><span>{quantities[m.id]??0}</span><button aria-label={`${m.name} 추가`} disabled={!active||(quantities[m.id]??0)>=10} onClick={()=>setQuantities(q=>({...q,[m.id]:(q[m.id]??0)+1}))}>+</button></div></div>)}</div><button className="baef-button" disabled={!active||d.saving||!Object.values(quantities).some(q=>q>0)} onClick={()=>void d.saveBasket(postId,store.menus.filter(m=>(quantities[m.id]??0)>0).map(m=>({id:m.id,quantity:quantities[m.id]})))}>내 메뉴 저장</button></details>
     {accepted?<>{orders.map(b=><div className="baef-basket-person" key={b.user_id}><b>{s.nickname(b.user_id)}</b><p>{b.items.map(i=>`${i.name} ${i.quantity}개`).join(' · ')}</p><span>{money(b.total)}</span></div>)}
@@ -137,7 +167,7 @@ export function BasketEditor({postId}:{postId:string}){
 export function MenuAlerts({close,push}:{close:()=>void;push:(s:Screen)=>void}){
   const d=useMenuDiscovery(),s=useSharedDelivery()
   return <section className="baef-alert-panel"><header className="baef-sheet-title"><h1 className="baef-page-title">알림</h1><button className="baef-icon-button" aria-label="알림 닫기" onClick={close}><SmallIcon name="close"/></button></header><div className="baef-alert-scroll">
-    {d.alerts.map(n=><button className={`baef-alert-item ${!n.read_at?'unread':''}`} key={n.id} onClick={()=>{void d.readAlerts([n.id]);if(n.kind==='group_invite'&&n.payload.post_id){const p=s.posts.find(p=>p.sharedId===n.payload.post_id);if(p){s.selectPost(p.id);close();push('detail');return}}close();push('list')}}><span className="baef-alert-symbol"><SmallIcon name="people"/></span><div><b>{n.kind==='group_invite'?'함께 주문할 모집이 열렸어요':'메뉴가 겹치는 배프가 있어요'}</b><p>{n.payload.stores.join(' · ')}</p><small>{areaName(n.payload.area)} · {new Date(n.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})}</small></div></button>)}
+    {d.alerts.map(n=><button className={`baef-alert-item ${!n.read_at?'unread':''}`} key={n.id} onClick={()=>{void d.readAlerts([n.id]);if(n.kind==='group_invite'&&n.payload.post_id){const p=s.posts.find(p=>p.sharedId===n.payload.post_id);if(p){s.selectPost(p.id);close();push('detail');return}}close();push('list')}}><span className="baef-alert-symbol"><SmallIcon name="people"/></span><div><b>{n.kind==='group_invite'?'함께 주문할 모집이 열렸어요':'메뉴가 겹치는 배프가 있어요'}</b><p>{n.payload.stores.join(' · ')}</p><small>{n.kind==='menu_match'&&n.payload.max_walk_m?'근처에서 함께 수령':areaName(n.payload.area)} · {new Date(n.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false})}</small></div></button>)}
     {s.notifications.map(n=><button className={`baef-alert-item ${!n.read?'unread':''}`} key={n.id} onClick={()=>{s.setNotifications(values=>values.map(v=>v.id===n.id?{...v,read:true}:v));s.selectPost(n.postId);close();push(n.target as Screen)}}><span className="baef-alert-symbol"><SmallIcon name="chat"/></span><div><b>{n.restaurant}</b><p>{n.text}</p></div></button>)}
     {!d.alerts.length&&!s.notifications.length&&<div className="baef-empty"><SmallIcon name="bell"/><h3>아직 도착한 알림이 없어요</h3><p>메뉴가 겹치거나 신청이 도착하면<br/>여기에 알려드릴게요.</p></div>}
   </div></section>

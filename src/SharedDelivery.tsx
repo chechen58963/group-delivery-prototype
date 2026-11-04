@@ -1,11 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type FormEvent } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import AuthDialog from './AuthDialog'
 import { CAMPUS_STORES, CATEGORY_PHOTOS } from './campus'
 import { makeTransaction, type Post, type Transaction, type Action, type FlowEvent } from './workflow'
 
-type Tester = { user_id: string; nickname: string; active: boolean }
-type SharedPost = { id: string; owner_id: string; restaurant: string; category: string; max_members: number; member_count: number; deadline: string; delivery_fee: number; min_order: number; meeting: string; note: string; status: string }
+type Tester = { user_id: string; nickname: string; active: boolean; suspended_until?:string|null }
+type SharedPost = { id: string; owner_id: string; restaurant: string; category: string; max_members: number; member_count: number; deadline: string; delivery_fee: number; min_order: number; meeting: string; note: string; status: string; pickup_lat?:number|null;pickup_lng?:number|null }
 type Member = { id: string; post_id: string; user_id: string; status: string; active: boolean }
 type SharedMessage = { id: number; sender_id: string; body: string; created_at: string }
 type Notification = FlowEvent & { id: number; postId: number; restaurant: string; read: boolean; time: number }
@@ -14,6 +15,11 @@ function explain(e: unknown) {
   const error = e as { code?: string; message?: string }
   if (error.code === 'PGRST202' || error.code === 'PGRST205') return '공유 저장소 설정이 필요해요. 진행자에게 문의해 주세요.'
   if (error.message?.includes('Invalid login credentials')) return '이메일 또는 비밀번호를 확인해 주세요.'
+  if (error.message?.includes('Email not confirmed')) return '메일의 인증 링크를 먼저 눌러 주세요.'
+  if (['email_address_not_authorized','email_address_not_allowed'].includes(error.code??'')) return '인증 메일 발송 설정이 준비되지 않았어요. 운영자에게 알려주세요.'
+  if (error.code==='over_email_send_rate_limit'||error.code==='over_request_rate_limit') return '요청이 많아요. 잠시 기다린 뒤 다시 시도해 주세요.'
+  if (error.code==='signup_disabled') return '현재 회원가입이 잠시 닫혀 있어요.'
+  if (error.code==='user_already_exists') return '이미 가입한 이메일이에요. 로그인해 주세요.'
   if (error.message?.includes('Failed to fetch')) return '연결하지 못했어요. 인터넷 연결을 확인해 주세요.'
   if (error.code === '23505') return '이미 진행 중인 모집이나 신청이 있어요.'
   if (['23514','23502','22P02'].includes(error.code ?? '')) return '입력한 금액, 인원, 시간과 글 길이를 확인해 주세요.'
@@ -206,6 +212,16 @@ function useSharedState() {
       try { const r = await supabase.auth.signInWithPassword({ email: email.trim(), password }); if (r.error) throw r.error; setSample(false); setLoginOpen(false) }
       catch (e) { setError(explain(e)) } finally { setAuthBusy(false) }
     },
+    signup: async (email: string, password: string, nickname: string): Promise<'email'|'signedIn'|null> => {
+      if(authBusy)return null
+      setAuthBusy(true);setError('')
+      try{
+        const result=await supabase.auth.signUp({email:email.trim(),password,options:{data:{nickname:nickname.trim()},emailRedirectTo:window.location.origin+'/'}})
+        if(result.error)throw result.error
+        if(result.data.session){setSample(false);setLoginOpen(false);setNotice('회원가입이 완료됐어요. 먹고 싶은 메뉴를 골라보세요.');return 'signedIn'}
+        return 'email'
+      }catch(e){setError(explain(e));return null}finally{setAuthBusy(false)}
+    },
     logout: async () => { const r = await supabase?.auth.signOut({ scope: 'local' }); if (r?.error) setError(explain(r.error)) },
     create: async (input: CreateInput) => {
       if (!live) { setSample(false); setLoginOpen(true); return false }
@@ -228,7 +244,7 @@ function useSharedState() {
       if (action.type === 'message') { void act('message', txSource.id, { body: action.message.content }); return }
       if (action.type === 'close') { void act('close', txSource.id); return }
       if (action.type === 'cancel') { void act(txSource.owner_id === uid ? 'cancel' : 'withdraw', txSource.id); return }
-      setNotice('현재 참여자 테스트는 모집·신청·수락·채팅까지 연결돼 있어요. 메뉴·송금·수령 과정은 예시 모드에서 체험할 수 있어요.')
+      setNotice('메뉴·송금·배달·수령 작업은 주문 진행 화면에서 확인해 주세요.')
     },
   }
 }
@@ -246,16 +262,7 @@ export function SharedAccountControl() {
     <div className="flex items-center gap-2 mr-auto text-xs min-w-0">
       <button className="text-brand truncate max-w-28 py-2" disabled={s.initializing} onClick={() => { if (!s.session) s.setLoginOpen(true); else if (confirm('로그아웃할까요?')) void s.logout() }}>{s.initializing ? '확인 중…' : s.session ? `${s.me?.nickname ?? '내 계정'} · 로그아웃` : '로그인'}</button>
     </div>
-    {s.loginOpen && <div className="absolute inset-0 z-50 bg-black/40 flex items-center justify-center p-5" role="dialog" aria-modal="true" aria-labelledby="shared-login-title" onKeyDown={e => { if (e.key === 'Escape') s.setLoginOpen(false) }}>
-      <form className="bg-white rounded-3xl p-6 w-full space-y-4 shadow-xl" onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const f = new FormData(e.currentTarget); void s.login(String(f.get('email')), String(f.get('password'))) }}>
-        <div className="flex justify-between items-center"><h2 id="shared-login-title" className="font-bold text-lg">배프 로그인</h2><button type="button" aria-label="로그인 닫기" onClick={() => s.setLoginOpen(false)}>✕</button></div>
-        <p className="text-xs text-gray-500">메뉴를 고르고, 가까운 배프와 함께 주문해요.</p>
-        <label className="block text-sm">이메일<input autoFocus name="email" type="email" autoComplete="username" required className="mt-1 w-full rounded-xl border border-gray-200 p-3 text-base" /></label>
-        <label className="block text-sm">비밀번호<input name="password" type="password" autoComplete="current-password" required className="mt-1 w-full rounded-xl border border-gray-200 p-3 text-base" /></label>
-        {s.error && <p role="alert" className="text-red-600 text-xs">{s.error}</p>}
-        <button disabled={s.authBusy} className="w-full bg-brand text-white rounded-xl py-3 font-bold disabled:opacity-40">{s.authBusy ? '로그인 중…' : '로그인'}</button>
-      </form>
-    </div>}
+    {s.loginOpen && <AuthDialog/>}
   </>
 }
 
@@ -275,7 +282,7 @@ export function SharedDetailActions({ push }: { push: (s: 'applicants' | 'chat' 
   </div>
 }
 
-export function SharedApplicants({ pop, push }: { pop: () => void; push: (s: 'chat') => void }) {
+export function SharedApplicants({ pop, push }: { pop: () => void; push: (s: 'chat'|'menu') => void }) {
   const s=useSharedDelivery(), tx=s.tx, p=s.rawPosts.find(v=>v.id===tx?.post.sharedId)
   if(!p || p.owner_id!==s.session?.user.id) return <p className="p-6 text-sm">내가 작성한 모집글을 선택해 주세요.</p>
   const ended=['cancelled','completed'].includes(p.status)
@@ -290,12 +297,12 @@ export function SharedApplicants({ pop, push }: { pop: () => void; push: (s: 'ch
     <button className="w-full py-3 rounded-2xl bg-brand text-white font-bold" onClick={()=>push('chat')}>공동 채팅방 열기</button>
     {!ended && <>
       {!closed ? <button disabled={s.busy} className="w-full py-3 border border-gray-200 rounded-2xl text-sm" onClick={()=>{if(confirm('현재 멤버로 마감할까요? 대기 중인 신청은 종료돼요.'))void s.act('close',p.id)}}>현재 멤버로 모집 마감</button> : p.member_count<p.max_members&&new Date(p.deadline).getTime()>Date.now()&&<button disabled={s.busy} className="w-full py-3 border border-gray-200 rounded-2xl text-sm" onClick={()=>void s.act('reopen',p.id)}>빈자리 다시 모집</button>}
-      <button disabled={s.busy} className="w-full py-3 text-sm text-gray-500" onClick={()=>{if(confirm('이 주문 모임을 종료할까요?'))void s.act('complete',p.id)}}>주문 모임 종료</button>
+      <button className="w-full py-3 text-sm text-brand" onClick={()=>push('menu')}>메뉴·송금·수령 진행으로</button>
     </>}
   </div></div>
 }
 
-export function SharedChat({ pop, push, orderPanel }: { pop: () => void; push: (s: 'applicants') => void; orderPanel?: ReactNode }) {
+export function SharedChat({ pop, push, orderPanel, workflowControls }: { pop: () => void; push: (s: 'applicants') => void; orderPanel?: ReactNode;workflowControls?:ReactNode }) {
   const s=useSharedDelivery(), tx=s.tx
   const [draft,setDraft]=useState(''), [panel,setPanel]=useState(false), [unseen,setUnseen]=useState(false)
   const list=useRef<HTMLDivElement>(null), follow=useRef(true)
@@ -307,6 +314,7 @@ export function SharedChat({ pop, push, orderPanel }: { pop: () => void; push: (
   return <div className="chat-room flex-1 min-h-0 flex flex-col relative">
     <header className="chat-header px-3 pt-3 pb-2 shrink-0"><div className="flex items-center gap-2"><button className="w-9 h-10 text-2xl" aria-label="채팅 나가기" onClick={pop}>‹</button><div className="flex-1 min-w-0"><h1 className="font-bold text-sm truncate">{tx.post.restaurant}</h1><p className="chat-muted text-[11px]">{tx.people.length}명 · {tx.closed?'모집 마감':'모집 중'}</p></div>{tx.role==='leader'&&<button className="text-brand text-xs" onClick={()=>push('applicants')}>신청자 관리</button>}</div>
       <button className="chat-tool rounded-xl w-full py-2 text-xs mt-2" onClick={()=>setPanel(!panel)} aria-expanded={panel}>메뉴 참고 · 수령 장소 · 참여자 {panel?'접기':'보기'}</button>
+      {workflowControls}
     </header>
     {panel&&<div className="chat-panel p-4 overflow-y-auto max-h-[45%] shrink-0 space-y-3 text-xs border-b border-gray-100"><p><b>수령 제안 장소</b> · {tx.meeting}</p><p>메뉴·수량·수령 시간을 함께 확인해 주세요.</p><p><b>참여자</b> · {tx.people.map(p=>p.name).join(', ')}</p>{orderPanel??<details><summary className="cursor-pointer font-bold">음식점 메뉴</summary>{tx.post.menus?.map(m=><p className="py-1" key={m.id}>{m.name} · {m.price.toLocaleString()}원</p>)}</details>}</div>}
     <div ref={list} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4" onScroll={()=>{const el=list.current;if(el){follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<80;if(follow.current)setUnseen(false)}}}>

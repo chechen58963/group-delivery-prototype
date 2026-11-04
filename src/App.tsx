@@ -5,6 +5,7 @@ import { ReportControl } from "./ReportControl"
 import { SharedAccountControl, SharedApplicants, SharedChat, useSharedDelivery } from './SharedDelivery'
 import { MenuDiscoveryProvider } from './MenuDiscoveryContext'
 import BaefShell from './BaefShell'
+import { DeliveryLifecycleProvider } from './DeliveryLifecycle'
 
 import { FlowProvider, MENU_BY_CATEGORY, useFlow } from "./FlowContext"
 
@@ -2181,7 +2182,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
 export default function App() {
   return (
     <FlowProvider initialPosts={DEMO_POSTS}>
-      <MenuDiscoveryProvider><BaefShell /></MenuDiscoveryProvider>
+      <MenuDiscoveryProvider><DeliveryLifecycleProvider><BaefShell /></DeliveryLifecycleProvider></MenuDiscoveryProvider>
     </FlowProvider>
   )
 }

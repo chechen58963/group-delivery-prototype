@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { supabase } from './supabase'
 import { useSharedDelivery } from './SharedDelivery'
 import { CAMPUS_STORES } from './campus'
+import { useFlow } from './FlowContext'
+import { savedMatchLocation, storeMatchLocation, type MatchLocation } from './matchingLocation'
 
 export const FOOD_CHOICES = [
   { id: 'coffee', name: '커피', subtitle: '한 잔만 필요할 때', photo: '1509042239860-f550ce710b93' },
@@ -15,9 +17,9 @@ export const PICKUP_AREAS = [
 ] as const
 export type CatalogItem = { id: number; name: string; price: number }
 export type MenuStore = { store_name: string; menu_key: string; goal_amount: number; menus: CatalogItem[] }
-export type MenuIntent = { user_id: string; menus: string[]; stores: string[]; starts_at: string; ends_at: string; area_id: string; active: boolean }
+export type MenuIntent = { user_id: string; menus: string[]; stores: string[]; starts_at: string; ends_at: string; area_id: string; active: boolean; latitude: number|null; longitude: number|null }
 export type MenuMatch = { store_name: string; people_count: number }
-export type MenuNotification = { id: string; kind: 'menu_match' | 'group_invite'; payload: { stores: string[]; area: string; post_id?: string; starts_at?: string; ends_at?: string }; created_at: string; expires_at: string; read_at: string | null }
+export type MenuNotification = { id: string; kind: 'menu_match' | 'group_invite'; payload: { stores: string[]; area: string; max_walk_m?: number; post_id?: string; starts_at?: string; ends_at?: string }; created_at: string; expires_at: string; read_at: string | null }
 export type Basket = { post_id: string; user_id: string; items: (CatalogItem & { quantity: number })[]; total: number }
 const fallbackCatalog: MenuStore[] = CAMPUS_STORES.filter(s => ['카페', '버거', '패스트푸드'].includes(s.category)).map(s => ({
   store_name: s.name, menu_key: s.category === '카페' ? 'coffee' : s.category === '버거' ? 'burger' : 'sandwich', goal_amount: s.demoMinOrder, menus: s.menus,
@@ -32,12 +34,19 @@ export function formatWindow(start: string, end: string) {
 function defaultSlot() { const h=new Date().getHours(); return h<18?18:h<22?h:18 }
 function useDiscoveryState() {
   const shared=useSharedDelivery(), uid=shared.session?.user.id
+  const {currentLocation}=useFlow()
+  const [manualLocation,setManualLocation]=useState<MatchLocation|null>(savedMatchLocation)
+  const matchLocation=manualLocation??currentLocation.coordinates
+  const setMatchLocation=(point:MatchLocation|null)=>{setManualLocation(point);storeMatchLocation(point)}
   const [catalog,setCatalog]=useState<MenuStore[]>(fallbackCatalog)
   const [menus,setMenus]=useState<string[]>([])
   const [stores,setStores]=useState<string[]>([])
   const [day,setDay]=useState(new Date().getHours()>=22?1:0)
   const [hour,setHour]=useState(defaultSlot)
   const [area,setArea]=useState('cnu-main')
+  const [search,setSearch]=useState(''),[browseCategory,setBrowseCategory]=useState('all'),[browseView,setBrowseView]=useState<'list'|'map'>('list')
+  const [browseTab,setBrowseTab]=useState<'groups'|'stores'>('groups'),[sort,setSort]=useState<'recent'|'near'>('recent')
+  const listScroll=useRef(0)
   const [intent,setIntent]=useState<MenuIntent|null>(null)
   const [matches,setMatches]=useState<MenuMatch[]>([])
   const [alerts,setAlerts]=useState<MenuNotification[]>([])
@@ -108,29 +117,34 @@ function useDiscoveryState() {
     if(!shared.allowed){setError('계정의 이용 권한을 확인해 주세요.');return false}
     lock.current=true;setSaving(true);setError('')
     try{const r=await fn();if(r.error)throw r.error;if(currentUid.current!==uid)return false;refresh();return true}
-    catch(e){if(currentUid.current===uid)setError((e as {message?:string}).message??'저장하지 못했어요. 다시 시도해 주세요.');return false}
+    catch(e){if(currentUid.current===uid)setError((e as {code?:string}).code==='PGRST202'?'새 매칭 설정을 준비하고 있어요. 진행자에게 알려 주세요.':(e as {message?:string}).message??'저장하지 못했어요. 다시 시도해 주세요.');return false}
     finally{lock.current=false;setSaving(false)}
   }
   const save=async()=>{
+    if(!uid){shared.setLoginOpen(true);return false}
     if(!menus.length||!stores.length){setError('먹고 싶은 메뉴와 가능한 가게를 한 곳 이상 골라 주세요.');return false}
     const start=new Date();start.setDate(start.getDate()+day);start.setHours(hour,0,0,0)
     const end=new Date(start.getTime()+3600000)
     if(end.getTime()<=Date.now()){setError('아직 지나지 않은 시간대를 골라 주세요.');return false}
-    const result=await run(()=>supabase.rpc('gd_save_intent',{p_menus:menus,p_stores:stores,p_start:start.toISOString(),p_end:end.toISOString(),p_area:area}))
+    if(!matchLocation){setError('상단의 위치 설정에서 현재 위치를 확인하거나 지도에 출발 위치를 지정해 주세요.');return false}
+    const result=await run(()=>supabase.rpc('gd_save_intent',{p_menus:menus,p_stores:stores,p_start:start.toISOString(),p_end:end.toISOString(),p_area:area,p_lat:matchLocation.lat,p_lng:matchLocation.lng}))
     if(result)setToast('선택을 저장했어요. 메뉴와 시간이 맞는 사람이 생기면 알려드릴게요.')
     return result
   }
   const savedDate=new Date();savedDate.setDate(savedDate.getDate()+day);savedDate.setHours(hour,0,0,0)
   const sameSelection=!!activeIntent&&activeIntent.area_id===area&&new Date(activeIntent.starts_at).getTime()===savedDate.getTime()
+    &&!!matchLocation&&activeIntent.latitude===matchLocation.lat&&activeIntent.longitude===matchLocation.lng
     &&[...activeIntent.menus].sort().join('|')===[...menus].sort().join('|')
     &&[...activeIntent.stores].sort().join('|')===[...stores].sort().join('|')
   const currentAlerts=alerts.filter(n=>n.kind!=='menu_match'||(activeIntent&&!shared.active&&n.payload.stores.some(store=>matches.some(m=>m.store_name===store&&Number(m.people_count)>0))))
   return {catalog,menus,stores,day,hour,area,setDay,setHour,setArea,toggleMenu,toggleStore,candidateStores,
+    search,setSearch,browseCategory,setBrowseCategory,browseView,setBrowseView,browseTab,setBrowseTab,sort,setSort,listScroll,
+    matchLocation,manualLocation,setMatchLocation,
     intent:activeIntent,matches,visibleMatches:sameSelection?matches:[],alerts:currentAlerts,baskets,connected,loading,saving,error,setError,toast,setToast,save,refresh,
     cancel:async()=>{if(await run(()=>supabase.rpc('gd_cancel_intent'))) {setIntent(null);setMatches([]);setToast('메뉴 기다리기를 취소했어요.')}},
     readAlerts:async(ids:string[])=>{if(await run(()=>supabase.rpc('gd_mark_menu_notifications',{p_ids:ids})))setAlerts(values=>values.map(n=>ids.includes(n.id)?{...n,read_at:new Date().toISOString()}:n))},
     saveBasket:async(post:string,items:{id:number;quantity:number}[])=>run(()=>supabase.rpc('gd_save_basket',{p_post:post,p_items:items})),
-    invite:async(post:string)=>run(()=>supabase.rpc('gd_invite_menu_matches',{p_post:post})),
+    invite:async(post:string)=>run(()=>supabase.rpc('gd_invite_menu_matches',{p_post:post,p_lat:matchLocation?.lat??null,p_lng:matchLocation?.lng??null})),
   }
 }
 type Discovery=ReturnType<typeof useDiscoveryState>
