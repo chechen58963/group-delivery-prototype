@@ -195,7 +195,7 @@ function useSharedState() {
       isMe: m.sender_id === uid, time: new Date(m.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) }))
   }
   return {
-    session, live, sample, setSample, initializing, loginOpen, setLoginOpen, authBusy, ready, busy, error, setError,
+    session, live, sample, setSample, initializing, loginOpen, setLoginOpen, authBusy, ready, busy, error, setError, numberFor,
     notice, setNotice, allowed, me, nickname, posts, tx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
@@ -245,12 +245,11 @@ export function SharedAccountControl() {
   return <>
     <div className="flex items-center gap-2 mr-auto text-xs min-w-0">
       <button className="text-brand truncate max-w-28 py-2" disabled={s.initializing} onClick={() => { if (!s.session) s.setLoginOpen(true); else if (confirm('로그아웃할까요?')) void s.logout() }}>{s.initializing ? '확인 중…' : s.session ? `${s.me?.nickname ?? '내 계정'} · 로그아웃` : '로그인'}</button>
-      <button className="text-gray-500 py-2" onClick={() => s.setSample(!s.sample)}>{s.sample ? '실제 참여로' : s.session ? '예시 보기' : '예시 체험'}</button>
     </div>
     {s.loginOpen && <div className="absolute inset-0 z-50 bg-black/40 flex items-center justify-center p-5" role="dialog" aria-modal="true" aria-labelledby="shared-login-title" onKeyDown={e => { if (e.key === 'Escape') s.setLoginOpen(false) }}>
       <form className="bg-white rounded-3xl p-6 w-full space-y-4 shadow-xl" onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); const f = new FormData(e.currentTarget); void s.login(String(f.get('email')), String(f.get('password'))) }}>
-        <div className="flex justify-between items-center"><h2 id="shared-login-title" className="font-bold text-lg">공동배달 로그인</h2><button type="button" aria-label="로그인 닫기" onClick={() => s.setLoginOpen(false)}>✕</button></div>
-        <p className="text-xs text-gray-500">발급받은 계정으로 로그인하면 같은 앱에서 모집글을 올리고 다른 참여자와 대화할 수 있어요.</p>
+        <div className="flex justify-between items-center"><h2 id="shared-login-title" className="font-bold text-lg">배프 로그인</h2><button type="button" aria-label="로그인 닫기" onClick={() => s.setLoginOpen(false)}>✕</button></div>
+        <p className="text-xs text-gray-500">메뉴를 고르고, 가까운 배프와 함께 주문해요.</p>
         <label className="block text-sm">이메일<input autoFocus name="email" type="email" autoComplete="username" required className="mt-1 w-full rounded-xl border border-gray-200 p-3 text-base" /></label>
         <label className="block text-sm">비밀번호<input name="password" type="password" autoComplete="current-password" required className="mt-1 w-full rounded-xl border border-gray-200 p-3 text-base" /></label>
         {s.error && <p role="alert" className="text-red-600 text-xs">{s.error}</p>}
@@ -284,19 +283,19 @@ export function SharedApplicants({ pop, push }: { pop: () => void; push: (s: 'ch
   const people=s.members.filter(m=>m.post_id===p.id&&m.status==='accepted')
   const closed=p.status!=='open'||new Date(p.deadline).getTime()<=Date.now()
   return <div className="flex-1 overflow-y-auto bg-gray-50"><header className="bg-white border-b border-gray-100 p-4 flex items-center gap-4"><button onClick={pop}>‹ 뒤로</button><h1 className="font-bold">신청자 관리</h1></header><div className="p-4 space-y-4">
-    <div className="bg-white rounded-2xl p-4 space-y-2"><h2 className="font-bold">{p.restaurant}</h2><p className="text-sm">현재 {p.member_count} / {p.max_members}명 · {closed?'모집 마감':'모집 중'}</p><p className="text-xs text-gray-500">실제 참여자의 신청이 이곳에 표시돼요.</p></div>
+    <div className="bg-white rounded-2xl p-4 space-y-2"><h2 className="font-bold">{p.restaurant}</h2><p className="text-sm">현재 {p.member_count} / {p.max_members}명 · {closed?'모집 마감':'모집 중'}</p><p className="text-xs text-gray-500">함께 주문할 신청자를 확인해 주세요.</p></div>
     {!pending.length && <p className="text-gray-500 text-sm text-center py-6">대기 중인 신청자가 없어요.</p>}
-    {pending.map(m=><div key={m.id} className="bg-white rounded-2xl p-4 space-y-3"><p className="font-bold">🧑 {s.nickname(m.user_id)}</p><p className="text-xs text-gray-500">테스트 참여자 · 평판 정보는 아직 없어요.</p><div className="flex gap-2">{[false,true].map(accept=><button key={String(accept)} disabled={s.busy||closed} className={`flex-1 py-3 rounded-xl font-bold text-sm disabled:opacity-40 ${accept?'bg-brand text-white':'border border-gray-200'}`} onClick={()=>void s.act(accept?'accept':'reject',p.id,{user_id:m.user_id})}>{accept?'수락':'거절'}</button>)}</div></div>)}
+    {pending.map(m=><div key={m.id} className="bg-white rounded-2xl p-4 space-y-3"><p className="font-bold">{s.nickname(m.user_id)}</p><div className="flex gap-2">{[false,true].map(accept=><button key={String(accept)} disabled={s.busy||closed} className={`flex-1 py-3 rounded-xl font-bold text-sm disabled:opacity-40 ${accept?'bg-brand text-white':'border border-gray-200'}`} onClick={()=>void s.act(accept?'accept':'reject',p.id,{user_id:m.user_id})}>{accept?'수락':'거절'}</button>)}</div></div>)}
     <div className="bg-white rounded-2xl p-4"><h2 className="font-bold text-sm mb-2">참여자</h2>{people.map(m=><p className="text-sm py-1" key={m.id}>{s.nickname(m.user_id)} {m.user_id===p.owner_id?'· 리더':''}</p>)}</div>
     <button className="w-full py-3 rounded-2xl bg-brand text-white font-bold" onClick={()=>push('chat')}>공동 채팅방 열기</button>
     {!ended && <>
       {!closed ? <button disabled={s.busy} className="w-full py-3 border border-gray-200 rounded-2xl text-sm" onClick={()=>{if(confirm('현재 멤버로 마감할까요? 대기 중인 신청은 종료돼요.'))void s.act('close',p.id)}}>현재 멤버로 모집 마감</button> : p.member_count<p.max_members&&new Date(p.deadline).getTime()>Date.now()&&<button disabled={s.busy} className="w-full py-3 border border-gray-200 rounded-2xl text-sm" onClick={()=>void s.act('reopen',p.id)}>빈자리 다시 모집</button>}
-      <button disabled={s.busy} className="w-full py-3 text-sm text-gray-500" onClick={()=>{if(confirm('공동배달 테스트를 종료할까요? 모든 참여자가 다음 모집에 참여할 수 있어요.'))void s.act('complete',p.id)}}>이 공동배달 테스트 종료</button>
+      <button disabled={s.busy} className="w-full py-3 text-sm text-gray-500" onClick={()=>{if(confirm('이 주문 모임을 종료할까요?'))void s.act('complete',p.id)}}>주문 모임 종료</button>
     </>}
   </div></div>
 }
 
-export function SharedChat({ pop, push }: { pop: () => void; push: (s: 'applicants') => void }) {
+export function SharedChat({ pop, push, orderPanel }: { pop: () => void; push: (s: 'applicants') => void; orderPanel?: ReactNode }) {
   const s=useSharedDelivery(), tx=s.tx
   const [draft,setDraft]=useState(''), [panel,setPanel]=useState(false), [unseen,setUnseen]=useState(false)
   const list=useRef<HTMLDivElement>(null), follow=useRef(true)
@@ -309,9 +308,8 @@ export function SharedChat({ pop, push }: { pop: () => void; push: (s: 'applican
     <header className="chat-header px-3 pt-3 pb-2 shrink-0"><div className="flex items-center gap-2"><button className="w-9 h-10 text-2xl" aria-label="채팅 나가기" onClick={pop}>‹</button><div className="flex-1 min-w-0"><h1 className="font-bold text-sm truncate">{tx.post.restaurant}</h1><p className="chat-muted text-[11px]">{tx.people.length}명 · {tx.closed?'모집 마감':'모집 중'}</p></div>{tx.role==='leader'&&<button className="text-brand text-xs" onClick={()=>push('applicants')}>신청자 관리</button>}</div>
       <button className="chat-tool rounded-xl w-full py-2 text-xs mt-2" onClick={()=>setPanel(!panel)} aria-expanded={panel}>메뉴 참고 · 수령 장소 · 참여자 {panel?'접기':'보기'}</button>
     </header>
-    {panel&&<div className="chat-panel p-4 overflow-y-auto max-h-[40%] shrink-0 space-y-3 text-xs border-b border-gray-100"><p><b>수령 제안 장소</b> · {tx.meeting}</p><p>메뉴·수량·수령 시간은 채팅으로 함께 정해 주세요.</p><p className="chat-muted">실제 주문·송금 없이 모집과 소통 과정을 검증하는 테스트예요.</p><p><b>참여자</b> · {tx.people.map(p=>p.name).join(', ')}</p><details><summary className="cursor-pointer font-bold">음식점 메뉴 참고</summary>{tx.post.menus?.map(m=><p className="py-1" key={m.id}>{m.name} · {m.price.toLocaleString()}원</p>)}<p className="chat-muted">공개 자료의 참고 메뉴·가격이며 지점 판매 여부는 확인이 필요해요.</p></details></div>}
+    {panel&&<div className="chat-panel p-4 overflow-y-auto max-h-[45%] shrink-0 space-y-3 text-xs border-b border-gray-100"><p><b>수령 제안 장소</b> · {tx.meeting}</p><p>메뉴·수량·수령 시간을 함께 확인해 주세요.</p><p><b>참여자</b> · {tx.people.map(p=>p.name).join(', ')}</p>{orderPanel??<details><summary className="cursor-pointer font-bold">음식점 메뉴</summary>{tx.post.menus?.map(m=><p className="py-1" key={m.id}>{m.name} · {m.price.toLocaleString()}원</p>)}</details>}</div>}
     <div ref={list} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4" onScroll={()=>{const el=list.current;if(el){follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<80;if(follow.current)setUnseen(false)}}}>
-      <p className="chat-muted text-[10px] text-center">참여자끼리 나누는 실제 대화 · 약 2초마다 갱신</p>
       {!tx.messages.length&&<p className="chat-muted text-center text-sm py-8">메뉴와 만날 시간을 이야기해 보세요.</p>}
       {tx.messages.map(m=><div key={m.id} className={`flex flex-col ${m.isMe?'items-end':'items-start'}`}><span className="chat-muted text-[10px] mb-1">{m.sender}</span><p className={`chat-bubble max-w-[85%] px-3 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words ${m.isMe?'chat-bubble-mine rounded-tr-sm':'rounded-tl-sm'}`} style={{overflowWrap:'anywhere'}}>{m.content}</p><time className="chat-muted text-[10px] mt-1">{m.time}</time></div>)}
     </div>
