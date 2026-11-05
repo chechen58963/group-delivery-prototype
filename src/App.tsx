@@ -465,7 +465,7 @@ function PostCard({
           <span className={`px-2 py-1 rounded-md text-xs font-semibold ${categoryStyle(post.category)}`}>{post.emoji} {post.category}</span>
           <span className="text-xs font-semibold text-green-700">배달비 약 {money(deliveryFee - Math.ceil(deliveryFee / Math.min(post.currentMembers + 1, post.maxMembers)))} 절약</span>
         </div>
-        <p className="text-xs text-gray-600">{post.sharedId ? '참여자 등록 모집글 · 수령 장소와 이동 거리는 채팅에서 확인해요.' : <>수령 이동 약 {post.distance}m · 도보 약 {Math.max(1, Math.ceil(post.distance / 75))}분 <span className="text-gray-400">(시연 추정)</span></>}</p>
+        <></>
         {/* progress */}
         <div>
           <div className="flex justify-between items-center mb-1.5">
@@ -682,7 +682,7 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
             </div>}
             <label htmlFor="my-location" className="block text-sm text-gray-600 mt-4 mb-2">주소 또는 동네 이름</label>
             <input id="my-location" autoFocus required maxLength={100} value={locationDraft} onChange={event => setLocationDraft(event.target.value)} placeholder="예: 대전 유성구 궁동" className="w-full min-w-0 rounded-xl border border-gray-200 px-3 py-3 text-sm outline-none focus:border-brand" />
-            <p className="mt-2 text-xs text-gray-500">직접 입력한 주소는 위치 이름으로 저장해요. 모집글 거리는 아직 실제 현재 위치를 반영하지 않아요.</p>
+            <></>
             <div className="flex gap-2 mt-5">
               <button type="button" onClick={() => setLocationOpen(false)} className="flex-1 rounded-xl border border-gray-200 py-3 text-sm">취소</button>
               <button type="submit" disabled={!locationDraft.trim()} className="flex-1 rounded-xl bg-brand text-white py-3 text-sm font-bold disabled:opacity-40">입력한 위치로 설정</button>
@@ -735,12 +735,12 @@ function MainScreen({ push }: { push: (s: Screen) => void }) {
       </div>
 
       <div className="px-4 py-4 space-y-5">
-        {!shared.live && <div className="text-xs text-gray-500">예시 모집글을 보고 있어요. {shared.session ? '상단의 ‘실제 참여로’를 누르면 참여자 모집글을 볼 수 있어요.' : <button className="text-brand font-semibold underline" onClick={() => shared.setLoginOpen(true)}>로그인하고 실제 모집하기</button>}</div>}
+        {!shared.live && <></>}
         {!active && <section className="campus-value rounded-2xl p-5 space-y-3">
           <p className="text-xs font-semibold text-brand">충남대에서 함께 주문해요</p>
           <h1 className="font-bold text-xl leading-snug">잠깐 걸어서 만나고,<br />배달비는 함께 나눠요.</h1>
           <p className="text-sm text-gray-600">배달비 3,000원을 3명이 나누면<br /><b className="text-green-700">한 사람당 2,000원 절약</b>할 수 있어요.</p>
-          <p className="text-[11px] text-gray-500">수령 장소와 도보 시간을 확인하고 참여하세요. 금액·거리는 시연용 예상치예요.</p>
+          <></>
           <button onClick={showAllPosts} className="w-full rounded-xl bg-brand py-3 text-white text-sm font-bold">가까운 모집글 둘러보기</button>
         </section>}
         {!shared.live && <button onClick={() => { setBrowseView("map"); showAllPosts() }} className="map-entry w-full rounded-2xl p-4 flex items-center justify-between text-left">
@@ -1047,7 +1047,7 @@ function ListScreen({
       </div>
 
       {browseView === "map" ? <div className="flex-1 min-h-0 flex flex-col px-3 pb-3 gap-2 overflow-y-auto">
-        <p className="text-[10px] text-gray-500 shrink-0">충남대학교 정문 주변 시연 위치 · 음식점 대신 모집 리더의 위치를 표시해요</p>
+        <></>
         <Suspense fallback={<div className="map-loading flex-1 min-h-[260px] rounded-2xl flex items-center justify-center text-sm">지도 불러오는 중…</div>}>
           <LocationMap pins={mapPins} selectedId={selectedMapPost ? String(selectedMapPost.id) : undefined} onSelect={id => { if (id !== "me") selectPost(Number(id)) }} radius={RECRUITMENT_RADIUS} title="주변 공동배달 모집글 지도" />
         </Suspense>
@@ -1146,15 +1146,15 @@ function DetailScreen({
           <details className="text-xs text-gray-600"><summary className="cursor-pointer py-1">이동이 부담된다면?</summary><p className="pt-2">2인 거래에서 ‘내 근처에서 받기’를 합의할 수 있어요. 요청자 근처로 배달 주소를 정하고, 요청자가 배달비 3,000원 전액을 부담해요. 이동하는 사람의 배달비는 0원이에요.</p></details>
         </section>
         <div className="text-[11px] text-gray-500 space-y-1">
-          <p>사진은 음식 종류 참고 사진 · 모집 위치·최소주문금액·배달비는 시연 조건이에요.</p>
-          <p>{post.menuBasis ?? "직접 입력한 가게 · 메뉴는 시연용"} {post.menuSource && <> · <a href={post.menuSource} target="_blank" rel="noopener noreferrer" className="underline">메뉴 정보 출처</a></>}</p>
+          <></>
+          <p>{post.menuBasis ?? ""} {post.menuSource && <> · <a href={post.menuSource} target="_blank" rel="noopener noreferrer" className="underline">메뉴 정보 출처</a></>}</p>
           <p>{post.priceNote ?? "가격과 실제 판매 메뉴는 주문 전 확인이 필요해요."}</p>
           {post.storeSource && <details><summary className="cursor-pointer py-1">가게 정보 · 자료 확인일</summary><p>{MENU_CHECKED_ON} · <a href={post.storeSource} target="_blank" rel="noopener noreferrer" className="underline">가게 정보 출처</a></p></details>}
         </div>
         {post.menus && <details className="bg-white rounded-xl border border-gray-100 p-4">
           <summary className="cursor-pointer text-sm font-bold">메뉴 미리 보기 · {post.menus.length}개</summary>
           <div className="mt-3 divide-y divide-gray-100">{post.menus.map(item => <div key={item.id} className="flex justify-between gap-3 py-2 text-sm"><span>{item.name}</span><span className="shrink-0 text-gray-500">{money(item.price)}</span></div>)}</div>
-          <p className="text-[11px] text-gray-500 mt-2">선택과 수량 입력은 참여 수락 후 채팅방에서 진행해요. 표시 가격은 참고값 또는 시연값이에요.</p>
+          <></>
         </details>}
         {/* amount */}
         <div className="bg-brand-50 rounded-2xl p-4">
@@ -1255,7 +1255,7 @@ function DetailScreen({
             >
               {post.leaderName}
             </div>
-            {post.sharedId ? <p className="text-xs text-gray-500">테스트 참여자 · 평가 전</p> : <Stars rating={post.leaderRating} />}
+            {post.sharedId ? <></> : <Stars rating={post.leaderRating} />}
             <div
               className="text-xs text-gray-400 mt-0.5"
               style={{ fontFamily: "Noto Sans KR" }}
@@ -1402,7 +1402,7 @@ function CreateScreen({
             </button>
           </div>
           {storeSearchOpen && <div className="mt-2 rounded-xl border border-gray-200 p-2 space-y-1">
-            <p className="text-xs text-gray-500 px-2 py-1">학교 주변 가게 선택 · 메뉴와 가격은 시연용</p>
+            <></>
             {CAMPUS_STORES.filter(store => !form.restaurant.trim() || store.name.includes(form.restaurant.trim())).map(store => <button key={store.name} onClick={() => {
               setForm(f => ({ ...f, restaurant: store.name, category: CATEGORIES.find(c => c.label === store.category)!.id, minAmount: String(store.demoMinOrder), currentAmount: String(store.menus[0].price), deliveryTime: "모집 마감 후 약 30분" }))
               setStoreSearchOpen(false)
@@ -1536,7 +1536,7 @@ function CreateScreen({
             style={{ fontFamily: "Noto Sans KR" }}
           />
         </div>
-        <p className="text-xs text-gray-500">{shared.sample ? '예시 모드에서는 이 브라우저에 시연용 글을 저장해요.' : '로그인 후 등록하면 다른 테스트 참여자에게도 표시돼요. 모집 인원은 리더 포함 2~5명이며, 배달비는 3,000원으로 가정해요.'}</p>
+        <></>
 
         <button
           disabled={active || shared.busy}
@@ -1841,7 +1841,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
   } = useFlow()
   const shared = useSharedDelivery()
   if (shared.live) return <div className="flex-1 overflow-y-auto bg-gray-50 p-5 space-y-5">
-    <h1 className="font-bold text-xl">내 정보</h1><section className="bg-white border border-gray-100 rounded-2xl p-5 space-y-2"><p className="text-3xl">🧑</p><h2 className="font-bold text-lg">{shared.me?.nickname ?? '참여자'}</h2><p className="text-xs text-gray-500">충남대 공동배달 테스트 참여자</p><p className="text-sm text-gray-500">평점과 거래 이력은 아직 없어요.</p></section>
+    <h1 className="font-bold text-xl">내 정보</h1><section className="bg-white border border-gray-100 rounded-2xl p-5 space-y-2"><p className="text-3xl">🧑</p><h2 className="font-bold text-lg">{shared.me?.nickname ?? '참여자'}</h2><></><p className="text-sm text-gray-500">평점과 거래 이력은 아직 없어요.</p></section>
     <section className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3"><h2 className="font-bold text-sm">화면 테마</h2><div className="flex gap-2">{([{id:'light',label:'라이트'},{id:'dark',label:'다크'},{id:'system',label:'기기 설정'}] as const).map(t=><button key={t.id} onClick={()=>setThemePreference(t.id)} className={`flex-1 rounded-xl py-3 text-xs ${themePreference===t.id?'bg-brand text-white':'bg-gray-100 text-gray-600'}`}>{t.label}</button>)}</div></section>
     {active&&tx&&<button className="w-full bg-brand text-white rounded-2xl py-3 font-bold text-sm" onClick={()=>{selectPost(tx.post.id);push(tx.application==='pending'?'detail':tx.role==='leader'?'applicants':'chat')}}>내 진행 중인 공동배달</button>}
     <button className="w-full border border-gray-200 rounded-2xl py-3 text-sm" onClick={()=>void shared.logout()}>로그아웃</button>
@@ -1985,19 +1985,15 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
         {!suspended && lateIncidentCount > 0 && <p className="text-xs text-amber-700 bg-amber-50 rounded-xl p-3">수령 지각 경고 {lateIncidentCount}회 · 다음 거래에서도 지각이 확인되면 새 모집·참여가 3일 제한돼요.</p>}
         <details className="bg-white rounded-xl border border-gray-100 p-4 text-xs">
           <summary className="font-semibold cursor-pointer">이용 규칙 · 내 신고 내역 {reports.length}건</summary>
-          <p className="text-gray-500 mt-3">신고는 사실 확인과 소명 후 경고 또는 이용 제한하는 방식으로 설계했어요. 여기서는 신고 접수 상태만 시연해요.</p>
+          <></>
           {!reports.length && <p className="text-gray-400 mt-2">상대 프로필 또는 채팅의 참여자 메뉴에서 신고할 수 있어요.</p>}
-          {reports.map(report => <div key={report.id} className="border-t border-gray-100 mt-3 pt-3 space-y-1"><p className="font-semibold">{report.person} · {report.reason}</p><p className="text-brand">{report.status} (시연)</p>{report.detail && <p className="text-gray-500 break-words">{report.detail}</p>}</div>)}
+          {reports.map(report => <div key={report.id} className="border-t border-gray-100 mt-3 pt-3 space-y-1"><p className="font-semibold">{report.person} · {report.reason}</p><></>{report.detail && <p className="text-gray-500 break-words">{report.detail}</p>}</div>)}
         </details>
         <details className="bg-white rounded-2xl p-4 border border-gray-100 space-y-2">
           <summary className="font-bold text-sm cursor-pointer">⭐ 우수 참여자 혜택 보기</summary>
           <p className="text-xs text-gray-500">평점 4.8 이상 · 공동배달 5회 이상이면 배달비 1,000원 할인 쿠폰을 받을 수 있어요.</p>
-          <p className="text-sm font-semibold text-brand">
-            {couponUsed ? "이번 시연 쿠폰 사용 완료" : suspended
-              ? "제한 기간이 끝나면 쿠폰을 사용할 수 있어요"
-              : couponEligible ? "배달비 1,000원 할인 쿠폰 사용 가능 (시연)" : "아직 혜택 조건을 채우지 않았어요"}
-          </p>
-          <p className="text-[11px] text-gray-400">다음 공동배달의 송금 화면에서 사용할 수 있으며 실제 할인은 발생하지 않아요.</p>
+          <></>
+          <></>
         </details>
         {/* keywords */}
         <div className="bg-white rounded-2xl p-4 border border-gray-100">

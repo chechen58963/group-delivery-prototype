@@ -101,14 +101,7 @@ function Row({
 export function Demo({ children }: { children: ReactNode }) {
   const shared = useSharedDelivery()
   if (shared.live) return null
-  return (
-    <details className="rounded-xl border border-dashed border-orange-200 bg-orange-50/50 p-3 text-xs">
-      <summary className="cursor-pointer text-gray-500">
-        프로토타입 시연 · 다른 사용자의 행동
-      </summary>
-      <div className="pt-3 space-y-2">{children}</div>
-    </details>
-  )
+  return <div className="space-y-2">{children}</div>
 }
 
 export function FlowBar() {
@@ -551,7 +544,7 @@ function MeetingRecommendations({
     <label key={id} className="flex items-center justify-between gap-2 text-xs">
       <span className="text-gray-600">{name}</span>
       <select
-        aria-label={`${name} 시연용 위치`}
+        aria-label={`${name} 위치`}
         className="rounded-lg bg-gray-50 border border-gray-200 px-2 py-2 text-xs"
         value={locationIndex(id)}
         onChange={(event) => dispatch({
@@ -570,9 +563,7 @@ function MeetingRecommendations({
   return (
     <Card>
       <h2 className="text-sm font-bold">📍 만남 장소 추천</h2>
-      <p className="text-xs text-gray-500">
-        수락된 멤버의 시연용 위치를 바탕으로 모두의 거리와 리더의 이동 거리를 비교해요.
-      </p>
+      <></>
       {selector("me", "내 위치")}
       <Demo>
         {tx.people.filter((p) => p.id !== "me").map((p) => selector(p.id, p.name))}
@@ -602,9 +593,7 @@ function MeetingRecommendations({
           </div>
         </div>
       )) : <p className="text-xs text-gray-500">모두에게 가까운 후보가 없어요. 채팅에서 직접 장소를 정해 주세요.</p>}
-      <p className="text-[11px] text-gray-400">
-        거리는 실제 도보 경로가 아닌 시연용 직선거리예요. 위치를 바꿔도 저장한 만남 장소는 유지됩니다.
-      </p>
+      <></>
     </Card>
   )
 }
@@ -881,12 +870,12 @@ export function Chat({ pop, push }: Navigation) {
               </label>
               <Button secondary disabled={!nearbyAddress.trim()} onClick={() => dispatch({ type: "nearby-propose", requesterId: "me", address: nearbyAddress })}>내 근처에서 받기 제안</Button>
 
-        <Demo><Button secondary onClick={() => dispatch({ type: "nearby-propose", requesterId: tx.people.find(p => p.id !== "me")!.id, address: "상대방 근처 건물 앞 (시연)" })}>상대가 자기 근처 수령 제안</Button></Demo>
+        <Demo><Button secondary onClick={() => dispatch({ type: "nearby-propose", requesterId: tx.people.find(p => p.id !== "me")!.id, address: "상대방 근처 건물 앞" })}>상대가 자기 근처 수령 제안</Button></Demo>
             </div>
           )}
           {tx.nearbyDelivery && <div className="space-y-2">
             <p>{tx.nearbyDelivery.agreed ? "합의 완료" : "상대 동의 대기"} · 배달 주소: {tx.nearbyDelivery.address}</p>
-            <p>요청자 배달비 3,000원 · 이동하는 사람 배달비 0원 · 이동 약 {tx.post.distance}m (시연 거리)</p>
+            <></>
             {!tx.nearbyDelivery.agreed && tx.nearbyDelivery.requesterId !== "me" && <Button secondary onClick={() => dispatch({ type: "nearby-agree", id: "me" })}>이동 조건에 동의하기</Button>}
             {!tx.nearbyDelivery.agreed && tx.nearbyDelivery.requesterId === "me" && <Demo><Button secondary onClick={() => dispatch({ type: "nearby-agree", id: tx.people.find(p => p.id !== "me")!.id })}>상대가 이동 조건에 동의하기</Button></Demo>}
             {!tx.menusFinal && <Button secondary onClick={() => dispatch({ type: "nearby-reset" })}>일반 수령으로 되돌리기</Button>}
@@ -1050,18 +1039,16 @@ export function Payment({ pop, push }: Navigation) {
                 ? "송금했다고 표시한 참가자별 금액을 확인하고 환불해 주세요."
                 : "리더가 환불한 뒤 완료 상태를 확인해 주세요."}
             </p>
-            <p className="text-sm font-semibold text-brand">
-              {tx.refundCompleted ? "환불 완료 (시연)" : "리더 환불 대기"}
-            </p>
+            <></>
           </Card>
           {!tx.refundCompleted && (tx.role === "leader" ? (
             <Button onClick={() => dispatch({ type: "refund-complete" })}>
-              참가자 환불 완료 처리 (시연)
+              참가자 환불 완료 처리
             </Button>
           ) : (
             <Demo>
               <Button onClick={() => dispatch({ type: "refund-complete" })}>
-                리더가 환불 완료 처리 (시연)
+                리더가 환불 완료 처리
               </Button>
             </Demo>
           ))}
@@ -1079,7 +1066,7 @@ export function Payment({ pop, push }: Navigation) {
   const paidCount = participants.filter((p) => p.paid).length
   const confirmButtons = participants.filter((p) => p.transferClaimed && !p.paid).map((p) => (
     <Button key={p.id} secondary onClick={() => dispatch({ type: "confirm-transfer", id: p.id })}>
-      {p.name} 입금 확인 (시연)
+      {p.name} 입금 확인
     </Button>
   ))
 
@@ -1088,12 +1075,10 @@ export function Payment({ pop, push }: Navigation) {
       <Top title="리더에게 송금" pop={pop} />
       <div className="p-4 space-y-4">
         <Card>
-          <p className="text-xs text-gray-400">리더 계좌 · 시연용 정보</p>
+          <></>
           <p className="text-sm text-gray-500">예금주 {leader.name}</p>
-          <p className="text-xl font-black tracking-wide">시연은행 000-0000-0000</p>
-          <p className="text-xs text-gray-400">
-            실제 계좌가 아니며 송금이나 결제는 일어나지 않아요.
-          </p>
+          <></>
+          <></>
         </Card>
         <div className="bg-brand text-white rounded-2xl p-4">
           <p className="text-sm opacity-80">총 결제 예정 금액</p>
@@ -1120,13 +1105,11 @@ export function Payment({ pop, push }: Navigation) {
         {canUseCoupon && feeShare(tx, "me") > 0 && tx.couponDiscount === 0 &&
           !tx.people.some((p) => p.transferClaimed) && (
             <Button secondary onClick={() => dispatch({ type: "apply-coupon" })}>
-              배달비 1,000원 할인 쿠폰 사용 (시연)
+              배달비 1,000원 할인 쿠폰 사용
             </Button>
           )}
         {tx.couponDiscount > 0 && (
-          <p className="text-xs text-gray-500 text-center">
-            시연용 혜택입니다. 할인액은 플랫폼 지원으로 가정하며 실제 결제는 진행하지 않아요.
-          </p>
+          <></>
         )}
         <Card>
           <h2 className="text-sm font-bold">
@@ -1162,12 +1145,12 @@ export function Payment({ pop, push }: Navigation) {
         {tx.role === "leader"
           ? !tx.leaderReady && (
               <Button onClick={() => dispatch({ type: "leader-ready" })}>
-                내 주문 결제 준비 완료 (시연)
+                내 주문 결제 준비 완료
               </Button>
             )
           : !mine.transferClaimed
             ? <Button onClick={() => dispatch({ type: "claim-transfer", id: "me" })}>
-                {money(due(tx, "me"))} 송금했어요 (시연)
+                {money(due(tx, "me"))} 송금했어요
               </Button>
             : <p className="text-center text-sm font-bold text-success">
                 {mine.paid ? "✓ 리더가 내 입금을 확인했어요." : "송금 표시 완료 · 리더 확인을 기다려요."}
@@ -1216,7 +1199,7 @@ export function Payment({ pop, push }: Navigation) {
                   push("delivery")
                 }}
               >
-                리더가 배달 주문 진행 (시연)
+                리더가 배달 주문 진행
               </Button>
             ) : (
               <Demo>
@@ -1258,11 +1241,7 @@ export function Delivery({ pop, push }: Navigation) {
           <p className="text-4xl text-brand font-black text-center py-3">
             {tx.arrived ? "배달 도착" : "배달 중"}
           </p>
-          <p className="text-sm text-center text-gray-500">
-            {tx.arrived
-              ? tx.nearbyDelivery?.agreed ? "합의한 요청자 근처 주소에서 각자 음식을 받아 주세요." : "채팅에서 정한 장소에서 음식을 전달받아 주세요."
-              : `배달 예정 ${tx.post.deliveryTime || "18:35"} · 시연 정보`}
-          </p>
+          <></>
         </Card>
         <Card>
           {["주문 접수", "결제 완료", "배달 출발", "배달 도착"].map(
@@ -1367,22 +1346,19 @@ export function Receipt({ pop, push }: Navigation) {
           (tx.role === "leader" || awaitingParticipants.some((p) => p.id === "me")) && (
           <Card>
             <h2 className="text-sm font-bold">수령 지각 확인</h2>
-            <p className="text-xs text-gray-500">
-              배달 도착 10분 후에도 수령하지 않은 참가자는 리더가 지각을 확인할 수 있어요.
-              첫 확인은 경고예요. 서로 다른 거래에서 2회 확인되면 새 모집·참여를 3일 제한하는 시연 규칙이에요.
-            </p>
+            <></>
             {!lateWindowPassed ? (
-              <p className="text-xs text-amber-600">시연 시간을 30분 진행하면 지각 확인을 체험할 수 있어요.</p>
+              <></>
             ) : tx.role === "leader" ? (
               awaitingParticipants.map((p) => (
                 <Button key={p.id} secondary onClick={() => dispatch({ type: "mark-late", id: p.id, now })}>
-                  {p.name} 수령 지각 확인 (시연)
+                  {p.name} 수령 지각 확인
                 </Button>
               ))
             ) : awaitingParticipants.some((p) => p.id === "me") ? (
               <Demo>
                 <Button secondary onClick={() => dispatch({ type: "mark-late", id: "me", now })}>
-                  리더가 내 수령 지각 확인 (시연)
+                  리더가 내 수령 지각 확인
                 </Button>
               </Demo>
             ) : null}

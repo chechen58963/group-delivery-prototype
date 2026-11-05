@@ -17,7 +17,8 @@ export default function MatchLocationPicker({point,onChange}:{point:MatchLocatio
     return()=>{resize.disconnect();m.remove();map.current=null;marker.current=null}
   },[])
   useEffect(()=>{
-    const m=map.current;if(!m||!point)return
+    const m=map.current;if(!m)return
+    if(!point){marker.current?.remove();marker.current=null;return}
     if(marker.current)marker.current.setLatLng([point.lat,point.lng])
     else marker.current=L.circleMarker([point.lat,point.lng],{radius:9,color:'#df592c',fillOpacity:.7}).addTo(m)
   },[point?.lat,point?.lng])

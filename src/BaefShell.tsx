@@ -7,6 +7,7 @@ import type { Screen } from './WorkflowScreens'
 import './baef.css'
 import { useDeliveryLifecycle } from './DeliveryLifecycle'
 import { OrderProgress, OrderChatControls, OrderMenu, OrderPayment, OrderDelivery, OrderReceipt, OrderComplete, OrderRating, OrderProfileExtras, OrderParticipants, MeetingTools } from './OrderScreens'
+import './ui-polish.css'
 
 export default function BaefShell(){
   const s=useSharedDelivery(),d=useMenuDiscovery(),flow=useFlow()
@@ -77,10 +78,10 @@ function GroupDetail({pop,push}:{pop:()=>void;push:(s:Screen)=>void}){
     {mine?.status==='pending'&&mine.active&&<div className="baef-saved-intent"><span className="baef-pulse"/><div><b>참가 신청을 보냈어요</b><p>리더가 확인하면 채팅방에 참여할 수 있어요.</p></div></div>}
     {mine?.active&&<BasketEditor postId={p.id}/>}
     {people.length>0&&<OrderParticipants/>}
-    {mine?.status==='accepted'&&<button className="baef-button secondary" onClick={()=>push(order.state?.phase==='completed'?'complete':order.state?.phase==='cancelled'?'payment':'menu')}>메뉴·송금·배달·수령 진행</button>}
+    {mine?.status==='accepted'&&<button className="baef-button secondary" onClick={()=>push(order.state?.phase==='completed'?'complete':order.state?.phase==='cancelled'?'payment':'menu')}>주문 진행 보기</button>}
     {mine?.status==='withdrawn'&&<button className="baef-button secondary" onClick={()=>push('payment')}>취소·환불 현황</button>}
     {!ended&&mine?.status==='accepted'&&<button className="baef-button" onClick={()=>push(owner?'applicants':'chat')}>{owner?'신청자 관리 · 채팅':'채팅방 열기'}</button>}
-    {!ended&&!mine?.active&&open&&<button className="baef-button" disabled={s.busy||s.active} onClick={()=>{if(!s.session){s.setLoginOpen(true);return}if(ownSelection)setSheet(true);else void s.act('apply',p.id)}}>{s.active?'다른 주문에 참여 중이에요':'메뉴 고르고 참가하기'}</button>}
+    {!ended&&!mine?.active&&open&&<button className="baef-button" disabled={s.busy||s.active} onClick={()=>{if(!s.session){s.setLoginOpen(true);return}if(ownSelection)setSheet(true);else void s.act('apply',p.id)}}>{s.active?'다른 주문에 참여 중이에요':'메뉴 고르고 참가 신청'}</button>}
     {mine?.active&&!ended&&(!order.state||['menu','payment'].includes(order.state.phase))&&<button className="baef-text-cancel" disabled={s.busy} onClick={()=>{if(confirm(owner?'모집을 취소할까요? 송금 내역이 있으면 환불 확인이 필요해요.':'참가를 취소할까요? 확정된 금액은 다시 계산하고 송금 내역은 환불 확인에 남겨요.'))void s.act(owner?'cancel':'withdraw',p.id)}}>{owner?'모집 취소':'참가 취소'}</button>}
     {ended&&<p className="baef-muted">종료된 주문 모임이에요.</p>}
     {sheet&&ownSelection&&<JoinSheet store={ownSelection} targetPostId={p.id} close={()=>setSheet(false)} push={push}/>}

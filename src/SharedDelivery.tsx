@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import AuthDialog from './AuthDialog'
+import { relativeDateTime } from './uiFeedback'
 import { CAMPUS_STORES, CATEGORY_PHOTOS } from './campus'
 import { makeTransaction, type Post, type Transaction, type Action, type FlowEvent } from './workflow'
 
@@ -39,6 +40,7 @@ function useSharedState() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(''),6500);return()=>clearTimeout(timer)},[notice])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const ids = useRef(new Map<string, number>())
   const mutation = useRef(false)
@@ -49,7 +51,7 @@ function useSharedState() {
   const live = !!uid && !sample
   const me = testers.find(t => t.user_id === uid)
   const allowed = !!me?.active
-  const nickname = (id: string) => testers.find(t => t.user_id === id)?.nickname ?? '참여자'
+  const nickname = (id: string) => testers.find(t => t.user_id === id)?.nickname ?? '참가자'
   const numberFor = useCallback((id: string) => {
     if (!ids.current.has(id)) ids.current.set(id, 1000000 + ids.current.size)
     return ids.current.get(id)!
@@ -101,8 +103,8 @@ function useSharedState() {
           const old = previous.find(v => v.id === m.id)
           const p = nextPosts.find(v => v.id === m.post_id)
           if (!p) continue
-          if (m.user_id === uid && old && old.status !== m.status) addNotification(p, m.status === 'accepted' ? '참여 신청이 수락됐어요. 채팅방에 참여하세요.' : '신청·참여 상태가 변경됐어요.', m.status === 'accepted' ? 'chat' : 'detail')
-          if (p.owner_id === uid && m.status === 'pending' && (!old || old.status !== 'pending')) addNotification(p, '새 동참 신청이 도착했어요.', 'applicants')
+          if (m.user_id === uid && old && old.status !== m.status) addNotification(p, m.status === 'accepted' ? '참가 신청이 수락됐어요. 채팅방에 참여하세요.' : '신청·참여 상태가 변경됐어요.', m.status === 'accepted' ? 'chat' : 'detail')
+          if (p.owner_id === uid && m.status === 'pending' && (!old || old.status !== 'pending')) addNotification(p, '새 참가 신청이 도착했어요.', 'applicants')
         }
         previous = nextMembers
         setTesters(results[0].data as Tester[]); setRawPosts(nextPosts); setMembers(nextMembers); setReady(true); setError('')
@@ -176,7 +178,7 @@ function useSharedState() {
     return { id: numberFor(p.id), sharedId: p.id, restaurant: p.restaurant, category: p.category,
       emoji: store?.emoji ?? '🍽️', currentMembers: p.member_count, maxMembers: p.max_members,
       minOrderAmount: p.min_order, currentAmount: meta.currentAmount ?? 0, distance: 0,
-      deadline: new Date(p.deadline).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      deadline: relativeDateTime(p.deadline),
       closesAt: new Date(p.deadline).getTime(), deliveryTime: meta.deliveryTime ?? '채팅에서 조율',
       leaderRating: 0, leaderTrades: 0, leaderName: nickname(p.owner_id),
       status: p.status === 'open' && new Date(p.deadline).getTime() > Date.now() ? 'recruiting' : p.status === 'cancelled' || p.status === 'completed' ? 'complete' : 'full',
@@ -233,11 +235,11 @@ function useSharedState() {
       const id = await act('create', null, { restaurant: input.restaurant.trim(), category: input.category,
         max_members: Number(input.maxMembers), deadline: date.toISOString(), delivery_fee: 3000, min_order: amount(input.minAmount),
         meeting: '채팅에서 조율', note: JSON.stringify({ format: 'campus-v1', text: input.note, currentAmount: amount(input.currentAmount), deliveryTime: input.deliveryTime }) })
-      if (id) { setSelectedId(numberFor(id)); setNotice('모집글을 등록했어요. 다른 참여자에게도 보여요.'); return true } return false
+      if (id) { setSelectedId(numberFor(id)); setNotice('모집글을 등록했어요. 다른 참가자에게도 보여요.'); return true } return false
     },
     apply: async (p: Post) => {
-      if (!live || !p.sharedId) { setSample(false); setLoginOpen(!session); setNotice(session ? '예시 모집글에는 실제 신청할 수 없어요. 참여자 모집글을 선택해 주세요.' : '로그인하고 실제 모집글에 참여해 주세요.'); return false }
-      if (await act('apply', p.sharedId)) { setNotice('동참 신청을 보냈어요. 리더의 수락을 기다려 주세요.'); return true } return false
+      if (!live || !p.sharedId) { setSample(false); setLoginOpen(!session); return false }
+      if (await act('apply', p.sharedId)) { setNotice('참가 신청을 보냈어요. 리더의 수락을 기다려 주세요.'); return true } return false
     },
     dispatch: (action: Action) => {
       if (!txSource) return
@@ -276,9 +278,9 @@ export function SharedDetailActions({ push }: { push: (s: 'applicants' | 'chat' 
   return <div className="space-y-2">
     {mine?.status === 'pending' && mine.active && <p className="text-sm text-center bg-brand-50 p-3 rounded-xl">신청 완료 · 리더 수락을 기다리고 있어요.</p>}
     {mine?.status === 'accepted' && <button className={`${btn} bg-brand text-white`} onClick={() => push(leader && !ended ? 'applicants' : 'chat')}>{leader && !ended ? '신청자 관리 · 채팅방' : '공동 채팅방으로'}</button>}
-    {!mine?.active && !ended && <button disabled={s.busy || s.active || p.status !== 'open' || new Date(p.deadline).getTime()<=Date.now()} className={`${btn} bg-brand text-white`} onClick={() => { const post=s.posts.find(v=>v.sharedId===p.id); if(post) void s.apply(post) }}>{s.active ? '다른 모집에 신청·참여 중이에요' : p.status !== 'open' ? '모집 마감' : '동참 신청하기'}</button>}
+    {!mine?.active && !ended && <button disabled={s.busy || s.active || p.status !== 'open' || new Date(p.deadline).getTime()<=Date.now()} className={`${btn} bg-brand text-white`} onClick={() => { const post=s.posts.find(v=>v.sharedId===p.id); if(post) void s.apply(post) }}>{s.active ? '다른 모집에 신청·참여 중이에요' : p.status !== 'open' ? '모집 마감' : '참가 신청하기'}</button>}
     {mine?.active && !ended && <button disabled={s.busy} className={`${btn} border border-gray-200 text-gray-500`} onClick={() => { if(confirm(leader ? '모집을 취소할까요?' : '신청·참여를 취소할까요?')) void s.act(leader?'cancel':'withdraw',p.id) }}>{leader?'공동배달 취소':'신청·참여 취소'}</button>}
-    {ended && <p className="text-center text-sm text-gray-500">{p.status==='completed'?'종료된 테스트예요.':'취소된 모집이에요.'}</p>}
+    {ended && p.status==='cancelled'&&<p className="text-center text-sm text-gray-500">취소된 모집이에요.</p>}
   </div>
 }
 
@@ -293,7 +295,7 @@ export function SharedApplicants({ pop, push }: { pop: () => void; push: (s: 'ch
     <div className="bg-white rounded-2xl p-4 space-y-2"><h2 className="font-bold">{p.restaurant}</h2><p className="text-sm">현재 {p.member_count} / {p.max_members}명 · {closed?'모집 마감':'모집 중'}</p><p className="text-xs text-gray-500">함께 주문할 신청자를 확인해 주세요.</p></div>
     {!pending.length && <p className="text-gray-500 text-sm text-center py-6">대기 중인 신청자가 없어요.</p>}
     {pending.map(m=><div key={m.id} className="bg-white rounded-2xl p-4 space-y-3"><p className="font-bold">{s.nickname(m.user_id)}</p><div className="flex gap-2">{[false,true].map(accept=><button key={String(accept)} disabled={s.busy||closed} className={`flex-1 py-3 rounded-xl font-bold text-sm disabled:opacity-40 ${accept?'bg-brand text-white':'border border-gray-200'}`} onClick={()=>void s.act(accept?'accept':'reject',p.id,{user_id:m.user_id})}>{accept?'수락':'거절'}</button>)}</div></div>)}
-    <div className="bg-white rounded-2xl p-4"><h2 className="font-bold text-sm mb-2">참여자</h2>{people.map(m=><p className="text-sm py-1" key={m.id}>{s.nickname(m.user_id)} {m.user_id===p.owner_id?'· 리더':''}</p>)}</div>
+    <div className="bg-white rounded-2xl p-4"><h2 className="font-bold text-sm mb-2">참가자</h2>{people.map(m=><p className="text-sm py-1" key={m.id}>{s.nickname(m.user_id)} {m.user_id===p.owner_id?'· 리더':''}</p>)}</div>
     <button className="w-full py-3 rounded-2xl bg-brand text-white font-bold" onClick={()=>push('chat')}>공동 채팅방 열기</button>
     {!ended && <>
       {!closed ? <button disabled={s.busy} className="w-full py-3 border border-gray-200 rounded-2xl text-sm" onClick={()=>{if(confirm('현재 멤버로 마감할까요? 대기 중인 신청은 종료돼요.'))void s.act('close',p.id)}}>현재 멤버로 모집 마감</button> : p.member_count<p.max_members&&new Date(p.deadline).getTime()>Date.now()&&<button disabled={s.busy} className="w-full py-3 border border-gray-200 rounded-2xl text-sm" onClick={()=>void s.act('reopen',p.id)}>빈자리 다시 모집</button>}
@@ -313,10 +315,10 @@ export function SharedChat({ pop, push, orderPanel, workflowControls }: { pop: (
   if(!tx||tx.application!=='accepted'||tx.cancelled)return <div className="p-6 text-center space-y-4"><p>참여 중인 채팅방이 없거나 승인을 기다리고 있어요.</p><button className="text-brand" onClick={pop}>돌아가기</button></div>
   return <div className="chat-room flex-1 min-h-0 flex flex-col relative">
     <header className="chat-header px-3 pt-3 pb-2 shrink-0"><div className="flex items-center gap-2"><button className="w-9 h-10 text-2xl" aria-label="채팅 나가기" onClick={pop}>‹</button><div className="flex-1 min-w-0"><h1 className="font-bold text-sm truncate">{tx.post.restaurant}</h1><p className="chat-muted text-[11px]">{tx.people.length}명 · {tx.closed?'모집 마감':'모집 중'}</p></div>{tx.role==='leader'&&<button className="text-brand text-xs" onClick={()=>push('applicants')}>신청자 관리</button>}</div>
-      <button className="chat-tool rounded-xl w-full py-2 text-xs mt-2" onClick={()=>setPanel(!panel)} aria-expanded={panel}>메뉴 참고 · 수령 장소 · 참여자 {panel?'접기':'보기'}</button>
+      <button className="chat-tool rounded-xl w-full py-2 text-xs mt-2" onClick={()=>setPanel(!panel)} aria-expanded={panel}>메뉴 참고 · 수령 장소 · 참가자 {panel?'접기':'보기'}</button>
       {workflowControls}
     </header>
-    {panel&&<div className="chat-panel p-4 overflow-y-auto max-h-[45%] shrink-0 space-y-3 text-xs border-b border-gray-100"><p><b>수령 제안 장소</b> · {tx.meeting}</p><p>메뉴·수량·수령 시간을 함께 확인해 주세요.</p><p><b>참여자</b> · {tx.people.map(p=>p.name).join(', ')}</p>{orderPanel??<details><summary className="cursor-pointer font-bold">음식점 메뉴</summary>{tx.post.menus?.map(m=><p className="py-1" key={m.id}>{m.name} · {m.price.toLocaleString()}원</p>)}</details>}</div>}
+    {panel&&<div className="chat-panel p-4 overflow-y-auto max-h-[45%] shrink-0 space-y-3 text-xs border-b border-gray-100"><p><b>수령 제안 장소</b> · {tx.meeting}</p><p>메뉴·수량·수령 시간을 함께 확인해 주세요.</p><p><b>참가자</b> · {tx.people.map(p=>p.name).join(', ')}</p>{orderPanel??<details><summary className="cursor-pointer font-bold">음식점 메뉴</summary>{tx.post.menus?.map(m=><p className="py-1" key={m.id}>{m.name} · {m.price.toLocaleString()}원</p>)}</details>}</div>}
     <div ref={list} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4" onScroll={()=>{const el=list.current;if(el){follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<80;if(follow.current)setUnseen(false)}}}>
       {!tx.messages.length&&<p className="chat-muted text-center text-sm py-8">메뉴와 만날 시간을 이야기해 보세요.</p>}
       {tx.messages.map(m=><div key={m.id} className={`flex flex-col ${m.isMe?'items-end':'items-start'}`}><span className="chat-muted text-[10px] mb-1">{m.sender}</span><p className={`chat-bubble max-w-[85%] px-3 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words ${m.isMe?'chat-bubble-mine rounded-tr-sm':'rounded-tl-sm'}`} style={{overflowWrap:'anywhere'}}>{m.content}</p><time className="chat-muted text-[10px] mt-1">{m.time}</time></div>)}

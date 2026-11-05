@@ -21,6 +21,7 @@ export type MenuIntent = { user_id: string; menus: string[]; stores: string[]; s
 export type MenuMatch = { store_name: string; people_count: number }
 export type MenuNotification = { id: string; kind: 'menu_match' | 'group_invite'; payload: { stores: string[]; area: string; max_walk_m?: number; post_id?: string; starts_at?: string; ends_at?: string }; created_at: string; expires_at: string; read_at: string | null }
 export type Basket = { post_id: string; user_id: string; items: (CatalogItem & { quantity: number })[]; total: number }
+export type StoreDraft={quantities:Record<number,number>;goal:string;maxMembers:number;fee:string;meeting:string;note:string;deliveryTime:string;deadline:string;publicPoint:MatchLocation|null}
 const fallbackCatalog: MenuStore[] = CAMPUS_STORES.filter(s => ['카페', '버거', '패스트푸드'].includes(s.category)).map(s => ({
   store_name: s.name, menu_key: s.category === '카페' ? 'coffee' : s.category === '버거' ? 'burger' : 'sandwich', goal_amount: s.demoMinOrder, menus: s.menus,
 }))
@@ -47,6 +48,8 @@ function useDiscoveryState() {
   const [search,setSearch]=useState(''),[browseCategory,setBrowseCategory]=useState('all'),[browseView,setBrowseView]=useState<'list'|'map'>('list')
   const [browseTab,setBrowseTab]=useState<'groups'|'stores'>('groups'),[sort,setSort]=useState<'recent'|'near'>('recent')
   const listScroll=useRef(0)
+  const storeDrafts=useRef(new Map<string,StoreDraft>())
+  useEffect(()=>{storeDrafts.current.clear()},[uid])
   const [intent,setIntent]=useState<MenuIntent|null>(null)
   const [matches,setMatches]=useState<MenuMatch[]>([])
   const [alerts,setAlerts]=useState<MenuNotification[]>([])
@@ -138,7 +141,7 @@ function useDiscoveryState() {
     &&[...activeIntent.stores].sort().join('|')===[...stores].sort().join('|')
   const currentAlerts=alerts.filter(n=>n.kind!=='menu_match'||(activeIntent&&!shared.active&&n.payload.stores.some(store=>matches.some(m=>m.store_name===store&&Number(m.people_count)>0))))
   return {catalog,menus,stores,day,hour,area,setDay,setHour,setArea,toggleMenu,toggleStore,candidateStores,
-    search,setSearch,browseCategory,setBrowseCategory,browseView,setBrowseView,browseTab,setBrowseTab,sort,setSort,listScroll,
+    search,setSearch,browseCategory,setBrowseCategory,browseView,setBrowseView,browseTab,setBrowseTab,sort,setSort,listScroll,storeDrafts,
     matchLocation,manualLocation,setMatchLocation,
     intent:activeIntent,matches,visibleMatches:sameSelection?matches:[],alerts:currentAlerts,baskets,connected,loading,saving,error,setError,toast,setToast,save,refresh,
     cancel:async()=>{if(await run(()=>supabase.rpc('gd_cancel_intent'))) {setIntent(null);setMatches([]);setToast('메뉴 기다리기를 취소했어요.')}},

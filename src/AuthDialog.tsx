@@ -6,12 +6,14 @@ export default function AuthDialog(){
   const s=useSharedDelivery()
   const [mode,setMode]=useState<'login'|'signup'>('login')
   const [message,setMessage]=useState(''),[email,setEmail]=useState(''),[validation,setValidation]=useState('')
+  const [showPassword,setShowPassword]=useState(false),[showConfirmation,setShowConfirmation]=useState(false)
   const panel=useRef<HTMLDivElement>(null)
+  const busy=useRef(s.authBusy);busy.current=s.authBusy
   useEffect(()=>{
     const previous=document.activeElement as HTMLElement|null
     panel.current?.querySelector<HTMLInputElement>('input')?.focus()
     const key=(e:KeyboardEvent)=>{
-      if(e.key==='Escape'&&!s.authBusy)s.setLoginOpen(false)
+      if(e.key==='Escape'&&!busy.current)s.setLoginOpen(false)
       if(e.key!=='Tab')return
       const fields=[...(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input,a[href]')??[])]
       const first=fields[0],last=fields[fields.length-1]
@@ -20,7 +22,8 @@ export default function AuthDialog(){
     }
     document.addEventListener('keydown',key)
     return()=>{document.removeEventListener('keydown',key);previous?.focus()}
-  },[s.authBusy])
+  },[])
+  useEffect(()=>{setShowPassword(false);setShowConfirmation(false);if(!message)panel.current?.querySelector<HTMLInputElement>('input')?.focus()},[mode,message])
   const submit=async(e:FormEvent<HTMLFormElement>)=>{
     e.preventDefault();if(s.authBusy)return
     const f=new FormData(e.currentTarget),password=String(f.get('password'))
@@ -41,8 +44,8 @@ export default function AuthDialog(){
       <form onSubmit={submit} className="baef-auth-form" key={mode}>
         {mode==='signup'&&<label>닉네임<input name="nickname" autoComplete="nickname" minLength={2} maxLength={20} placeholder="배프에게 보여줄 이름" required/></label>}
         <label>이메일<input name="email" type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" required/></label>
-        <label>비밀번호<input name="password" type="password" autoComplete={mode==='signup'?'new-password':'current-password'} minLength={mode==='signup'?8:undefined} maxLength={128} placeholder={mode==='signup'?'8자 이상 입력해 주세요':'비밀번호를 입력해 주세요'} required/></label>
-        {mode==='signup'&&<label>비밀번호 확인<input name="confirmation" type="password" autoComplete="new-password" maxLength={128} required placeholder="한 번 더 입력해 주세요"/></label>}
+        <label>비밀번호<span className="baef-password-field"><input name="password" type={showPassword?'text':'password'} autoComplete={mode==='signup'?'new-password':'current-password'} minLength={mode==='signup'?8:undefined} maxLength={128} placeholder={mode==='signup'?'8자 이상 입력해 주세요':'비밀번호를 입력해 주세요'} required/><button type="button" aria-label={showPassword?'비밀번호 숨기기':'비밀번호 보기'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)}>{showPassword?'숨기기':'보기'}</button></span></label>
+        {mode==='signup'&&<label>비밀번호 확인<span className="baef-password-field"><input name="confirmation" type={showConfirmation?'text':'password'} autoComplete="new-password" maxLength={128} required placeholder="한 번 더 입력해 주세요"/><button type="button" aria-label={showConfirmation?'확인 비밀번호 숨기기':'확인 비밀번호 보기'} aria-pressed={showConfirmation} onClick={()=>setShowConfirmation(v=>!v)}>{showConfirmation?'숨기기':'보기'}</button></span></label>}
         {(validation||s.error)&&<p className="baef-error" role="alert">{validation||s.error}</p>}
         <button className="baef-button" disabled={s.authBusy}>{s.authBusy?'잠시만 기다려 주세요…':mode==='signup'?'회원가입':'로그인'}</button>
         {mode==='signup'&&<p className="baef-muted">이메일 인증을 마치면 바로 이용할 수 있어요.</p>}

@@ -474,7 +474,7 @@ function useFlowState(initialPosts: Post[]) {
         return false
       }
       setReports(list => [{ id: Date.now(), postId, person, reason, detail: detail.trim(), status: "검토 대기", createdAt: now }, ...list])
-      setNotice("신고를 저장했어요. 시연용 검토 대기 상태이며 자동으로 이용을 제한하지 않아요.")
+      setNotice("신고를 저장했어요.")
       return true
     },
     completed,
