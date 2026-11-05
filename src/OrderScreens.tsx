@@ -52,6 +52,12 @@ export function OrderParticipants(){
   const o=useDeliveryLifecycle(),s=useSharedDelivery(),[person,setPerson]=useState<string|null>(null)
   return <><InfoDetails title="함께하는 배프" summary={`${o.members.length}명 · 프로필과 평판`}>{o.members.map(m=>{const r=o.reputation(m.user_id);return <button key={m.id} className="baef-person-row" onClick={()=>setPerson(m.user_id)}><span className="baef-avatar">{s.nickname(m.user_id).slice(0,1)}</span><span><b>{s.nickname(m.user_id)}{m.user_id===o.post?.owner_id?' · 리더':''}</b><small>{r?.rating!=null?`★ ${r.rating}`:'첫 거래를 기다려요'} · {r?.trades??0}회</small></span><span>›</span></button>})}</InfoDetails>{person&&<PersonProfile userId={person} close={()=>setPerson(null)}/>}</>
 }
+export function ApplicantReputation({userId}:{userId:string}){
+  const o=useDeliveryLifecycle(),s=useSharedDelivery(),[profile,setProfile]=useState(false)
+  const rep=o.reputation(userId)
+  const latest=o.reviews.filter(r=>r.subject_id===userId&&r.comment.trim()).sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime())[0]
+  return <><div className="baef-applicant-identity"><span className="baef-avatar" aria-hidden="true">{s.nickname(userId).slice(0,1)}</span><b>{s.nickname(userId)}</b></div>{rep?<p className="baef-applicant-reputation">{rep.rating!=null?`★ ${rep.rating}`:'아직 별점 없음'} · 공동배달 {rep.trades}회 · 후기 {rep.review_count}개</p>:<p className="baef-muted" role="status">{o.error?'평판을 불러오지 못했어요.':o.available?'확인할 평판 정보가 없어요.':'평판 불러오는 중…'}</p>}{latest&&<p className="baef-applicant-review"><span>최근 후기</span>{latest.comment}</p>}<button type="button" className="baef-text-action" onClick={()=>setProfile(true)}>프로필·후기 보기 →</button>{profile&&<PersonProfile userId={userId} close={()=>setProfile(false)}/>}</>
+}
 export function RoomTimeEditor(){
   const o=useDeliveryLifecycle(),s=useSharedDelivery(),feedback=useSaveFeedback()
   let start:string|null=null,end:string|null=null

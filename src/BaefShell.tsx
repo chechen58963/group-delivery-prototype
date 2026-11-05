@@ -6,7 +6,7 @@ import { StoreSheet, BaefNavigation, BasketEditor, DiscoveryCreate, MenuAlerts, 
 import type { Screen } from './WorkflowScreens'
 import './baef.css'
 import { useDeliveryLifecycle } from './DeliveryLifecycle'
-import { RoomTimeEditor, OrderProgress, OrderChatControls, OrderMenu, OrderPayment, OrderDelivery, OrderReceipt, OrderComplete, OrderRating, OrderProfileExtras, OrderParticipants, MeetingTools } from './OrderScreens'
+import { ApplicantReputation, RoomTimeEditor, OrderProgress, OrderChatControls, OrderMenu, OrderPayment, OrderDelivery, OrderReceipt, OrderComplete, OrderRating, OrderProfileExtras, OrderParticipants, MeetingTools } from './OrderScreens'
 import './ui-polish.css'
 import './readability.css'
 import './order-entry.css'
@@ -46,7 +46,7 @@ export default function BaefShell(){
       {screen==='list'&&<TogetherScreen push={push}/>}
       {screen==='create'&&<DiscoveryCreate pop={pop} push={push}/>}
       {screen==='detail'&&<GroupDetail pop={pop} push={push}/>}
-      {screen==='applicants'&&<SharedApplicants pop={pop} push={push}/>}
+      {screen==='applicants'&&<SharedApplicants pop={pop} push={push} renderApplicant={userId=><ApplicantReputation userId={userId}/>}/>}
       {screen==='chat'&&(ongoingChat?<SharedChat pop={pop} push={push} workflowControls={<OrderChatControls push={push}/>} orderPanel={<><BasketEditor postId={s.tx!.post.sharedId!}/><MeetingTools/><OrderParticipants/></>}/>:<div className="baef-empty"><SmallIcon name="chat"/><h1>함께 주문하면 대화가 시작돼요</h1><p>메뉴를 골라 배프를 찾거나<br/>열린 모집에 참가해 보세요.</p><button className="baef-button" onClick={()=>push('list')}>함께 주문 둘러보기</button></div>)}
       {screen==='menu'&&<OrderMenu pop={pop} push={push}/>}
       {screen==='payment'&&<OrderPayment pop={pop} push={push}/>}
