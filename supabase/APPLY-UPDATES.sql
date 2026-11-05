@@ -196,6 +196,25 @@ create table if not exists public.gd_order_people (
   latitude double precision, longitude double precision,
   primary key(post_id,user_id)
 );
+-- Keep the funding source explicit so old clients cannot shift a platform coupon to the leader.
+alter table public.gd_order_states add column if not exists coupon_funding text not null default 'leader' check(coupon_funding in('leader','platform'));
+alter table public.gd_order_states alter column coupon_funding set default 'platform';
+-- Restore the leader's original share on unpaid/unplaced legacy orders only.
+with members as (
+  select post_id,count(*)::int n from public.gd_participations where status='accepted' group by post_id
+), repaired as (
+  update public.gd_order_people x
+  set fee=p.delivery_fee/m.n+p.delivery_fee%m.n
+  from public.gd_posts p,public.gd_order_states s,members m
+  where x.post_id=p.id and s.post_id=p.id and m.post_id=p.id and x.user_id=p.owner_id
+    and s.coupon_funding='leader' and s.phase='payment' and p.status='closed' and not s.nearby_agreed
+    and x.fee<>p.delivery_fee/m.n+p.delivery_fee%m.n
+    and exists(select 1 from public.gd_order_people c where c.post_id=p.id and c.coupon_discount>0)
+  returning x.post_id
+)
+update public.gd_order_states set leader_ready=false where post_id in(select post_id from repaired);
+update public.gd_order_states s set coupon_funding='platform',reward_support=false
+where s.phase in('menu','payment') and exists(select 1 from public.gd_posts p where p.id=s.post_id and p.status in('open','closed'));
 create table if not exists public.gd_reviews (
   id uuid primary key default gen_random_uuid(), post_id uuid not null references public.gd_posts(id),
   reviewer_id uuid not null references public.gd_testers(user_id), subject_id uuid not null references public.gd_testers(user_id),
@@ -315,7 +334,7 @@ grant execute on function public.gd_save_intent(text[],text[],timestamptz,timest
 create or replace function public.gd_order_action(p_action text,p_post uuid,p_data jsonb default '{}'::jsonb)
 returns void language plpgsql security definer set search_path=public as $$
 declare v_uid uuid:=auth.uid(); v_owner uuid; v_state gd_order_states%rowtype; v_post gd_posts%rowtype;
-  v_target uuid; v_count int; v_total int; v_due int; v_discount int; v_coupon_total int; v_rating numeric; v_trades bigint;
+  v_target uuid; v_count int; v_total int; v_due int; v_discount int; v_rating numeric; v_trades bigint;
 begin
   if not public.gd_is_tester() then raise exception '로그인이 필요해요.'; end if;
   perform pg_advisory_xact_lock(73194628);
@@ -390,19 +409,20 @@ begin
       update gd_order_people set latitude=null,longitude=null where post_id=p_post;
     end if;return;
   elsif p_action='coupon' then
-    if v_state.phase<>'payment' or not v_state.reward_support or v_uid=v_owner or v_state.nearby_agreed then raise exception '주문 담당이 혜택 부담에 동의한 일반 모임에서 사용할 수 있어요.'; end if;
+    if v_state.phase<>'payment' or v_state.coupon_funding<>'platform' or v_uid=v_owner or v_state.nearby_agreed then raise exception '송금 전 일반 모임에서 배프 지원 쿠폰을 사용할 수 있어요.'; end if;
     select r.rating,r.trades into v_rating,v_trades from gd_reputation() r where r.user_id=v_uid;
     if coalesce(v_rating,0)<4.8 or coalesce(v_trades,0)<5 or exists(select 1 from gd_order_people x join gd_order_states s on s.post_id=x.post_id where x.user_id=v_uid and x.coupon_discount>0 and s.phase<>'cancelled') then raise exception '쿠폰 사용 조건을 확인해 주세요.'; end if;
     if exists(select 1 from gd_order_people where post_id=p_post and (claimed_amount>0 or confirmed_amount>0)) then raise exception '송금 전에 쿠폰을 적용해 주세요.'; end if;
-    update gd_order_people set coupon_discount=least(1000,fee) where post_id=p_post and user_id=v_uid;
-    select coalesce(sum(coupon_discount),0) into v_coupon_total from gd_order_people where post_id=p_post;
-    update gd_order_people set fee=v_post.delivery_fee/v_count+v_post.delivery_fee%v_count+v_coupon_total where post_id=p_post and user_id=v_owner;return;
+    update gd_order_people set coupon_discount=least(1000,fee) where post_id=p_post and user_id=v_uid and fee>0;
+    if not found then raise exception '할인할 배달비가 없어요.'; end if;
+    -- The platform funds the discount; no participant's delivery fee is increased.
+    update gd_order_states set leader_ready=false,updated_at=now() where post_id=p_post;return;
   end if;
   if v_uid<>v_owner then raise exception '주문 담당만 처리할 수 있어요.'; end if;
   if p_action='account' then
     if v_state.phase<>'menu' then raise exception '메뉴 확정 전에 계좌를 정해 주세요.'; end if;
     if char_length(btrim(coalesce(p_data->>'bank',''))) not between 1 and 30 or char_length(btrim(coalesce(p_data->>'account',''))) not between 1 and 40 or char_length(btrim(coalesce(p_data->>'holder',''))) not between 1 and 30 then raise exception '은행, 계좌번호와 예금주를 확인해 주세요.'; end if;
-    update gd_order_states set bank=btrim(p_data->>'bank'),account=btrim(p_data->>'account'),holder=btrim(p_data->>'holder'),reward_support=coalesce((p_data->>'reward_support')::bool,false),updated_at=now() where post_id=p_post;
+    update gd_order_states set bank=btrim(p_data->>'bank'),account=btrim(p_data->>'account'),holder=btrim(p_data->>'holder'),reward_support=false,updated_at=now() where post_id=p_post;
   elsif p_action='finalize' then
     if v_state.phase<>'menu' or v_post.status<>'closed' or v_count<2 then raise exception '2명 이상 모여 모집을 마감한 뒤 확정해 주세요.'; end if;
     if v_state.bank='' or v_state.account='' or v_state.holder='' or v_state.meeting='' or v_state.meeting_time is null then raise exception '리더 계좌와 수령 장소·시간을 먼저 정해 주세요.'; end if;

@@ -3,7 +3,7 @@ import { supabase } from './supabase'
 import { useSharedDelivery } from './SharedDelivery'
 
 export type OrderPhase='menu'|'payment'|'ordered'|'delivering'|'arrived'|'completed'|'cancelled'
-export type OrderState={post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;reward_support:boolean;nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string}
+export type OrderState={post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string}
 export type OrderPerson={post_id:string;user_id:string;food_total:number;fee:number;coupon_discount:number;claimed_amount:number;confirmed_amount:number;refunded_amount:number;refund_due:number;refund_sent:boolean;received_at:string|null;late_reported:boolean;late_ack:boolean;latitude:number|null;longitude:number|null}
 export type Reputation={user_id:string;rating:number|null;review_count:number;trades:number}
 export type OrderReview={id:string;post_id:string;reviewer_id:string;subject_id:string;stars:number;comment:string;created_at:string}
