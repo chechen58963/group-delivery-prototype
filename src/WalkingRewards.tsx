@@ -51,6 +51,13 @@ type Walking=ReturnType<typeof useWalkState>
 const Context=createContext<Walking|null>(null)
 export function WalkingRewardsProvider({children}:{children:ReactNode}){const value=useWalkState();return <Context.Provider value={value}>{children}</Context.Provider>}
 function useWalkingRewards(){const value=useContext(Context);if(!value)throw new Error('WalkingRewardsProvider required');return value}
+export function WalkingRewardDetails(){
+  const w=useWalkingRewards(),o=useDeliveryLifecycle()
+  const plan=w.plans.find(p=>p.post_id===o.selectedId),reward=w.rewards.find(p=>p.post_id===o.selectedId)
+  if(!o.post||!o.members.some(m=>m.user_id===o.uid))return null
+  const status=reward?`${walkDistance(reward.meters)} 누적${reward.points>0?` · +${reward.points}P`:''}`:plan?`${walkDistance(plan.meters)} 등록됨`:o.mine?.received_at?'거리 미등록':'거리 등록 · 선택'
+  return <details className="baef-info-details baef-walk-details"><summary><span>수령 이동 포인트</span><small>{w.error?'불러오기 오류 · 확인':!w.ready?'불러오는 중…':status}</small></summary><div className="baef-info-content"><WalkingRewardPlan/></div></details>
+}
 export function WalkingRewardPlan(){
   const w=useWalkingRewards(),o=useDeliveryLifecycle(),d=useMenuDiscovery(),feedback=useSaveFeedback()
   const plan=w.plans.find(p=>p.post_id===o.selectedId),reward=w.rewards.find(p=>p.post_id===o.selectedId)

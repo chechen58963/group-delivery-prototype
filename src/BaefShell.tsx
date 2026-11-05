@@ -8,6 +8,7 @@ import './baef.css'
 import { useDeliveryLifecycle } from './DeliveryLifecycle'
 import { OrderProgress, OrderChatControls, OrderMenu, OrderPayment, OrderDelivery, OrderReceipt, OrderComplete, OrderRating, OrderProfileExtras, OrderParticipants, MeetingTools } from './OrderScreens'
 import './ui-polish.css'
+import './readability.css'
 
 export default function BaefShell(){
   const s=useSharedDelivery(),d=useMenuDiscovery(),flow=useFlow()

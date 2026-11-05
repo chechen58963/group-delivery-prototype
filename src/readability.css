@@ -1,0 +1,92 @@
+/* Keep the existing palette while giving each screen a clearer reading order. */
+.baef-app{--baef-muted:#6e736b}
+.baef-app.app-dark{--baef-muted:#b3b9ad}
+.baef-app .baef-muted,.baef-app .baef-error{font-size:13px;line-height:1.7}
+.baef-app .baef-question{padding:18px 0 24px}
+.baef-app .baef-question h1{font-size:26px;line-height:1.5;margin:0;letter-spacing:-1px;word-break:keep-all}
+.baef-app .baef-question>p{font-size:13px;margin-top:6px}
+.baef-app .baef-section-title{margin-bottom:12px}
+.baef-app .baef-section-title h2{font-size:16px}
+.baef-app .baef-food-option>b,.baef-app .baef-time-inputs select{font-size:14px}
+.baef-app .baef-time-inputs label>span{font-size:12px}
+.baef-app .baef-button{font-size:14px}
+.baef-app .baef-back{margin-bottom:14px}
+.baef-app .baef-page-title{font-size:23px;letter-spacing:-.7px}
+.baef-app .baef-page-title+.baef-muted{margin-top:4px}
+.baef-app .baef-tabs{margin:16px 0}
+.baef-app .baef-tabs>button{font-size:14px}
+.baef-app .baef-store-info h3{font-size:15px}
+.baef-app .baef-group-row h2{font-size:18px;margin:9px 0 6px}
+.baef-app .baef-group-row>p{font-size:13px;line-height:1.65}
+.baef-app .baef-group-head,.baef-app .baef-tag{font-size:12px}
+.baef-app .baef-group-foot{flex-wrap:wrap;row-gap:5px}
+.baef-app .baef-order-progress button{font-size:12px;min-height:36px}
+.baef-app .baef-order-form label,.baef-app .baef-order-field{font-size:13px}
+.baef-app .baef-order-form input,.baef-app .baef-order-form select,.baef-app .baef-order-form textarea{font-size:16px}
+
+.baef-info-details{border-bottom:1px solid var(--baef-line)}
+.baef-info-details>summary{position:relative;display:flex;flex-direction:column;gap:4px;list-style:none;padding:17px 28px 17px 0;cursor:pointer;min-height:64px}
+.baef-info-details>summary::-webkit-details-marker{display:none}
+.baef-info-details>summary>span{font-size:14px;font-weight:650}
+.baef-info-details>summary>small{font-size:13px;line-height:1.6;color:var(--baef-muted);font-weight:400;overflow-wrap:anywhere}
+.baef-info-details>summary::after{content:'⌄';position:absolute;right:4px;top:20px;font-size:19px;color:var(--baef-muted);line-height:1}
+.baef-info-details[open]>summary::after{content:'⌃'}
+.baef-info-content{padding:0 0 18px}
+.baef-info-content>.baef-order-form{margin-top:0}
+.baef-info-content .baef-order-details:first-child{margin-top:0}
+.baef-settings-group{margin-top:10px}
+.baef-next-action{padding:2px 0 18px;border-bottom:1px solid var(--baef-line)}
+.baef-next-action>.baef-muted{margin-top:10px}
+.baef-app .baef-person-row{font-size:14px;min-height:54px}
+.baef-app .baef-person-row small{font-size:12px;line-height:1.6}
+.baef-walk-details .baef-walk-card{padding:0;border:0;margin:0;background:none}
+.baef-walk-details .baef-walk-card>.baef-section-title{justify-content:flex-start;margin-bottom:10px}
+.baef-walk-details .baef-walk-card>.baef-section-title>h2{display:none}
+.baef-app .baef-basket h3{font-size:16px}
+.baef-app .baef-basket summary{font-size:14px;min-height:44px}
+.baef-app .baef-basket-person{font-size:13px}
+.baef-app .baef-basket-person p,.baef-app .baef-basket-person>span{font-size:13px;line-height:1.7}
+.baef-app .baef-basket-person p{color:var(--baef-ink)}
+.baef-app .baef-order-total>span{font-size:13px}
+.baef-app .baef-ledger-person{font-size:14px;line-height:1.65}
+.baef-app .baef-ledger-person small{font-size:12px}
+.baef-payment-amount{padding:26px 0 20px;border-bottom:1px solid var(--baef-line)}
+.baef-payment-amount>span{display:block;font-size:14px;color:var(--baef-muted)}
+.baef-payment-amount>strong{display:block;font-size:32px;line-height:1.4;letter-spacing:-1px;font-weight:750;margin:4px 0}
+.baef-amount-breakdown{margin-top:10px}
+.baef-amount-breakdown>summary{font-size:13px;color:var(--baef-muted);cursor:pointer;min-height:40px;padding:8px 0}
+.baef-app .baef-amount-breakdown .baef-bill{padding:0;border:0}
+.baef-app .baef-amount-breakdown .baef-bill p{font-size:13px}
+.baef-app .baef-bank-card{padding:18px 0}
+.baef-app .baef-bank-card h2{font-size:13px;color:var(--baef-muted);margin:0}
+.baef-app .baef-account-number{margin:6px 0 2px;font-size:22px;letter-spacing:.01em}
+.baef-app .baef-profile-section>h2{font-size:15px}
+.baef-app .baef-history-row{font-size:13px;min-height:48px}
+
+.baef-filter-details>summary{display:flex;gap:8px;align-items:center;justify-content:space-between;list-style:none;cursor:pointer;font-size:13px;min-height:44px;border-bottom:1px solid var(--baef-line)}
+.baef-filter-details>summary::-webkit-details-marker{display:none}
+.baef-filter-details>summary>span{color:var(--baef-muted);text-align:right}
+.baef-filter-details>summary>span::after{content:' ⌄'}
+.baef-filter-details[open]>summary>span::after{content:' ⌃'}
+.baef-filter-details .baef-browse-controls{align-items:flex-start}
+.baef-browse-controls>label{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0;font-size:12px;color:var(--baef-muted)}
+.baef-app .baef-browse-controls select{width:100%;max-width:100%;min-height:44px;font-size:14px}
+.baef-view-toggle{display:flex;justify-content:flex-end;gap:2px;margin:4px 0 6px}
+.baef-view-toggle>button{font-size:13px;min-width:54px;min-height:40px;border:1px solid transparent;border-radius:7px;color:var(--baef-muted)}
+.baef-view-toggle>button[aria-pressed=true]{background:var(--baef-field);color:var(--baef-ink);border-color:var(--baef-line);font-weight:650}
+.baef-recruit-settings{margin:5px 0 12px;border:1px solid var(--baef-line);border-radius:10px;padding:0 12px}
+.baef-recruit-settings>summary{cursor:pointer;min-height:64px;padding:12px 20px 12px 0;position:relative;list-style:none}
+.baef-recruit-settings>summary::-webkit-details-marker{display:none}
+.baef-recruit-settings>summary>b{font-size:14px;font-weight:600;display:block}
+.baef-recruit-settings>summary>span{font-size:13px;color:var(--baef-muted)}
+.baef-recruit-settings>summary::after{content:'⌄';position:absolute;right:0;top:20px;color:var(--baef-muted)}
+.baef-recruit-settings[open]>summary::after{content:'⌃'}
+.baef-recruit-settings>.baef-order-form{margin-top:0;padding-bottom:15px}
+.baef-recruit-settings input,.baef-recruit-settings select{width:100%}
+.baef-app .baef-proposal-details>summary{font-size:14px;min-height:44px}
+.baef-shell .chat-tools-row{display:flex;gap:8px;margin-top:6px}
+.baef-shell .chat-tools-row>.chat-tool{min-height:40px;padding:8px 12px;font-size:13px}
+.baef-shell .chat-order-link{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;color:var(--baef-accent)}
+.baef-shell .chat-info-toggle{flex-shrink:0;color:var(--baef-muted)}
+.baef-shell .chat-panel .baef-info-details>summary{padding-top:12px;padding-bottom:12px;min-height:56px}
+@media(max-width:360px){.baef-app .baef-question h1{font-size:24px}.baef-app .baef-page{padding-left:18px;padding-right:18px}.baef-app .baef-section-title{gap:8px}.baef-app .baef-section-title>span{font-size:12px}.baef-info-details>summary>small{font-size:13px}.baef-app .baef-history-row{align-items:flex-start}.baef-app .baef-history-row>span{white-space:normal;text-align:right}}
