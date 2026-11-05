@@ -42,4 +42,10 @@
 .baef-prep-checks>li[data-done=true]{color:var(--baef-ink)}
 .baef-prep-checks>li[data-done=true]>span{color:var(--baef-accent)}
 .baef-route-copy{font-size:13px;line-height:1.7;color:var(--baef-muted);margin:4px 0 14px}
+.baef-pickup-time{border:0;padding:0;margin:0;min-width:0}
+.baef-pickup-time>legend{font-size:13px;margin-bottom:6px}
+.baef-pickup-time>div{display:grid;grid-template-columns:minmax(90px,.65fr) minmax(0,1fr);gap:10px}
+.baef-app .baef-pickup-time label{min-width:0}
+.baef-pickup-time label>span{font-size:12px;color:var(--baef-muted)}
+.baef-app .baef-pickup-time input,.baef-app .baef-pickup-time select{min-height:46px;width:100%;min-width:0}
 @media(max-width:360px){.baef-order-entry b{font-size:14px}.baef-order-entry>button{padding:14px}.baef-route-steps{gap:6px}.baef-route-steps>li{font-size:12px;gap:4px}.baef-route-steps>li>span{width:19px;height:19px}.baef-current-order{padding:14px}.baef-menu-alert-settings>summary{gap:8px}}
