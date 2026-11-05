@@ -13,7 +13,7 @@ begin
   begin meta:=p.note::jsonb; exception when others then meta:=jsonb_build_object('text',p.note); end;
   if jsonb_typeof(meta) is distinct from 'object' then meta:=jsonb_build_object('text',p.note); end if;
   label:=to_char(p_start at time zone 'Asia/Seoul','MM.DD HH24:MI')||'–'||to_char(p_end at time zone 'Asia/Seoul','HH24:MI');
-  meta:=meta||jsonb_build_object('format','campus-v1','starts_at',p_start,'ends_at',p_end,'deliveryTime',label,'text',label||' 함께 주문해요.'||chr(10)||regexp_replace(coalesce(meta->>'text',''),'^(오늘|내일) [^' || chr(10) || ']*함께 주문해요[.]' || chr(10) || '?','',''));
+  meta:=meta||jsonb_build_object('format','campus-v1','starts_at',p_start,'ends_at',p_end,'deliveryTime',label,'text',label||' 함께 주문해요.'||chr(10)||regexp_replace(coalesce(meta->>'text',''),'^(오늘|내일|[0-9]{2}[.][0-9]{2}) [^' || chr(10) || ']*함께 주문해요[.]' || chr(10) || '?','',''));
   update gd_posts set note=meta::text,deadline=case when deadline<=now() or deadline>p_start then p_start else deadline end where id=p_post;
   update gd_order_states set meeting_time=p_start,updated_at=now() where post_id=p_post;
   update gd_menu_notifications set expires_at=least(expires_at,now()) where kind='group_invite' and payload->>'post_id'=p_post::text;
