@@ -8,6 +8,7 @@ import type { MatchLocation } from './matchingLocation'
 import { distanceM, useDeliveryLifecycle } from './DeliveryLifecycle'
 import type { MapPin } from './LocationMap'
 import FoodPhoto from './FoodPhoto'
+import { matchPrompts } from './matchPrompts'
 import { foodPhotoSource } from './foodPhotos'
 import { OrderGuide, OrderRouteSteps } from './OrderGuide'
 import { orderNextStep } from './orderGuidance'
@@ -201,7 +202,8 @@ export function BasketEditor({postId}:{postId:string}){
 export function MenuAlerts({close,push}:{close:()=>void;push:(s:Screen)=>void}){
   const d=useMenuDiscovery(),s=useSharedDelivery()
   return <section className="baef-alert-panel"><header className="baef-sheet-title"><h1 className="baef-page-title">알림</h1><button className="baef-icon-button" aria-label="알림 닫기" onClick={close}><SmallIcon name="close"/></button></header><div className="baef-alert-scroll">
-    {d.alerts.map(n=><button className={`baef-alert-item ${!n.read_at?'unread':''}`} key={n.id} onClick={()=>{void d.readAlerts([n.id]);if(n.kind==='group_invite'&&n.payload.post_id){const p=s.posts.find(p=>p.sharedId===n.payload.post_id);if(p){s.selectPost(p.id);close();push('detail');return}}close();push('list')}}><span className="baef-alert-symbol"><SmallIcon name="people"/></span><div><b>{n.kind==='group_invite'?'함께 주문할 모집이 열렸어요':'메뉴가 겹치는 배프가 있어요'}</b><p>{n.payload.stores.join(' · ')}</p><small>{n.kind==='menu_match'&&n.payload.max_walk_m?'근처에서 함께 수령':areaName(n.payload.area)} · {relativeDateTime(n.created_at)}</small></div></button>)}
+    {matchPrompts(d.alerts,d.matches).map(match=><button className={`baef-alert-item ${match.unread?'unread':''}`} key={match.store} onClick={()=>{void d.readAlerts(match.ids);d.startMatchingRoom(match.store);close();push('create')}}><span className="baef-alert-symbol"><SmallIcon name="people"/></span><div><b>함께 주문할 배프 {match.count}명이 있어요</b><p>{match.store} · 메뉴와 시간이 겹쳐요.</p><p>모집을 시작해 볼까요? →</p><small>{relativeDateTime(match.createdAt)}</small></div></button>)}
+    {d.alerts.filter(n=>n.kind==='group_invite').map(n=><button className={`baef-alert-item ${!n.read_at?'unread':''}`} key={n.id} onClick={()=>{void d.readAlerts([n.id]);if(n.kind==='group_invite'&&n.payload.post_id){const p=s.posts.find(p=>p.sharedId===n.payload.post_id);if(p){s.selectPost(p.id);close();push('detail');return}}close();push('list')}}><span className="baef-alert-symbol"><SmallIcon name="people"/></span><div><b>{n.kind==='group_invite'?'함께 주문할 모집이 열렸어요':'메뉴가 겹치는 배프가 있어요'}</b><p>{n.payload.stores.join(' · ')}</p><small>{n.kind==='menu_match'&&n.payload.max_walk_m?'근처에서 함께 수령':areaName(n.payload.area)} · {relativeDateTime(n.created_at)}</small></div></button>)}
     {s.notifications.map(n=><button className={`baef-alert-item ${!n.read?'unread':''}`} key={n.id} onClick={()=>{s.setNotifications(values=>values.map(v=>v.id===n.id?{...v,read:true}:v));s.selectPost(n.postId);close();push(n.target as Screen)}}><span className="baef-alert-symbol"><SmallIcon name="chat"/></span><div><b>{n.restaurant}</b><p>{n.text}</p><small>{relativeDateTime(n.time)}</small></div></button>)}
     {!d.alerts.length&&!s.notifications.length&&<div className="baef-empty"><SmallIcon name="bell"/><h3>아직 도착한 알림이 없어요</h3><p>메뉴가 겹치거나 신청이 도착하면<br/>여기에 알려드릴게요.</p></div>}
   </div></section>

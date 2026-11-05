@@ -59,6 +59,8 @@ function useDiscoveryState() {
   const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
   const [toast,setToast]=useState('')
+  const [matchingStore,setMatchingStore]=useState<string|null>(null)
+  useEffect(()=>{setMatchingStore(null)},[uid])
   const lock=useRef(false), epoch=useRef(0)
   const currentUid=useRef(uid);currentUid.current=uid
   const activeIntent=intent?.active && new Date(intent.ends_at).getTime()>Date.now()?intent:null
@@ -93,7 +95,7 @@ function useDiscoveryState() {
         const value=own.data as MenuIntent|null
         setIntent(value);setMatches((found.data??[]) as MenuMatch[]);setBaskets((orders.data??[]) as Basket[])
         const next=(notes.data??[]) as MenuNotification[]
-        if(seen){const fresh=next.find(n=>!seen!.has(n.id)&&!n.read_at);if(fresh)setToast(fresh.kind==='group_invite'?'함께 주문할 모집이 열렸어요. 알림을 확인해 보세요.':'메뉴와 시간이 맞는 배프가 있어요. 알림을 확인해 보세요.')}
+        if(seen){const fresh=next.find(n=>!seen!.has(n.id)&&!n.read_at);if(fresh){const matching=(found.data as MenuMatch[]??[]).filter(m=>fresh.payload.stores.includes(m.store_name)).sort((a,b)=>Number(b.people_count)-Number(a.people_count))[0];if(fresh.kind==='group_invite')setToast('함께 주문할 모집이 열렸어요. 알림을 확인해 보세요.');else if(matching&&Number(matching.people_count)>0)setToast(`${matching.store_name}에서 함께 주문할 배프 ${matching.people_count}명이 있어요. 알림에서 모집을 시작해 보세요.`)}}
         seen=new Set(next.map(n=>n.id));setAlerts(next);setConnected(true);setError('')
         if(!hydrated&&value?.active&&new Date(value.ends_at).getTime()>Date.now()){
           setMenus(value.menus);setStores(value.stores);setArea(value.area_id)
@@ -142,7 +144,8 @@ function useDiscoveryState() {
   const currentAlerts=alerts.filter(n=>n.kind!=='menu_match'||(activeIntent&&!shared.active&&n.payload.stores.some(store=>matches.some(m=>m.store_name===store&&Number(m.people_count)>0))))
   return {catalog,menus,stores,day,hour,area,setDay,setHour,setArea,toggleMenu,toggleStore,candidateStores,
     search,setSearch,browseCategory,setBrowseCategory,browseView,setBrowseView,browseTab,setBrowseTab,sort,setSort,listScroll,storeDrafts,
-    matchLocation,manualLocation,setMatchLocation,
+    matchLocation,manualLocation,setMatchLocation,matchingStore,closeMatchingStore:()=>setMatchingStore(null),
+    startMatchingRoom:(name:string)=>{if(shared.active){shared.setNotice('진행 중인 주문을 먼저 확인해 주세요.');return}if(!activeIntent||!matches.some(m=>m.store_name===name&&Number(m.people_count)>0)){setToast('매칭 조건이 바뀌었어요. 메뉴 알림을 다시 확인해 주세요.');return}const date=new Date(activeIntent.starts_at);setDay(date.toDateString()===new Date().toDateString()?0:1);setHour(date.getHours());setArea(activeIntent.area_id);setMatchingStore(name)},
     intent:activeIntent,matches,visibleMatches:sameSelection?matches:[],alerts:currentAlerts,baskets,connected,loading,saving,error,setError,toast,setToast,save,refresh,
     cancel:async()=>{if(await run(()=>supabase.rpc('gd_cancel_intent'))) {setIntent(null);setMatches([]);setToast('메뉴 기다리기를 취소했어요.')}},
     readAlerts:async(ids:string[])=>{if(await run(()=>supabase.rpc('gd_mark_menu_notifications',{p_ids:ids})))setAlerts(values=>values.map(n=>ids.includes(n.id)?{...n,read_at:new Date().toISOString()}:n))},

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useFlow } from './FlowContext'
 import { SharedAccountControl, SharedApplicants, SharedChat, useSharedDelivery } from './SharedDelivery'
 import { useMenuDiscovery, money } from './MenuDiscoveryContext'
-import { BaefNavigation, BasketEditor, DiscoveryCreate, MenuAlerts, MenuHome, SmallIcon, TogetherScreen } from './MenuDiscovery'
+import { StoreSheet, BaefNavigation, BasketEditor, DiscoveryCreate, MenuAlerts, MenuHome, SmallIcon, TogetherScreen } from './MenuDiscovery'
 import type { Screen } from './WorkflowScreens'
 import './baef.css'
 import { useDeliveryLifecycle } from './DeliveryLifecycle'
@@ -57,6 +57,7 @@ export default function BaefShell(){
       {screen==='profile'&&<AccountScreen push={push}/>}
     </div>
     {primary&&!ongoingChat&&<BaefNavigation screen={screen} onNavigate={push}/>}
+    {d.matchingStore&&d.catalog.find(c=>c.store_name===d.matchingStore)&&<StoreSheet key={d.matchingStore} store={d.catalog.find(c=>c.store_name===d.matchingStore)!} close={d.closeMatchingStore} push={push}/>}
     {alerts&&<MenuAlerts close={()=>setAlerts(false)} push={push}/>}
   </div></div>
 }
