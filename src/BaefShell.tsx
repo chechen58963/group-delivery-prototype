@@ -9,6 +9,8 @@ import { useDeliveryLifecycle } from './DeliveryLifecycle'
 import { OrderProgress, OrderChatControls, OrderMenu, OrderPayment, OrderDelivery, OrderReceipt, OrderComplete, OrderRating, OrderProfileExtras, OrderParticipants, MeetingTools } from './OrderScreens'
 import './ui-polish.css'
 import './readability.css'
+import './order-entry.css'
+import { orderNextStep } from './orderGuidance'
 
 export default function BaefShell(){
   const s=useSharedDelivery(),d=useMenuDiscovery(),flow=useFlow()
@@ -72,16 +74,17 @@ function GroupDetail({pop,push}:{pop:()=>void;push:(s:Screen)=>void}){
   const ended=['cancelled','completed'].includes(p.status)
   const open=p.status==='open'&&new Date(p.deadline).getTime()>Date.now()
   const ownSelection=d.catalog.find(c=>c.store_name===p.restaurant)
+  const state=order.states.find(v=>v.post_id===p.id)
+  const next=mine?.active?orderNextStep({role:owner?'leader':'participant',application:mine.status,phase:state?.phase,count:people.length}):null
   // The menu sheet is loaded through the same component used by discovery.
   return <div className="baef-scroll"><div className="baef-page"><button className="baef-back" onClick={pop}><SmallIcon name="back"/>뒤로</button><div className="baef-group-head"><span className="baef-tag">{ended?'종료':open?'모집 중':'모집 마감'}</span><span>{p.member_count}/{p.max_members}명</span></div><h1 className="baef-detail-title">{p.restaurant}</h1><p className="baef-muted">{s.nickname(p.owner_id)}님이 함께 주문할 사람을 찾고 있어요.</p>
+    {next&&<section className="baef-current-order"><span className="baef-eyebrow">{owner?'리더 · 다음 할 일':'참가자 · 다음 할 일'}</span><h2>{next.title}</h2><p>{next.description}</p><button className="baef-button" onClick={()=>push(next.route)}>{next.action}<span aria-hidden="true">→</span></button>{mine?.status==='accepted'&&!ended&&<div className="baef-order-links"><button onClick={()=>push('chat')}>채팅방 열기</button>{owner&&next.route!=='applicants'&&<button onClick={()=>push('applicants')}>신청자 관리</button>}</div>}</section>}
     <dl className="baef-detail-facts"><dt>수령 제안 장소</dt><dd>{p.meeting}</dd><dt>모집 마감</dt><dd>{new Date(p.deadline).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</dd><dt>목표 주문금액</dt><dd>{money(p.min_order)}</dd><dt>배달비</dt><dd>총 {money(p.delivery_fee)} · {Math.ceil(p.delivery_fee/Math.max(2,p.member_count)).toLocaleString()}원씩 예상</dd></dl>
     {mine?.status==='accepted'&&<section className="baef-goal"><div><span>현재 모인 메뉴금액</span><b>{money(total)}</b></div><progress max={Math.max(1,p.min_order)} value={Math.min(total,p.min_order)} aria-label="주문 목표금액 달성도"/><p>{total>=p.min_order?'목표금액을 채웠어요. 주문 내용을 확인해 주세요.':`${money(p.min_order-total)} 더 모이면 목표금액을 채워요.`}</p></section>}
-    {mine?.status==='pending'&&mine.active&&<div className="baef-saved-intent"><span className="baef-pulse"/><div><b>참가 신청을 보냈어요</b><p>리더가 확인하면 채팅방에 참여할 수 있어요.</p></div></div>}
     {mine?.active&&<BasketEditor postId={p.id}/>}
     {people.length>0&&<OrderParticipants/>}
-    {mine?.status==='accepted'&&<button className="baef-button secondary" onClick={()=>push(order.state?.phase==='completed'?'complete':order.state?.phase==='cancelled'?'payment':'menu')}>주문 진행 보기</button>}
+    {mine?.status==='accepted'&&!mine.active&&<button className="baef-button secondary" onClick={()=>push(state?.phase==='completed'?'complete':state?.phase==='cancelled'?'payment':'menu')}>주문 진행 보기</button>}
     {mine?.status==='withdrawn'&&<button className="baef-button secondary" onClick={()=>push('payment')}>취소·환불 현황</button>}
-    {!ended&&mine?.status==='accepted'&&<button className="baef-button" onClick={()=>push(owner?'applicants':'chat')}>{owner?'신청자 관리 · 채팅':'채팅방 열기'}</button>}
     {!ended&&!mine?.active&&open&&<button className="baef-button" disabled={s.busy||s.active} onClick={()=>{if(!s.session){s.setLoginOpen(true);return}if(ownSelection)setSheet(true);else void s.act('apply',p.id)}}>{s.active?'다른 주문에 참여 중이에요':'메뉴 고르고 참가 신청'}</button>}
     {mine?.active&&!ended&&(!order.state||['menu','payment'].includes(order.state.phase))&&<button className="baef-text-cancel" disabled={s.busy} onClick={()=>{if(confirm(owner?'모집을 취소할까요? 송금 내역이 있으면 환불 확인이 필요해요.':'참가를 취소할까요? 확정된 금액은 다시 계산하고 송금 내역은 환불 확인에 남겨요.'))void s.act(owner?'cancel':'withdraw',p.id)}}>{owner?'모집 취소':'참가 취소'}</button>}
     {ended&&<p className="baef-muted">종료된 주문 모임이에요.</p>}

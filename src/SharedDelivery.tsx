@@ -292,14 +292,15 @@ export function SharedApplicants({ pop, push }: { pop: () => void; push: (s: 'ch
   const people=s.members.filter(m=>m.post_id===p.id&&m.status==='accepted')
   const closed=p.status!=='open'||new Date(p.deadline).getTime()<=Date.now()
   return <div className="flex-1 overflow-y-auto bg-gray-50"><header className="bg-white border-b border-gray-100 p-4 flex items-center gap-4"><button onClick={pop}>‹ 뒤로</button><h1 className="font-bold">신청자 관리</h1></header><div className="p-4 space-y-4">
-    <div className="bg-white rounded-2xl p-4 space-y-2"><h2 className="font-bold">{p.restaurant}</h2><p className="text-sm">현재 {p.member_count} / {p.max_members}명 · {closed?'모집 마감':'모집 중'}</p><p className="text-xs text-gray-500">함께 주문할 신청자를 확인해 주세요.</p></div>
+    <div className="bg-white rounded-2xl p-4 space-y-2"><h2 className="font-bold">{p.restaurant}</h2><p className="text-sm">현재 {p.member_count} / {p.max_members}명 · {closed?'모집 마감':'모집 중'}</p><p className="text-xs text-gray-500">신청자를 수락하면 각자 메뉴를 정할 수 있어요. 2명 이상 모이면 주문을 준비해 주세요.</p></div>
     {!pending.length && <p className="text-gray-500 text-sm text-center py-6">대기 중인 신청자가 없어요.</p>}
     {pending.map(m=><div key={m.id} className="bg-white rounded-2xl p-4 space-y-3"><p className="font-bold">{s.nickname(m.user_id)}</p><div className="flex gap-2">{[false,true].map(accept=><button key={String(accept)} disabled={s.busy||closed} className={`flex-1 py-3 rounded-xl font-bold text-sm disabled:opacity-40 ${accept?'bg-brand text-white':'border border-gray-200'}`} onClick={()=>void s.act(accept?'accept':'reject',p.id,{user_id:m.user_id})}>{accept?'수락':'거절'}</button>)}</div></div>)}
     <div className="bg-white rounded-2xl p-4"><h2 className="font-bold text-sm mb-2">참가자</h2>{people.map(m=><p className="text-sm py-1" key={m.id}>{s.nickname(m.user_id)} {m.user_id===p.owner_id?'· 리더':''}</p>)}</div>
-    <button className="w-full py-3 rounded-2xl bg-brand text-white font-bold" onClick={()=>push('chat')}>공동 채팅방 열기</button>
+    {!ended&&people.length>=2&&<button className="w-full py-3 rounded-2xl bg-brand text-white font-bold" onClick={()=>push('menu')}>메뉴 확인하고 주문 준비하기 →</button>}
+    <button className="w-full py-3 rounded-2xl border border-gray-200 text-sm" onClick={()=>push('chat')}>공동 채팅방 열기</button>
     {!ended && <>
       {!closed ? <button disabled={s.busy} className="w-full py-3 border border-gray-200 rounded-2xl text-sm" onClick={()=>{if(confirm('현재 멤버로 마감할까요? 대기 중인 신청은 종료돼요.'))void s.act('close',p.id)}}>현재 멤버로 모집 마감</button> : p.member_count<p.max_members&&new Date(p.deadline).getTime()>Date.now()&&<button disabled={s.busy} className="w-full py-3 border border-gray-200 rounded-2xl text-sm" onClick={()=>void s.act('reopen',p.id)}>빈자리 다시 모집</button>}
-      <button className="w-full py-3 text-sm text-brand" onClick={()=>push('menu')}>메뉴·송금·수령 진행으로</button>
+
     </>}
   </div></div>
 }

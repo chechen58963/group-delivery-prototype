@@ -1,0 +1,45 @@
+.baef-order-entry{display:grid;gap:10px;margin:24px 0 18px}
+.baef-order-entry>button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;border-radius:12px;padding:16px;min-height:76px}
+.baef-order-entry>button>span:first-child{min-width:0}
+.baef-order-entry b{display:block;font-size:15px;font-weight:700;line-height:1.5;word-break:keep-all}
+.baef-order-entry small{display:block;font-size:12px;line-height:1.6;margin-top:4px}
+.baef-entry-primary{background:var(--baef-accent);color:white;border:1px solid transparent}
+.baef-entry-primary small{color:white;opacity:.92}
+.baef-entry-secondary{background:var(--baef-canvas);border:1px solid var(--baef-line)}
+.baef-entry-secondary small{color:var(--baef-muted)}
+.baef-order-entry>button>span:last-child{font-size:20px;flex-shrink:0}
+.baef-menu-alert-settings{border-top:1px solid var(--baef-line);border-bottom:1px solid var(--baef-line)}
+.baef-menu-alert-settings>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0;cursor:pointer}
+.baef-menu-alert-settings>summary::-webkit-details-marker{display:none}
+.baef-menu-alert-settings>summary>span:first-child{min-width:0}
+.baef-menu-alert-settings>summary b{display:block;font-size:13px;font-weight:600}
+.baef-menu-alert-settings>summary small{display:block;font-size:12px;color:var(--baef-muted);line-height:1.6;margin-top:3px;overflow-wrap:anywhere}
+.baef-menu-alert-settings>summary>span:last-child{font-size:12px;color:var(--baef-muted);white-space:nowrap}
+.baef-menu-alert-settings>summary>span:last-child::after{content:' ⌄'}
+.baef-menu-alert-settings[open]>summary>span:last-child::after{content:' ⌃'}
+.baef-menu-alert-settings[open]{padding-bottom:18px}
+.baef-menu-alert-settings .baef-time{margin-top:2px}
+.baef-menu-alert-settings .baef-section-title h2{font-size:14px}
+.baef-app .baef-menu-alert-settings+.baef-browse-title{border-top:0;margin-top:24px;padding-top:0}
+.baef-current-order{background:var(--baef-field);border:1px solid var(--baef-line);border-radius:12px;padding:17px;margin:20px 0 24px}
+.baef-current-order h2{font-size:17px;line-height:1.5;font-weight:700;margin:6px 0}
+.baef-current-order>p{font-size:13px;color:var(--baef-muted);line-height:1.7}
+.baef-current-order .baef-button{margin-top:14px}
+.baef-order-links{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+.baef-order-links>button{font-size:13px;min-height:40px;text-decoration:underline;text-underline-offset:3px;color:var(--baef-muted)}
+.baef-route-steps{display:flex;gap:10px;margin:18px 0;list-style:none;padding:0}
+.baef-route-steps>li{display:flex;gap:5px;align-items:center;font-size:12px;color:var(--baef-muted);line-height:1.5;flex:1;word-break:keep-all}
+.baef-route-steps>li>span{display:grid;place-items:center;flex-shrink:0;width:21px;height:21px;border-radius:50%;background:var(--baef-field);border:1px solid var(--baef-line);font-size:11px}
+.baef-route-steps>li[aria-current]{color:var(--baef-accent);font-weight:650}
+.baef-route-steps>li[aria-current]>span{background:var(--baef-soft);border-color:var(--baef-accent)}
+.baef-sheet-content>.baef-route-steps{margin:0 0 14px}
+.baef-sheet-content>.baef-muted{margin-bottom:8px}
+.baef-order-guide{margin:18px 0;padding:14px;background:var(--baef-field);border-radius:10px}
+.baef-order-guide>b{display:block;font-size:14px;font-weight:650;line-height:1.6}
+.baef-order-guide>p{font-size:13px;line-height:1.7;color:var(--baef-muted);margin-top:5px}
+.baef-prep-checks{display:flex;flex-wrap:wrap;gap:8px 14px;padding:0;margin:14px 0 0;list-style:none}
+.baef-prep-checks>li{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--baef-muted)}
+.baef-prep-checks>li[data-done=true]{color:var(--baef-ink)}
+.baef-prep-checks>li[data-done=true]>span{color:var(--baef-accent)}
+.baef-route-copy{font-size:13px;line-height:1.7;color:var(--baef-muted);margin:4px 0 14px}
+@media(max-width:360px){.baef-order-entry b{font-size:14px}.baef-order-entry>button{padding:14px}.baef-route-steps{gap:6px}.baef-route-steps>li{font-size:12px;gap:4px}.baef-route-steps>li>span{width:19px;height:19px}.baef-current-order{padding:14px}.baef-menu-alert-settings>summary{gap:8px}}

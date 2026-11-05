@@ -8,6 +8,9 @@ import type { MatchLocation } from './matchingLocation'
 import { distanceM, useDeliveryLifecycle } from './DeliveryLifecycle'
 import type { MapPin } from './LocationMap'
 import FoodPhoto from './FoodPhoto'
+import { foodPhotoSource } from './foodPhotos'
+import { OrderGuide, OrderRouteSteps } from './OrderGuide'
+import { orderNextStep } from './orderGuidance'
 import { ButtonHint, SaveFeedback, relativeDateTime, useSaveFeedback } from './uiFeedback'
 const BrowseMap=lazy(()=>import('./LocationMap'))
 const MatchLocationPicker=lazy(()=>import('./MatchLocationPicker'))
@@ -19,7 +22,7 @@ export function SmallIcon({name}:{name:'home'|'people'|'chat'|'profile'|'bell'|'
 const foodName=(key:string)=>FOOD_CHOICES.find(f=>f.id===key)?.name??key
 function StorePhoto({store}:{store:MenuStore}){
   const s=CAMPUS_STORES.find(v=>v.name===store.store_name), f=FOOD_CHOICES.find(v=>v.id===store.menu_key)
-  return <FoodPhoto key={s?.imageId??f?.photo} symbol={s?.emoji??(store.menu_key==='coffee'?'☕':store.menu_key==='burger'?'🍔':'🥪')} src={`https://images.unsplash.com/photo-${s?.imageId??f?.photo}?auto=format&fit=crop&w=220&q=80`}/>
+  return <FoodPhoto key={store.menu_key} symbol={s?.emoji??(store.menu_key==='coffee'?'☕':store.menu_key==='burger'?'🍔':'🥪')} src={foodPhotoSource(store.menu_key,s?.imageId??f?.photo,220)}/>
 }
 
 export function LocationChoice(){
@@ -53,23 +56,27 @@ function StoreRows({onSelect,browse=false}:{onSelect:(store:MenuStore)=>void;bro
 }
 
 export function MenuHome({push}:{push:(s:Screen)=>void}){
-  const d=useMenuDiscovery(),s=useSharedDelivery()
+  const d=useMenuDiscovery(),s=useSharedDelivery(),o=useDeliveryLifecycle()
   const [store,setStore]=useState<MenuStore|null>(null)
   const findReason=s.active?'진행 중인 주문을 먼저 확인해 주세요.':!d.menus.length?'먹고 싶은 메뉴를 하나 이상 골라주세요.':!d.stores.length?'가능한 가게를 한 곳 이상 골라주세요.':''
-  const heading=d.day===1?'내일은,':new Date().getHours()>=16?'오늘 저녁,':'오늘은,'
+  const phase=o.states.find(v=>v.post_id===s.tx?.post.sharedId)?.phase
+  const next=s.tx?orderNextStep({role:s.tx.role,application:s.tx.application,phase,count:s.tx.people.length}):null
   return <div className="baef-scroll"><div className="baef-page">
     <LocationChoice/>
-    <section className="baef-question"><h1>{heading} 뭐 먹을까요?</h1><p>먹고 싶은 메뉴가 겹치면 알려드릴게요.</p></section>
-    {s.active&&s.tx&&<button className="baef-progress" onClick={()=>{s.selectPost(s.tx!.post.id);push(s.tx!.application==='pending'?'detail':s.tx!.role==='leader'?'applicants':'chat')}}><span className="baef-progress-icon"><SmallIcon name="people"/></span><span><small>{s.tx.application==='pending'?'신청 수락을 기다리고 있어요':'진행 중인 함께 주문'}</small><b>{s.tx.post.restaurant}</b></span><span>›</span></button>}
-    <div className="baef-section-title"><h2>먹고 싶은 메뉴</h2><span>여러 개 골라도 좋아요</span></div>
-    <div className="baef-food-options">{FOOD_CHOICES.map(f=><button key={f.id} className={`baef-food-option ${d.menus.includes(f.id)?'selected':''}`} aria-pressed={d.menus.includes(f.id)} onClick={()=>d.toggleMenu(f.id)}><span className="baef-food-image"><FoodPhoto symbol={f.id==='coffee'?'☕':f.id==='burger'?'🍔':'🥪'} src={`https://images.unsplash.com/photo-${f.photo}?auto=format&fit=crop&w=250&q=85`}/>{d.menus.includes(f.id)&&<span className="baef-check">✓</span>}</span><b>{f.name}</b></button>)}</div>
-    <section className="baef-time"><div className="baef-section-title"><h2>언제 먹을까요?</h2></div><div className="baef-time-inputs"><label><span>날짜</span><select value={d.day} onChange={e=>d.setDay(Number(e.target.value))}><option value={0}>오늘</option><option value={1}>내일</option></select></label><label><span>시간</span><select aria-label="희망 수령 시간" value={d.hour} onChange={e=>d.setHour(Number(e.target.value))}>{Array.from({length:12},(_,i)=>i+11).map(h=><option key={h} value={h} disabled={d.day===0&&h+1<=new Date().getHours()}>{h}:00–{h+1}:00</option>)}</select></label></div></section>
-    {!!d.candidateStores.length&&<details className="baef-store-preferences"><summary>가능한 가게 {d.stores.length}곳 <span>변경</span></summary><p className="baef-muted">주문해도 괜찮은 가게를 남겨주세요.</p>{d.candidateStores.map(c=><label key={c.store_name}><input type="checkbox" checked={d.stores.includes(c.store_name)} onChange={()=>d.toggleStore(c.store_name)}/><span>{c.store_name}</span></label>)}</details>}
-    <button className="baef-button" aria-describedby={findReason?'find-reason':undefined} disabled={d.saving||!!findReason} onClick={()=>void d.save()}>{d.saving?'선택 저장 중…':s.active?'진행 중인 주문이 있어요':'이 메뉴로 배프 찾기'}<span aria-hidden="true">→</span></button><ButtonHint id="find-reason" reason={findReason}/>
-    {d.intent&&<div className="baef-saved-intent"><span className="baef-pulse"/><div><b>{d.intent.menus.map(foodName).join(' · ')} 기다리는 중</b><p>{formatWindow(d.intent.starts_at,d.intent.ends_at)} · {areaName(d.intent.area_id)}</p></div><button aria-label="메뉴 기다리기 취소" onClick={()=>void d.cancel()}>취소</button></div>}
-    {d.intent&&d.intent.latitude==null&&<p className="baef-muted">거리 기준으로 배프를 찾으려면 출발 위치를 정한 뒤 선택을 다시 저장해 주세요.</p>}
+    <section className="baef-question"><h1>한 잔도, 한 끼도<br/>함께 주문해요.</h1><p>가게와 메뉴를 고르고, 함께할 배프를 모아요.</p></section>
+    {s.active&&s.tx&&next?<section className="baef-current-order"><span className="baef-eyebrow">진행 중 · {s.tx.post.restaurant}</span><h2>{next.title}</h2><p>{next.description}</p><button className="baef-button" onClick={()=>{s.selectPost(s.tx!.post.id);push(next.route)}}>{next.action}<span aria-hidden="true">→</span></button></section>:null}
+    <div className="baef-section-title"><h2>어떤 메뉴를 먹을까요?</h2><span>여러 개 선택 가능</span></div>
+    <div className="baef-food-options">{FOOD_CHOICES.map(f=><button key={f.id} className={`baef-food-option ${d.menus.includes(f.id)?'selected':''}`} aria-pressed={d.menus.includes(f.id)} onClick={()=>d.toggleMenu(f.id)}><span className="baef-food-image"><FoodPhoto symbol={f.id==='coffee'?'☕':f.id==='burger'?'🍔':'🥪'} src={foodPhotoSource(f.id,f.photo,250)}/>{d.menus.includes(f.id)&&<span className="baef-check">✓</span>}</span><b>{f.name}</b></button>)}</div>
+    {!s.active&&<section className="baef-order-entry" aria-label="주문 시작 방법"><button className="baef-entry-primary" onClick={()=>push('create')}><span><b>가게·메뉴 고르고 모집하기</b><small>내가 리더가 되어 함께 주문해요</small></span><span aria-hidden="true">→</span></button><button className="baef-entry-secondary" onClick={()=>push('list')}><span><b>모집 중인 주문에 참여하기</b><small>메뉴를 담고 리더에게 참가를 신청해요</small></span><span aria-hidden="true">→</span></button></section>}
+    <details className="baef-menu-alert-settings"><summary><span><b>{d.intent?'메뉴 알림 신청 중':'아직 가게를 못 정했다면?'}</b><small>{d.intent?`${d.intent.menus.map(foodName).join(' · ')} · ${formatWindow(d.intent.starts_at,d.intent.ends_at)}`:'먹고 싶은 메뉴가 겹치는 사람이 생기면 알려드려요'}</small></span><span>알림 설정</span></summary>
+      <section className="baef-time"><div className="baef-section-title"><h2>언제 먹을까요?</h2></div><div className="baef-time-inputs"><label><span>날짜</span><select value={d.day} onChange={e=>d.setDay(Number(e.target.value))}><option value={0}>오늘</option><option value={1}>내일</option></select></label><label><span>시간</span><select aria-label="희망 수령 시간" value={d.hour} onChange={e=>d.setHour(Number(e.target.value))}>{Array.from({length:12},(_,i)=>i+11).map(h=><option key={h} value={h} disabled={d.day===0&&h+1<=new Date().getHours()}>{h}:00–{h+1}:00</option>)}</select></label></div></section>
+      {!!d.candidateStores.length&&<details className="baef-store-preferences"><summary>가능한 가게 {d.stores.length}곳 <span>변경</span></summary><p className="baef-muted">주문해도 괜찮은 가게를 남겨주세요.</p>{d.candidateStores.map(c=><label key={c.store_name}><input type="checkbox" checked={d.stores.includes(c.store_name)} onChange={()=>d.toggleStore(c.store_name)}/><span>{c.store_name}</span></label>)}</details>}
+      <button className="baef-button secondary" aria-describedby={findReason?'find-reason':undefined} disabled={d.saving||!!findReason} onClick={()=>void d.save()}>{d.saving?'알림 신청 중…':s.active?'진행 중인 주문이 있어요':d.intent?'메뉴 알림 변경하기':'이 메뉴로 알림 받기'}</button><ButtonHint id="find-reason" reason={findReason}/>
+      {d.intent&&<div className="baef-saved-intent"><span className="baef-pulse"/><div><b>조건이 맞는 배프를 기다리고 있어요</b><p>{formatWindow(d.intent.starts_at,d.intent.ends_at)} · {areaName(d.intent.area_id)}</p></div><button aria-label="메뉴 기다리기 취소" onClick={()=>void d.cancel()}>취소</button></div>}
+      {d.intent&&d.intent.latitude==null&&<p className="baef-muted">거리 기준으로 배프를 찾으려면 출발 위치를 정한 뒤 선택을 다시 저장해 주세요.</p>}
+    </details>
     {d.error&&<p role="alert" className="baef-error">{d.error}</p>}
-    <div className="baef-section-title baef-browse-title"><h2>{d.menus.length?'선택한 메뉴가 있는 가게':'한 잔, 한 끼를 함께할 가게'}</h2><button onClick={()=>push('list')}>모두 보기</button></div>
+    <div className="baef-section-title baef-browse-title"><h2>{d.menus.length?'선택한 메뉴가 있는 가게':'가게를 골라 모집을 시작해요'}</h2><button onClick={()=>push('create')}>모두 보기</button></div>
     <StoreRows onSelect={setStore}/>
     {store&&<StoreSheet store={store} close={()=>setStore(null)} push={push}/>}
   </div></div>
@@ -89,6 +96,7 @@ export function TogetherScreen({push}:{push:(s:Screen)=>void}){
   if(d.matchLocation)pins.push({id:'me',point:{x:0,y:0},coordinates:d.matchLocation,label:'내 출발점',symbol:'나',kind:'me'})
   const resetScroll=()=>{d.listScroll.current=0;if(scroll.current)scroll.current.scrollTop=0}
   return <div ref={scroll} onScroll={e=>{d.listScroll.current=e.currentTarget.scrollTop}} className="baef-scroll"><div className="baef-page"><div className="baef-section-title"><h1 className="baef-page-title">함께 주문</h1><button className="baef-text-action" onClick={()=>push('create')}><SmallIcon name="plus"/>직접 모집</button></div>
+    <p className="baef-route-copy">{d.browseTab==='groups'?'모집 선택 → 내 메뉴 담기 → 참가 신청 → 리더 수락':'가게 선택 → 내 메뉴 담기 → 모집 등록'}</p>
     <div className="baef-search"><input aria-label="음식점·메뉴 검색" value={d.search} onChange={e=>{d.setSearch(e.target.value);resetScroll()}} placeholder="가게, 음식 종류, 메뉴 검색"/>{d.search&&<button aria-label="검색어 지우기" onClick={()=>{d.setSearch('');resetScroll()}}>×</button>}</div>
     <details className="baef-filter-details"><summary>검색 조건 <span>{d.browseCategory==='all'?'전체 메뉴':foodName(d.browseCategory)} · {d.sort==='near'?'가까운 순':'최근 순'}</span></summary><div className="baef-browse-controls"><label>메뉴<select aria-label="음식 카테고리" value={d.browseCategory} onChange={e=>{d.setBrowseCategory(e.target.value);resetScroll()}}><option value="all">전체 메뉴</option>{FOOD_CHOICES.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label><label>정렬<select aria-label="모집 정렬" value={d.sort} onChange={e=>{d.setSort(e.target.value as 'recent'|'near');resetScroll()}}><option value="recent">최근 모집순</option><option value="near">수령 장소 가까운 순</option></select></label></div></details>
     <div className="baef-tabs"><button className={d.browseTab==='groups'?'active':''} onClick={()=>d.setBrowseTab('groups')}>모집 중{s.session&&s.allowed&&s.ready?` ${groups.length}`:''}</button><button className={d.browseTab==='stores'?'active':''} onClick={()=>d.setBrowseTab('stores')}>가게 찾기</button></div>
@@ -137,13 +145,13 @@ export function StoreSheet({store,close,push,targetPostId}:{store:MenuStore;clos
       const saved=await d.saveBasket(result,items)
       if(!postId)await d.invite(result)
       if(!saved)s.setNotice('모집은 저장됐어요. 주문 상세에서 내 메뉴를 다시 저장해 주세요.')
-      submitted.current=true;d.storeDrafts.current.delete(draftKey)
+      if(saved)s.setNotice(postId?'참가 신청을 보냈어요. 리더가 수락하면 주문을 준비할 수 있어요.':'모집을 등록했어요. 신청자를 수락한 뒤 메뉴와 수령 장소를 확정해 주세요.');submitted.current=true;d.storeDrafts.current.delete(draftKey)
       s.selectPost(s.numberFor(result));close();push('detail')
     }finally{setPending(false)}
   }
   return <div className="baef-overlay" role="dialog" aria-modal="true" aria-labelledby="store-sheet-title" onKeyDown={e=>{if(e.key==='Escape'&&!pending)close()}}><section className="baef-sheet baef-menu-sheet">
     <header className="baef-sheet-title"><div><span className="baef-eyebrow">{foodName(store.menu_key)}</span><h2 id="store-sheet-title">{store.store_name}</h2></div><button ref={title} className="baef-icon-button" disabled={pending} aria-label="가게 메뉴 닫기" onClick={close}><SmallIcon name="close"/></button></header>
-    <div className="baef-sheet-content"><p className="baef-muted">내가 먹을 메뉴를 담고 함께 주문해요.</p>
+    <div className="baef-sheet-content"><OrderRouteSteps joining={!!targetPostId} current={targetPostId?0:1}/><p className="baef-muted">{targetPostId?'내 메뉴를 담아 신청하면 리더 수락 후 참여할 수 있어요.':'내 메뉴를 담고 모집을 등록하면 함께할 사람을 받을 수 있어요.'}</p>
       <div className="baef-menu-items">{store.menus.map(m=><div className="baef-menu-item" key={m.id}><div><b>{m.name}</b><span>{money(m.price)}</span></div><div className="baef-quantity"><button aria-label={`${m.name} 줄이기`} disabled={pending||!quantities[m.id]} onClick={()=>update('quantities',{...quantities,[m.id]:Math.max(0,(quantities[m.id]??0)-1)})}>−</button><span>{quantities[m.id]??0}</span><button aria-label={`${m.name} 추가`} disabled={pending||(quantities[m.id]??0)>=10} onClick={()=>update('quantities',{...quantities,[m.id]:(quantities[m.id]??0)+1})}>+</button></div></div>)}</div>
       {!targetPostId&&groups.length>0&&<section ref={existing} className="baef-existing-groups"><h3>참가할 모집 선택</h3>{groups.map(p=><div key={p.id}><span>{p.leaderName} · {p.currentMembers}/{p.maxMembers}명 · {p.deadline} 마감</span><button disabled={!!reason||pending||s.busy} title={reason||undefined} onClick={()=>void submit(p.sharedId)}>참가 신청</button></div>)}</section>}
       {!targetPostId&&<details className="baef-proposal-details" open={newOpen} onToggle={e=>setNewOpen(e.currentTarget.open)}><summary>새 모집으로 시작하기</summary><div className="baef-proposal-fields">
@@ -165,8 +173,9 @@ export function StoreSheet({store,close,push,targetPostId}:{store:MenuStore;clos
 }
 
 export function DiscoveryCreate({pop,push}:{pop:()=>void;push:(s:Screen)=>void}){
-  const d=useMenuDiscovery(),[store,setStore]=useState<MenuStore|null>(null)
-  return <div className="baef-scroll"><div className="baef-page"><button className="baef-back" onClick={pop}><SmallIcon name="back"/>뒤로</button><h1 className="baef-page-title">어느 가게에서 주문할까요?</h1><p className="baef-muted">메뉴를 담으면 바로 모집을 시작할 수 있어요.</p><div className="baef-store-list">{d.catalog.map(c=><button className="baef-store-row" key={c.store_name} onClick={()=>setStore(c)}><div className="baef-store-photo"><StorePhoto store={c}/></div><div className="baef-store-info"><small>{foodName(c.menu_key)}</small><h3>{c.store_name}</h3><p>목표 주문금액 {money(c.goal_amount)}</p></div><span>›</span></button>)}</div>{store&&<StoreSheet store={store} close={()=>setStore(null)} push={push}/>}</div></div>
+  const d=useMenuDiscovery(),s=useSharedDelivery(),[store,setStore]=useState<MenuStore|null>(null)
+  const visible=d.menus.length?d.candidateStores:d.catalog
+  return <div className="baef-scroll"><div className="baef-page"><button className="baef-back" onClick={pop}><SmallIcon name="back"/>뒤로</button><h1 className="baef-page-title">주문할 가게 선택</h1><OrderRouteSteps/><p className="baef-muted">가게를 골라 내 메뉴를 담으면 모집을 시작할 수 있어요.</p>{s.active?<OrderGuide title="이미 참여 중인 주문이 있어요" description="홈에서 진행 중인 주문을 먼저 확인해 주세요."/>:<div className="baef-store-list">{visible.map(c=><button className="baef-store-row" key={c.store_name} onClick={()=>setStore(c)}><div className="baef-store-photo"><StorePhoto store={c}/></div><div className="baef-store-info"><small>{foodName(c.menu_key)}</small><h3>{c.store_name}</h3><p>목표 주문금액 {money(c.goal_amount)}</p></div><span aria-hidden="true">›</span></button>)}{!visible.length&&<p className="baef-muted">선택한 메뉴의 가게를 불러오는 중이에요.</p>}</div>}{store&&<StoreSheet store={store} close={()=>setStore(null)} push={push}/>}</div></div>
 }
 
 export function BasketEditor({postId}:{postId:string}){
@@ -183,7 +192,7 @@ export function BasketEditor({postId}:{postId:string}){
   const total=orders.reduce((sum,b)=>sum+b.total,0)
   const active=s.members.some(m=>m.user_id===s.session?.user.id&&m.post_id===postId&&m.active)&&(!order.states.find(v=>v.post_id===postId)||order.states.find(v=>v.post_id===postId)?.phase==='menu')
   const accepted=s.members.some(m=>m.user_id===s.session?.user.id&&m.post_id===postId&&m.status==='accepted')
-  return <section className="baef-basket"><div className="baef-section-title"><h3>주문 메뉴</h3><span>{orders.length}/{people.length}명 선택</span></div><details><summary>내 메뉴 {basket?`· ${money(basket.total)}`:'고르기'}</summary><div className="baef-menu-items">{store.menus.map(m=><div className="baef-menu-item" key={m.id}><div><b>{m.name}</b><span>{money(m.price)}</span></div><div className="baef-quantity"><button aria-label={`${m.name} 줄이기`} disabled={!active||!quantities[m.id]} onClick={()=>{feedback.change();setQuantities(q=>({...q,[m.id]:Math.max(0,(q[m.id]??0)-1)}))}}>−</button><span>{quantities[m.id]??0}</span><button aria-label={`${m.name} 추가`} disabled={!active||(quantities[m.id]??0)>=10} onClick={()=>{feedback.change();setQuantities(q=>({...q,[m.id]:(q[m.id]??0)+1}))}}>+</button></div></div>)}</div><button className="baef-button" disabled={!active||d.saving||!Object.values(quantities).some(q=>q>0)} onClick={()=>{const version=feedback.begin();void d.saveBasket(postId,store.menus.filter(m=>(quantities[m.id]??0)>0).map(m=>({id:m.id,quantity:quantities[m.id]}))).then(ok=>{if(ok)feedback.saved(version)})}}>{d.saving?'저장 중…':'내 메뉴 저장'}</button><SaveFeedback status={feedback.status}/><ButtonHint reason={!active?'확정된 메뉴는 변경할 수 없어요.':!Object.values(quantities).some(q=>q>0)?'메뉴를 하나 이상 골라주세요.':''}/></details>
+  return <section className="baef-basket"><div className="baef-section-title"><h3>주문 메뉴</h3><span>{orders.length}/{people.length}명 선택</span></div><details open={!basket&&active}><summary>내 메뉴 {basket?`· ${money(basket.total)}`:'고르기'}</summary><div className="baef-menu-items">{store.menus.map(m=><div className="baef-menu-item" key={m.id}><div><b>{m.name}</b><span>{money(m.price)}</span></div><div className="baef-quantity"><button aria-label={`${m.name} 줄이기`} disabled={!active||!quantities[m.id]} onClick={()=>{feedback.change();setQuantities(q=>({...q,[m.id]:Math.max(0,(q[m.id]??0)-1)}))}}>−</button><span>{quantities[m.id]??0}</span><button aria-label={`${m.name} 추가`} disabled={!active||(quantities[m.id]??0)>=10} onClick={()=>{feedback.change();setQuantities(q=>({...q,[m.id]:(q[m.id]??0)+1}))}}>+</button></div></div>)}</div><button className="baef-button" disabled={!active||d.saving||!Object.values(quantities).some(q=>q>0)} onClick={()=>{const version=feedback.begin();void d.saveBasket(postId,store.menus.filter(m=>(quantities[m.id]??0)>0).map(m=>({id:m.id,quantity:quantities[m.id]}))).then(ok=>{if(ok)feedback.saved(version)})}}>{d.saving?'저장 중…':'내 메뉴 저장'}</button><SaveFeedback status={feedback.status}/><ButtonHint reason={!active?'확정된 메뉴는 변경할 수 없어요.':!Object.values(quantities).some(q=>q>0)?'메뉴를 하나 이상 골라주세요.':''}/></details>
     {accepted?<>{orders.map(b=><div className="baef-basket-person" key={b.user_id}><b>{s.nickname(b.user_id)}</b><p>{b.items.map(i=>`${i.name} ${i.quantity}개`).join(' · ')}</p><span>{money(b.total)}</span></div>)}
     <div className="baef-order-total"><span>현재 모인 메뉴금액</span><b>{money(total)}</b></div><p className="baef-muted">{total>=(p?.min_order??Infinity)?'목표 주문금액을 채웠어요. 메뉴와 금액을 함께 확인해 주세요.':`${money(Math.max(0,(p?.min_order??0)-total))} 더 모이면 목표금액을 채워요.`}</p></>:<p className="baef-muted">참가가 수락되면 함께 주문하는 메뉴와 금액을 확인할 수 있어요.</p>}{d.error&&<p className="baef-error">{d.error}</p>}
   </section>

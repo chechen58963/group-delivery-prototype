@@ -9,11 +9,14 @@ import type { MapPin } from './LocationMap'
 import './order-flow.css'
 import { WalkingRewardDetails as WalkingRewardPlan, WalkingRewardWallet } from './WalkingRewards'
 import { ButtonHint, SaveFeedback, useSaveFeedback } from './uiFeedback'
+import { OrderGuide } from './OrderGuide'
+import { orderNextStep } from './orderGuidance'
+import { useMenuDiscovery } from './MenuDiscoveryContext'
 const LocationMap=lazy(()=>import('./LocationMap'))
 const localDate=(value:string|null)=>value?new Date(new Date(value).getTime()-new Date(value).getTimezoneOffset()*60000).toISOString().slice(0,16):''
 type Navigate=(screen:Screen)=>void
-function InfoDetails({title,summary,children}:{title:string;summary:ReactNode;children:ReactNode}){
-  return <details className="baef-info-details"><summary><span>{title}</span><small>{summary}</small></summary><div className="baef-info-content">{children}</div></details>
+function InfoDetails({title,summary,children,initiallyOpen=false}:{title:string;summary:ReactNode;children:ReactNode;initiallyOpen?:boolean}){
+  return <details className="baef-info-details" open={initiallyOpen}><summary><span>{title}</span><small>{summary}</small></summary><div className="baef-info-content">{children}</div></details>
 }
 function ActionButton({children,onClick,secondary=false,disabled=false,disabledReason=''}:{children:ReactNode;onClick:()=>void;secondary?:boolean;disabled?:boolean;disabledReason?:string}){
   const o=useDeliveryLifecycle()
@@ -32,8 +35,8 @@ export function OrderProgress({push}:{push:Navigate}){
 }
 export function OrderChatControls({push}:{push:Navigate}){
   const o=useDeliveryLifecycle()
-  const target:Screen=o.state?.phase==='completed'?'complete':o.state?.phase==='arrived'?'receipt':o.state?.phase==='ordered'||o.state?.phase==='delivering'?'delivery':o.state?.phase==='payment'?'payment':'menu'
-  return <button className="chat-tool chat-order-link" aria-label={`${o.state?phaseLabel[o.state.phase]:'주문 진행'} · 주문 진행 보기`} onClick={()=>push(target)}>{o.state?phaseLabel[o.state.phase]:'주문 진행'}<span aria-hidden="true">→</span></button>
+  const next=orderNextStep({role:o.owner?'leader':'participant',application:'accepted',phase:o.state?.phase,count:o.members.length})
+  return <button className="chat-tool chat-order-link" onClick={()=>push(next.route)}>{next.action}<span aria-hidden="true">→</span></button>
 }
 export function PersonProfile({userId,close}:{userId:string;close:()=>void}){
   const s=useSharedDelivery(),o=useDeliveryLifecycle(),rep=o.reputation(userId)
@@ -61,7 +64,7 @@ export function MeetingTools(){
   if(o.state?.meeting_lat!=null&&o.state.meeting_lng!=null)pins.push({id:'meeting',point:{x:0,y:0},coordinates:{lat:o.state.meeting_lat,lng:o.state.meeting_lng},label:o.state.meeting,symbol:'만남',kind:'meeting'})
   if(candidate&&feasible)pins.push({id:'candidate',point:{x:0,y:0},coordinates:candidate,label:'중간 수령점 후보',symbol:'후보',kind:'meeting'})
   const form=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const version=feedback.begin(),f=new FormData(e.currentTarget);const time=String(f.get('time'));if(await o.act('meeting',{meeting:f.get('meeting'),time:time?new Date(time).toISOString():null}))feedback.saved(version)}
-  return <InfoDetails title="수령 장소와 시간" summary={<>{o.state?.meeting||o.post?.meeting||'장소 미정'} · {o.state?.meeting_time?new Date(o.state.meeting_time).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'시간 설정 필요'}{o.state?.nearby_requester&&!o.state.nearby_agreed&&' · 근처 수령 제안 동의 대기'}</>}>
+  return <InfoDetails title="수령 장소와 시간" initiallyOpen={o.state?.phase==='menu'&&!o.state.meeting_time} summary={<>{o.state?.meeting||o.post?.meeting||'장소 미정'} · {o.state?.meeting_time?new Date(o.state.meeting_time).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'시간 설정 필요'}{o.state?.nearby_requester&&!o.state.nearby_agreed&&' · 근처 수령 제안 동의 대기'}</>}>
     {editable&&<form key={`${o.selectedId}:${o.state?.meeting}`} className="baef-order-form" onChange={feedback.change} onSubmit={form}><label>합의한 공개 수령 장소<input name="meeting" defaultValue={o.state?.meeting||o.post?.meeting} maxLength={200} required/></label><label>수령 약속 시간<input name="time" type="datetime-local" defaultValue={localDate(o.state?.meeting_time??null)} required/></label><button className="baef-button secondary" disabled={o.busy}>{o.busy?'저장 중…':'장소·시간 저장'}</button><SaveFeedback status={feedback.status}/></form>}
     <details className="baef-order-details"><summary>참가자 위치·중간 지점 지도</summary><p className="baef-muted">내 위치 공유는 선택이에요. 공유한 위치는 이 모임의 참가자에게 표시돼요.</p>{o.mine?.latitude!=null?<ActionButton secondary onClick={()=>void o.act('share-location',{})}>내 위치 공유 끄기</ActionButton>:<><button className="baef-button secondary" disabled={currentLocation.loading} onClick={currentLocation.request}>현재 위치 확인</button><ActionButton secondary disabledReason={!currentLocation.coordinates?'현재 위치를 먼저 확인해 주세요.':''} onClick={()=>{const p=currentLocation.coordinates;if(p)void o.act('share-location',{lat:p.lat,lng:p.lng})}}>이 모임에 내 위치 공유</ActionButton></>}{currentLocation.error&&<p className="baef-error">{currentLocation.error}</p>}
       {!!pins.length&&<div className="baef-order-map"><Suspense fallback={<p>지도 불러오는 중…</p>}><LocationMap pins={pins} onSelect={()=>{}} title="함께 수령할 참가자와 장소" center={pins[0].coordinates}/></Suspense></div>}
@@ -71,11 +74,16 @@ export function MeetingTools(){
   </InfoDetails>
 }
 export function OrderMenu({pop,push}:{pop:()=>void;push:Navigate}){
-  const o=useDeliveryLifecycle(),s=useSharedDelivery(),accountFeedback=useSaveFeedback()
+  const o=useDeliveryLifecycle(),s=useSharedDelivery(),d=useMenuDiscovery(),accountFeedback=useSaveFeedback()
   if(!o.post)return <Page title="주문 진행" pop={pop}><p>참여 중인 모임을 선택해 주세요.</p></Page>
+  const orders=d.baskets.filter(b=>b.post_id===o.post!.id&&o.members.some(m=>m.user_id===b.user_id)&&b.total>0)
+  const amount=orders.reduce((sum,b)=>sum+b.total,0)
+  const meetingReady=!!o.state?.meeting&&!!o.state.meeting_time
+  const accountReady=!!o.state?.bank&&!!o.state.account&&!!o.state.holder
+  const finalizeReason=o.members.length<2?'함께 주문할 배프가 한 명 더 필요해요.':orders.length<o.members.length?'모든 참가자가 메뉴를 저장해야 해요.':amount<o.post.min_order?`목표금액까지 ${money(o.post.min_order-amount)} 더 필요해요.`:!meetingReady?'수령 장소와 시간을 저장해 주세요.':!accountReady?'송금받을 리더 계좌를 저장해 주세요.':''
   const account=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const version=accountFeedback.begin(),f=new FormData(e.currentTarget);if(await o.act('account',{bank:f.get('bank'),account:f.get('account'),holder:f.get('holder')})){accountFeedback.saved(version);s.setNotice('리더 계좌를 저장했어요.')}}
-  return <Page title="메뉴와 주문 확정" pop={pop}><BasketEditor postId={o.post.id}/><div className="baef-settings-group"><MeetingTools/>{o.owner&&o.state?.phase==='menu'&&<InfoDetails title="송금받을 리더 계좌" summary={o.state.bank&&o.state.account&&o.state.holder?`${o.state.bank} · ${o.state.holder}`:'계좌 등록 필요'}><form className="baef-order-form" key={o.post.id} onChange={accountFeedback.change} onSubmit={account}><label>은행<input name="bank" defaultValue={o.state.bank} maxLength={30} required/></label><label>계좌번호<input name="account" defaultValue={o.state.account} maxLength={40} required/></label><label>예금주<input name="holder" defaultValue={o.state.holder} maxLength={30} required/></label><button className="baef-button secondary" disabled={o.busy}>{o.busy?'저장 중…':'리더 계좌 저장'}</button><SaveFeedback status={accountFeedback.status}/></form></InfoDetails>}</div>
-    <div className="baef-next-action">{o.state?.phase==='menu'?(o.owner?<>{o.post.status==='open'?<ActionButton disabled={s.busy} onClick={()=>void s.act('close',o.post!.id)}>현재 인원으로 모집 마감</ActionButton>:<ActionButton disabledReason={o.post.status!=='closed'?'모집 마감 상태를 확인해 주세요.':''} onClick={()=>void o.act('finalize').then(ok=>{if(ok)push('payment')})}>주문 확정하고 송금으로</ActionButton>}<p className="baef-muted">모두 메뉴를 저장하고 목표금액을 채운 뒤 확정할 수 있어요.</p></>:<p className="baef-muted">내 메뉴를 저장하면 리더가 주문을 확정해요.</p>):<ActionButton onClick={()=>push(o.state?.phase==='completed'?'complete':'payment')}>다음 진행 확인</ActionButton>}</div><OrderParticipants/><WalkingRewardPlan/>
+  return <Page title="메뉴와 주문 확정" pop={pop}>{o.state?.phase==='menu'&&<><OrderGuide title={o.owner?'주문 전 준비를 마쳐 주세요':'내 메뉴를 먼저 확인해 주세요'} description={o.owner?'메뉴·수령 장소·계좌를 정하고 모집을 마감하면 송금 단계로 넘어갈 수 있어요.':'내 메뉴를 저장하고 채팅에서 장소와 시간을 정해요. 주문 확정은 리더가 진행해요.'}/><ul className="baef-prep-checks"><li data-done={orders.length===o.members.length&&orders.length>0}><span aria-hidden="true">{orders.length===o.members.length&&orders.length>0?'✓':'○'}</span>메뉴 {orders.length}/{o.members.length}명</li><li data-done={meetingReady}><span aria-hidden="true">{meetingReady?'✓':'○'}</span>수령 장소·시간</li>{o.owner&&<li data-done={accountReady}><span aria-hidden="true">{accountReady?'✓':'○'}</span>리더 계좌</li>}</ul></>}<BasketEditor postId={o.post.id}/><div className="baef-settings-group"><MeetingTools/>{o.owner&&o.state?.phase==='menu'&&<InfoDetails title="송금받을 리더 계좌" initiallyOpen={!accountReady} summary={o.state.bank&&o.state.account&&o.state.holder?`${o.state.bank} · ${o.state.holder}`:'계좌 등록 필요'}><form className="baef-order-form" key={o.post.id} onChange={accountFeedback.change} onSubmit={account}><label>은행<input name="bank" defaultValue={o.state.bank} maxLength={30} required/></label><label>계좌번호<input name="account" defaultValue={o.state.account} maxLength={40} required/></label><label>예금주<input name="holder" defaultValue={o.state.holder} maxLength={30} required/></label><button className="baef-button secondary" disabled={o.busy}>{o.busy?'저장 중…':'리더 계좌 저장'}</button><SaveFeedback status={accountFeedback.status}/></form></InfoDetails>}</div>
+    <div className="baef-next-action">{o.state?.phase==='menu'?(o.owner?<>{o.members.length<2?<ActionButton onClick={()=>push('applicants')}>함께할 배프·신청자 확인</ActionButton>:o.post.status==='open'?<ActionButton disabled={s.busy} onClick={()=>void s.act('close',o.post!.id)}>현재 인원으로 모집 마감</ActionButton>:<ActionButton disabledReason={o.post.status!=='closed'?'모집 마감 상태를 확인해 주세요.':finalizeReason} onClick={()=>void o.act('finalize').then(ok=>{if(ok)push('payment')})}>주문 확정하고 송금으로</ActionButton>}<p className="baef-muted">모두 메뉴를 저장하고 목표금액을 채운 뒤 확정할 수 있어요.</p></>:<><p className="baef-muted">리더가 주문을 확정하면 송금 단계가 열려요.</p><ActionButton secondary onClick={()=>push('chat')}>채팅에서 장소·시간 정하기</ActionButton></>):<ActionButton onClick={()=>push(o.state?.phase==='completed'?'complete':'payment')}>다음 진행 확인</ActionButton>}</div><OrderParticipants/><WalkingRewardPlan/>
   </Page>
 }
 export function OrderPayment({pop,push}:{pop:()=>void;push:Navigate}){
@@ -87,7 +95,7 @@ export function OrderPayment({pop,push}:{pop:()=>void;push:Navigate}){
   const platformSupport=o.state.coupon_funding==='platform'?members.reduce((sum,p)=>sum+p.coupon_discount,0):0
   const ledger=members.map(p=><div className="baef-ledger-person" key={p.user_id}><b>{s.nickname(p.user_id)}</b><span>{money(orderDue(p))}</span><small>{p.user_id===o.post!.owner_id?o.state!.leader_ready?'결제 준비 완료':'결제 준비 전':remainingTransfer(p)===0?'입금 확인 완료':p.claimed_amount>p.confirmed_amount?'리더 확인 대기':'송금 전'}</small>{o.owner&&p.user_id!==o.uid&&p.claimed_amount>p.confirmed_amount&&o.state!.phase==='payment'&&<ActionButton secondary onClick={()=>void o.act('confirm-transfer',{user_id:p.user_id})}>{s.nickname(p.user_id)} 입금 확인</ActionButton>}</div>)
   return <Page title={o.state.phase==='cancelled'?'취소·환불 현황':'리더에게 송금'} pop={pop}>
-    {o.state.phase!=='cancelled'&&<>
+    {o.state.phase!=='cancelled'&&<>{o.state.phase==='payment'&&<OrderGuide title={o.owner?'참가자의 입금 확인 → 배달앱에서 주문':'계좌 확인 → 송금 → 송금 완료 표시'} description={o.owner?'각 참가자의 입금을 확인한 뒤 배달앱에서 주문하고, 아래에서 주문 완료를 기록해 주세요.':'아래 계좌로 내 금액을 보내고 ‘송금했어요’를 눌러 주세요. 리더가 입금을 확인하고 최종 주문해요.'}/>}
       {o.mine&&<section className="baef-payment-amount"><span>{o.owner?'내 부담액':'총 송금액'}</span><strong>{money(orderDue(o.mine))}</strong>{!o.owner&&<p className="baef-muted">{remainingTransfer(o.mine)===0?'입금 확인 완료':o.mine.claimed_amount>o.mine.confirmed_amount?'리더 입금 확인 대기':`남은 송금액 ${money(remainingTransfer(o.mine))}`}</p>}<details className="baef-amount-breakdown"><summary>금액 상세</summary><div className="baef-bill"><p>내 음식값 <b>{money(o.mine.food_total)}</b></p><p>내 배달비 <b>{money(o.mine.fee)}</b></p>{o.mine.coupon_discount>0&&<p>{o.state.coupon_funding==='platform'?'배프 지원 쿠폰':'쿠폰'} <b>−{money(o.mine.coupon_discount)}</b></p>}</div></details></section>}
       <section className="baef-profile-section baef-bank-card"><h2>{o.state.bank} · {o.state.holder}</h2><p className="baef-account-number">{o.state.account}</p><button className="baef-text-action" onClick={()=>void navigator.clipboard.writeText(o.state!.account).then(()=>setCopy('계좌번호를 복사했어요.')).catch(()=>setCopy('복사하지 못했어요. 계좌번호를 직접 확인해 주세요.'))}>계좌번호 복사</button>{copy&&<p role="status" className="baef-muted">{copy}</p>}</section>
       {o.state.nearby_agreed&&<p className="baef-muted">내 근처 수령 · 요청자 {s.nickname(o.state.nearby_requester!)}님이 배달비 전액 부담</p>}
