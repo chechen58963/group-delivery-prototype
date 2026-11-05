@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { orderChangeNotice } from './orderChangeNotice'
 import { supabase } from './supabase'
 import { useSharedDelivery } from './SharedDelivery'
 
@@ -26,17 +27,20 @@ function useLifecycleState(){
   const [reviews,setReviews]=useState<OrderReview[]>([]),[reports,setReports]=useState<OrderReport[]>([]),[reputations,setReputations]=useState<Reputation[]>([])
   const [available,setAvailable]=useState(false),[error,setError]=useState(''),[loadError,setLoadError]=useState(''),[busy,setBusy]=useState(false)
   const pending=useRef(false),revision=useRef(0),currentUid=useRef(uid);currentUid.current=uid
+  const seenStates=useRef(new Map<string,OrderState>()),postsRef=useRef(s.rawPosts);postsRef.current=s.rawPosts
   useEffect(()=>{
     setStates([]);setPeople([]);setReviews([]);setReports([]);setReputations([]);setAvailable(false);setError('');setLoadError('')
+    seenStates.current.clear()
     if(!uid||!s.allowed)return
     let alive=true,running=false,seen:Map<string,string>|null=null
     const load=async()=>{
-      if(running)return;running=true;const generation=revision.current
+      if(running||pending.current)return;running=true;const generation=revision.current
       try{
         const r=await Promise.all([supabase.from('gd_order_states').select('*'),supabase.from('gd_order_people').select('*'),supabase.from('gd_reviews').select('*').order('created_at',{ascending:false}),supabase.from('gd_reports').select('*'),supabase.rpc('gd_reputation')])
         for(const v of r)if(v.error)throw v.error
-        if(!alive||generation!==revision.current)return
+        if(!alive||pending.current||generation!==revision.current)return
         const next=r[0].data as OrderState[]
+        for(const value of next){const post=postsRef.current.find(p=>p.id===value.post_id);if(!post)continue;const text=orderChangeNotice(seenStates.current.get(value.post_id),value,uid);if(text)s.addNotification(post,text,'menu');seenStates.current.set(value.post_id,value)}
         if(seen){const changed=next.find(v=>seen!.has(v.post_id)&&seen!.get(v.post_id)!==v.phase);if(changed)s.setNotice(`주문 상태가 ‘${phaseLabel[changed.phase]}’로 바뀌었어요.`)}
         seen=new Map(next.map(v=>[v.post_id,v.phase]));setStates(next);setPeople(r[1].data as OrderPerson[]);setReviews(r[2].data as OrderReview[]);setReports(r[3].data as OrderReport[]);setReputations(r[4].data as Reputation[]);setAvailable(true);setLoadError('')
       }catch(e){if(alive&&generation===revision.current){setAvailable(false);setLoadError(['PGRST202','PGRST205','42P01'].includes((e as {code?:string}).code??'')?'복원한 기능을 이용하려면 공유 저장소 업데이트가 필요해요.':(e as {message?:string}).message??'진행 상태를 불러오지 못했어요.')}}finally{running=false}
@@ -63,11 +67,12 @@ function useLifecycleState(){
     if(!available){setError('공유 저장소 업데이트 후 이용할 수 있어요.');return false}
     pending.current=true;setBusy(true);setError('')
     try{
-      const r=await supabase.rpc('gd_order_action',{p_action:action,p_post:postId,p_data:data});if(r.error)throw r.error
+      const r=action==='room-time'?await supabase.rpc('gd_update_room_time',{p_post:postId,p_start:data.start,p_end:data.end}):await supabase.rpc('gd_order_action',{p_action:action,p_post:postId,p_data:data});if(r.error)throw r.error
       if(currentUid.current!==uid)return false
       revision.current++
       const [updated,updatedPeople]=await Promise.all([supabase.from('gd_order_states').select('*').eq('post_id',postId).maybeSingle(),supabase.from('gd_order_people').select('*').eq('post_id',postId)])
       if(currentUid.current!==uid)return false
+      if(updated.data)seenStates.current.set(postId,updated.data as OrderState)
       if(updated.data)setStates(values=>[...values.filter(v=>v.post_id!==postId),updated.data as OrderState])
       if(updatedPeople.data)setPeople(values=>[...values.filter(v=>v.post_id!==postId),...updatedPeople.data as OrderPerson[]])
       if(action==='review'){
@@ -79,7 +84,7 @@ function useLifecycleState(){
       }
       window.dispatchEvent(new Event('shared-delivery-refresh'));window.dispatchEvent(new Event('menu-discovery-refresh'))
       return true
-    }catch(e){if(currentUid.current===uid)setError((e as {code?:string}).code==='23505'?'이미 저장한 평가 또는 신고예요.':(e as {message?:string}).message??'저장하지 못했어요.');return false}finally{pending.current=false;setBusy(false)}
+    }catch(e){if(currentUid.current===uid)setError(action==='room-time'&&(e as {code?:string}).code==='PGRST202'?'방 시간 변경을 사용하려면 DB 업데이트가 필요해요.':(e as {code?:string}).code==='23505'?'이미 저장한 평가 또는 신고예요.':(e as {message?:string}).message??'저장하지 못했어요.');return false}finally{pending.current=false;setBusy(false)}
   }
   const reputation=(id:string)=>reputations.find(v=>v.user_id===id)
   const myReputation=uid?reputation(uid):undefined

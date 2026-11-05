@@ -207,7 +207,7 @@ function useSharedState() {
     notice, setNotice, allowed, me, nickname, posts, tx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
-    notifications, setNotifications,
+    notifications, setNotifications, addNotification,
     login: async (email: string, password: string) => {
       if (!supabase) { setError('로그인 연결 설정이 필요해요.'); return }
       setAuthBusy(true); setError('')
