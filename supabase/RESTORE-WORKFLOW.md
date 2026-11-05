@@ -4,7 +4,7 @@
 
 현재 DB에 `setup.sql`과 `menu-discovery.sql`이 적용되어 있다면,
 Supabase의 SQL Editor에서 `APPLY-UPDATES.sql` 전체를 새 쿼리로 실행합니다.
-이 파일은 `distance-matching.sql`, `signup-profiles.sql`, `restore-workflow.sql`을 순서대로 묶은 파일입니다.
+이 파일은 `distance-matching.sql`, `signup-profiles.sql`, `restore-workflow.sql`, `walking-rewards.sql`을 순서대로 묶은 파일입니다.
 기존 사용자와 모집글을 삭제하지 않습니다. 실행 후 앱을 새로고침합니다.
 실제 DB 실행 및 두 실제 계정의 브라우저 검증은 별도이며, 코드 작성만으로 적용되지는 않습니다.
 

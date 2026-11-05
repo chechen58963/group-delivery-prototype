@@ -6,6 +6,7 @@ import { SharedAccountControl, SharedApplicants, SharedChat, useSharedDelivery }
 import { MenuDiscoveryProvider } from './MenuDiscoveryContext'
 import BaefShell from './BaefShell'
 import { DeliveryLifecycleProvider } from './DeliveryLifecycle'
+import { WalkingRewardsProvider } from './WalkingRewards'
 
 import { FlowProvider, MENU_BY_CATEGORY, useFlow } from "./FlowContext"
 
@@ -2182,7 +2183,7 @@ function ProfileScreen({ push }: { push: (s: Screen) => void }) {
 export default function App() {
   return (
     <FlowProvider initialPosts={DEMO_POSTS}>
-      <MenuDiscoveryProvider><DeliveryLifecycleProvider><BaefShell /></DeliveryLifecycleProvider></MenuDiscoveryProvider>
+      <MenuDiscoveryProvider><DeliveryLifecycleProvider><WalkingRewardsProvider><BaefShell /></WalkingRewardsProvider></DeliveryLifecycleProvider></MenuDiscoveryProvider>
     </FlowProvider>
   )
 }
