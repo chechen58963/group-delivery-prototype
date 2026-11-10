@@ -1,0 +1,476 @@
+[
+  {
+    "store_name": "써브웨이 대전충남대정문점",
+    "menu_key": "sandwich",
+    "goal_amount": 12000,
+    "source": "https://www.diningcode.com/profile.php?rid=denVMMONBpsd",
+    "menus": [
+      {
+        "id": 1,
+        "name": "에그마요 (15cm)",
+        "price": 7200
+      },
+      {
+        "id": 2,
+        "name": "이탈리안 비엠티 (15cm)",
+        "price": 8500
+      },
+      {
+        "id": 3,
+        "name": "로스트 치킨 (15cm)",
+        "price": 9000
+      },
+      {
+        "id": 4,
+        "name": "초코칩 쿠키",
+        "price": 2100
+      },
+      {
+        "id": 5,
+        "name": "스테이크 & 치즈 (15cm)",
+        "price": 10200
+      },
+      {
+        "id": 6,
+        "name": "로티세리 바비큐 치킨 (15cm)",
+        "price": 9500
+      },
+      {
+        "id": 7,
+        "name": "쉬림프 (15cm)",
+        "price": 9500
+      },
+      {
+        "id": 8,
+        "name": "참치 (15cm)",
+        "price": 7800
+      },
+      {
+        "id": 9,
+        "name": "비엘티 (15cm)",
+        "price": 8500
+      },
+      {
+        "id": 10,
+        "name": "베지 (15cm)",
+        "price": 6500
+      },
+      {
+        "id": 11,
+        "name": "더블 초코칩 쿠키",
+        "price": 2100
+      },
+      {
+        "id": 12,
+        "name": "화이트 초코 마카다미아 쿠키",
+        "price": 2100
+      }
+    ]
+  },
+  {
+    "store_name": "맘스터치 충남대점",
+    "menu_key": "burger",
+    "goal_amount": 12000,
+    "source": "https://order.momstouch.co.kr/momsmall/menu.jsp?menu_cd=001",
+    "menus": [
+      {
+        "id": 1,
+        "name": "싸이버거",
+        "price": 4900
+      },
+      {
+        "id": 2,
+        "name": "불싸이버거",
+        "price": 5100
+      },
+      {
+        "id": 3,
+        "name": "화이트갈릭버거",
+        "price": 5500
+      },
+      {
+        "id": 4,
+        "name": "간장마늘싸이버거",
+        "price": 5400
+      },
+      {
+        "id": 5,
+        "name": "휠렛버거",
+        "price": 4700
+      },
+      {
+        "id": 6,
+        "name": "딥치즈버거",
+        "price": 5400
+      },
+      {
+        "id": 7,
+        "name": "싸이플렉스버거",
+        "price": 8000
+      },
+      {
+        "id": 8,
+        "name": "인크레더블버거",
+        "price": 6200
+      },
+      {
+        "id": 9,
+        "name": "케이준양념감자 (중)",
+        "price": 2300
+      },
+      {
+        "id": 10,
+        "name": "코울슬로",
+        "price": 2000
+      },
+      {
+        "id": 11,
+        "name": "콘샐러드",
+        "price": 2000
+      },
+      {
+        "id": 12,
+        "name": "바삭크림치즈볼 (4조각)",
+        "price": 3700
+      }
+    ]
+  },
+  {
+    "store_name": "이디야커피 충대정문점",
+    "menu_key": "coffee",
+    "goal_amount": 8000,
+    "source": "https://ediya.com/contents/drink.html",
+    "menus": [
+      {
+        "id": 1,
+        "name": "카페 아메리카노",
+        "price": 3200
+      },
+      {
+        "id": 2,
+        "name": "카페 라떼",
+        "price": 4200
+      },
+      {
+        "id": 3,
+        "name": "토피 넛 라떼",
+        "price": 4200
+      },
+      {
+        "id": 4,
+        "name": "바닐라 라떼",
+        "price": 4500
+      },
+      {
+        "id": 5,
+        "name": "카페 모카",
+        "price": 4500
+      },
+      {
+        "id": 6,
+        "name": "카라멜 마끼아또",
+        "price": 4500
+      },
+      {
+        "id": 7,
+        "name": "콜드브루",
+        "price": 3900
+      },
+      {
+        "id": 8,
+        "name": "아이스티 복숭아",
+        "price": 2900
+      },
+      {
+        "id": 9,
+        "name": "초콜릿",
+        "price": 4200
+      },
+      {
+        "id": 10,
+        "name": "녹차 라떼",
+        "price": 4200
+      },
+      {
+        "id": 11,
+        "name": "딸기 요거트 플랫치노",
+        "price": 4500
+      },
+      {
+        "id": 12,
+        "name": "플레인 와플",
+        "price": 2900
+      }
+    ]
+  },
+  {
+    "store_name": "메가MGC커피 대전충남대정문점",
+    "menu_key": "coffee",
+    "goal_amount": 8000,
+    "source": "https://www.mega-mgccoffee.com/menu/menu.php",
+    "menus": [
+      {
+        "id": 1,
+        "name": "메가리카노",
+        "price": 3000
+      },
+      {
+        "id": 2,
+        "name": "퐁크러쉬플레인",
+        "price": 3900
+      },
+      {
+        "id": 3,
+        "name": "쿠키프라페",
+        "price": 3900
+      },
+      {
+        "id": 4,
+        "name": "아메리카노 (ICED)",
+        "price": 2000
+      },
+      {
+        "id": 5,
+        "name": "카페라떼",
+        "price": 2900
+      },
+      {
+        "id": 6,
+        "name": "바닐라라떼",
+        "price": 3400
+      },
+      {
+        "id": 7,
+        "name": "카라멜마끼아또",
+        "price": 3700
+      },
+      {
+        "id": 8,
+        "name": "복숭아아이스티",
+        "price": 3000
+      },
+      {
+        "id": 9,
+        "name": "딸기라떼",
+        "price": 3900
+      },
+      {
+        "id": 10,
+        "name": "레몬에이드",
+        "price": 3500
+      },
+      {
+        "id": 11,
+        "name": "청포도에이드",
+        "price": 3500
+      },
+      {
+        "id": 12,
+        "name": "플레인요거트스무디",
+        "price": 3900
+      }
+    ]
+  },
+  {
+    "store_name": "컴포즈커피 대전충남대점",
+    "menu_key": "coffee",
+    "goal_amount": 8000,
+    "source": "https://www.diningcode.com/profile.php?rid=oibRJriHrERW",
+    "menus": [
+      {
+        "id": 1,
+        "name": "아메리카노 (HOT)",
+        "price": 1500
+      },
+      {
+        "id": 2,
+        "name": "아메리카노 (ICED)",
+        "price": 1800
+      },
+      {
+        "id": 3,
+        "name": "카페라떼",
+        "price": 2900
+      },
+      {
+        "id": 4,
+        "name": "바닐라라떼",
+        "price": 3300
+      },
+      {
+        "id": 5,
+        "name": "카라멜마끼아또",
+        "price": 3500
+      },
+      {
+        "id": 6,
+        "name": "카페모카",
+        "price": 3500
+      },
+      {
+        "id": 7,
+        "name": "딸기라떼",
+        "price": 3800
+      },
+      {
+        "id": 8,
+        "name": "쿠키초코프라페",
+        "price": 3900
+      }
+    ]
+  },
+  {
+    "store_name": "빽다방 충남대후문점",
+    "menu_key": "coffee",
+    "goal_amount": 8000,
+    "source": "https://www.diningcode.com/profile.php?rid=DKaBidm6hsYx",
+    "menus": [
+      {
+        "id": 1,
+        "name": "앗!메리카노 (HOT)",
+        "price": 1500
+      },
+      {
+        "id": 2,
+        "name": "바닐라라떼 (HOT)",
+        "price": 3000
+      },
+      {
+        "id": 3,
+        "name": "원조커피 (HOT)",
+        "price": 2000
+      },
+      {
+        "id": 4,
+        "name": "완전초코 (ICED)",
+        "price": 3500
+      },
+      {
+        "id": 5,
+        "name": "옥수크림",
+        "price": 2500
+      },
+      {
+        "id": 6,
+        "name": "사라다빵",
+        "price": 2500
+      },
+      {
+        "id": 7,
+        "name": "아이스티샷추가 (아샷추)",
+        "price": 3000
+      },
+      {
+        "id": 8,
+        "name": "원조커피 (ICED)",
+        "price": 2500
+      }
+    ]
+  },
+  {
+    "store_name": "롯데리아 충남대점",
+    "menu_key": "burger",
+    "goal_amount": 12000,
+    "source": "https://www.diningcode.com/profile.php?rid=GtB8KA659xRE",
+    "menus": [
+      {
+        "id": 1,
+        "name": "리아 사각새우 더블 세트",
+        "price": 9900
+      },
+      {
+        "id": 2,
+        "name": "모짜렐라 인 더 버거 베이컨 세트",
+        "price": 11700
+      },
+      {
+        "id": 3,
+        "name": "새우버거",
+        "price": 6000
+      },
+      {
+        "id": 4,
+        "name": "치킨버거",
+        "price": 5400
+      },
+      {
+        "id": 5,
+        "name": "데리버거",
+        "price": 4700
+      },
+      {
+        "id": 6,
+        "name": "치킨휠레 (4조각)",
+        "price": 6400
+      },
+      {
+        "id": 7,
+        "name": "화이어윙 (2조각)",
+        "price": 4300
+      },
+      {
+        "id": 8,
+        "name": "치킨휠레 (2조각)",
+        "price": 4200
+      },
+      {
+        "id": 9,
+        "name": "치킨다리 (1조각)",
+        "price": 4000
+      },
+      {
+        "id": 10,
+        "name": "치킨다리 하프팩 (코울슬로)",
+        "price": 12500
+      }
+    ]
+  },
+  {
+    "store_name": "더벤티 충남대점",
+    "menu_key": "coffee",
+    "goal_amount": 8000,
+    "source": "https://www.diningcode.com/profile.php?rid=KRahYP37KFyr",
+    "menus": [
+      {
+        "id": 1,
+        "name": "아이스 아메리카노",
+        "price": 2000
+      },
+      {
+        "id": 2,
+        "name": "허니레몬에이드",
+        "price": 3900
+      },
+      {
+        "id": 3,
+        "name": "바닐라딥라떼 (HOT)",
+        "price": 3700
+      },
+      {
+        "id": 4,
+        "name": "저당 말차라떼 (HOT)",
+        "price": 3500
+      },
+      {
+        "id": 5,
+        "name": "더쌍화라떼 (HOT)",
+        "price": 3800
+      },
+      {
+        "id": 6,
+        "name": "디카페인 코코넛라떼 (HOT)",
+        "price": 4500
+      },
+      {
+        "id": 7,
+        "name": "오렌지과채주스",
+        "price": 4300
+      },
+      {
+        "id": 8,
+        "name": "카페라떼",
+        "price": 3000
+      }
+    ]
+  }
+]

@@ -1,4 +1,5 @@
 import type { MenuItem, Post } from "./workflow"
+import expandedCatalog from "./catalogExpansion.json"
 
 export const CAMPUS_CENTER = { lat: 36.3621, lng: 127.3444 }
 export const CAMPUS_LOCATION = "충남대학교 정문 주변"
@@ -21,7 +22,7 @@ function store(name: string, category: string, emoji: string, source: string, de
 }
 // First five stores retain their order so existing recruitment IDs remain stable.
 // Reputation, recruitment locations and minimum order conditions are simulated.
-export const CAMPUS_STORES: Store[] = [
+const baseCampusStores: Store[] = [
   store("bhc 대전궁동점", "치킨", "🍗", "https://www.diningcode.com/profile.php?rid=ti2FyS4YcLQd", 20000, [
     ["뿌링클", 21000, "치킨"], ["콰삭킹", 21000, "치킨"], ["커링클", 21900, "치킨"], ["크리스피번(밀크)", 5500, "사이드"],
   ]),
@@ -58,6 +59,14 @@ export const CAMPUS_STORES: Store[] = [
   store("봉구스밥버거 충남대점", "한식", "🍚", "https://www.diningcode.com/profile.php?rid=rXa2Plvb2Zey", 10000, [
     ["햄치즈", 4300, "밥버거"], ["봉구퀸", 6500, "밥버거"], ["육개장 사발면", 1200, "사이드"], ["펩시제로", 1300, "음료"],
   ]),
+]
+// Append menu IDs only; keep all existing store indexes and ordered menu identities.
+export const CAMPUS_STORES: Store[] = [
+  ...baseCampusStores.map(original => {
+    const expanded=expandedCatalog.find(c=>c.store_name===original.name)
+    return expanded?{...original,menus:expanded.menus.map(m=>({...m,category:original.category})),menuSource:expanded.source}:original
+  }),
+  ...expandedCatalog.filter(c=>!baseCampusStores.some(s=>s.name===c.store_name)).map(c=>store(c.store_name,c.menu_key==='coffee'?'카페':c.menu_key==='burger'?'버거':'패스트푸드',c.menu_key==='coffee'?'☕':c.menu_key==='burger'?'🍔':'🥪',c.source,c.goal_amount,c.menus.map(m=>[m.name,m.price,c.menu_key==='coffee'?'음료':c.menu_key==='burger'?'버거':'샌드위치'])))
 ]
 const oldStoreIndexes = Array.from({ length: 12 }, (_, i) => i % 5)
 const addedStoreIndexes = CAMPUS_STORES.slice(5).flatMap((_, i) => [i + 5, i + 5])
