@@ -148,3 +148,4 @@
 # Small web photographs must be present in ordinary hosting checkouts.
 public/images/burger.jpg -filter -diff -merge -text
 public/images/coffee.jpg -filter -diff -merge -text
+public/images/reward-*.jpg -filter -diff -merge -text
