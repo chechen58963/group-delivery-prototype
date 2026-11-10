@@ -8,6 +8,7 @@ import type { MatchLocation } from './matchingLocation'
 import { distanceM, useDeliveryLifecycle } from './DeliveryLifecycle'
 import type { MapPin } from './LocationMap'
 import FoodPhoto from './FoodPhoto'
+import StoreBrand from './StoreBrand'
 import { matchPrompts } from './matchPrompts'
 import { foodPhotoSource } from './foodPhotos'
 import { OrderGuide, OrderRouteSteps } from './OrderGuide'
@@ -27,7 +28,7 @@ export function SmallIcon({name}:{name:'home'|'people'|'chat'|'profile'|'bell'|'
 const foodName=(key:string)=>FOOD_CHOICES.find(f=>f.id===key)?.name??key
 function StorePhoto({store}:{store:MenuStore}){
   const s=CAMPUS_STORES.find(v=>v.name===store.store_name), f=FOOD_CHOICES.find(v=>v.id===store.menu_key)
-  return <FoodPhoto key={store.menu_key} symbol={s?.emoji??(store.menu_key==='coffee'?'☕':store.menu_key==='burger'?'🍔':'🥪')} src={foodPhotoSource(store.menu_key,s?.imageId??f?.photo,220)}/>
+  return <StoreBrand name={store.store_name} fallback={<FoodPhoto key={store.menu_key} symbol={s?.emoji??(store.menu_key==='coffee'?'☕':store.menu_key==='burger'?'🍔':'🥪')} src={foodPhotoSource(store.menu_key,s?.imageId??f?.photo,220)}/>}/>
 }
 
 export function LocationChoice(){
@@ -197,7 +198,7 @@ export function StoreSheet({store,close,push,targetPostId}:{store:MenuStore;clos
     }finally{setPending(false)}
   }
   return <div className="baef-overlay" role="dialog" aria-modal="true" aria-labelledby="store-sheet-title" onKeyDown={e=>{if(e.key==='Escape'&&!pending)close()}}><section className="baef-sheet baef-menu-sheet">
-    <header className="baef-sheet-title"><div><span className="baef-eyebrow">{foodName(store.menu_key)}</span><h2 id="store-sheet-title">{store.store_name}</h2></div><button ref={title} className="baef-icon-button" disabled={pending} aria-label="가게 메뉴 닫기" onClick={close}><SmallIcon name="close"/></button></header>
+    <header className="baef-sheet-title"><div className="baef-store-heading"><div className="baef-store-photo"><StorePhoto store={store}/></div><div><span className="baef-eyebrow">{foodName(store.menu_key)}</span><h2 id="store-sheet-title">{store.store_name}</h2></div></div><button ref={title} className="baef-icon-button" disabled={pending} aria-label="가게 메뉴 닫기" onClick={close}><SmallIcon name="close"/></button></header>
     <div className="baef-sheet-content"><OrderRouteSteps joining={!!targetPostId} current={targetPostId?0:1}/><p className="baef-muted">{targetPostId?'내 메뉴를 담아 신청하면 리더 수락 후 참여할 수 있어요.':'내 메뉴를 담고 모집을 등록하면 함께할 사람을 받을 수 있어요.'}</p>
       <div className="baef-menu-items">{store.menus.map(m=><div className="baef-menu-item" key={m.id}><div><b>{m.name}</b><span>{money(m.price)}</span></div><div className="baef-quantity"><button aria-label={`${m.name} 줄이기`} disabled={pending||!quantities[m.id]} onClick={()=>update('quantities',{...quantities,[m.id]:Math.max(0,(quantities[m.id]??0)-1)})}>−</button><span>{quantities[m.id]??0}</span><button aria-label={`${m.name} 추가`} disabled={pending||(quantities[m.id]??0)>=10} onClick={()=>update('quantities',{...quantities,[m.id]:(quantities[m.id]??0)+1})}>+</button></div></div>)}</div>
       {!targetPostId&&groups.length>0&&<section ref={existing} className="baef-existing-groups"><h3>참가할 모집 선택</h3>{groups.map(p=>{const room=s.rawPosts.find(v=>v.id===p.sharedId),cost=estimatedBill(sum,room?.delivery_fee??3000,Math.min(p.maxMembers,p.currentMembers+1));return <div key={p.id}><span>{p.leaderName} · {p.currentMembers}/{p.maxMembers}명 · {p.deadline} 마감<br/>내 예상 합계 {money(cost.total)} · 배달비 {money(cost.share)}</span><button disabled={!!reason||pending||s.busy} title={reason||undefined} onClick={()=>void submit(p.sharedId)}>참가 신청</button></div>})}</section>}
