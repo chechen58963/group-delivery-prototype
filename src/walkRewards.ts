@@ -7,3 +7,8 @@ export function walkProgress(total:number){
   const progress=total%WALK_MILESTONE_METERS
   return {progress,remaining:WALK_MILESTONE_METERS-progress,earned:Math.floor(total/WALK_MILESTONE_METERS)*WALK_MILESTONE_POINTS}
 }
+
+export const WALK_COMPLETION_POINTS=20
+export const WALK_METERS_PER_POINT=5
+export const WALK_DAILY_LIMIT=200
+export const orderRewardEstimate=(meters:number,today:number)=>Math.min(20+Math.floor(Math.max(0,Math.min(400,meters))/5),Math.max(0,200-today))
