@@ -1,0 +1,4 @@
+.baef-active-origin{margin:16px 0;padding:14px;background:var(--baef-field);border:1px solid var(--baef-line);border-radius:10px;font-size:13px;line-height:1.7}
+.baef-active-origin b{display:block;font-size:14px}.baef-active-origin p{margin:6px 0;overflow-wrap:anywhere}.baef-active-origin small{display:block;color:var(--baef-muted);font-size:12px}
+.baef-location-map-sheet{max-height:96%;padding-top:16px}.baef-location-map-sheet .baef-origin-map{height:clamp(200px,37dvh,360px);margin-top:12px}
+.baef-origin-actions{display:flex;gap:8px;margin-top:10px}.baef-origin-actions>.baef-button{margin:0;flex:1;font-size:12px;min-width:0;padding:10px 8px}

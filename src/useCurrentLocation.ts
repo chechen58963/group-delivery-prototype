@@ -22,15 +22,19 @@ export function useCurrentLocation(fallback: string) {
   const sequence = useRef(0)
   const pending = useRef(false)
   const alive = useRef(true)
+  const inFlight=useRef<Promise<CurrentCoordinates|null>|null>(null)
+  const resolveRequest=useRef<((value:CurrentCoordinates|null)=>void)|null>(null)
+  const finish=(value:CurrentCoordinates|null)=>{resolveRequest.current?.(value);resolveRequest.current=null;inFlight.current=null}
   const save = useCallback((next: LocationChoice) => {
     setChoice(next)
     try { sessionStorage.setItem(KEY, JSON.stringify(next)) } catch { /* Keep the current session in memory. */ }
   }, [])
   const request = useCallback(() => {
-    if (pending.current) return
-    if (!window.isSecureContext) { setError('위치 확인에는 HTTPS 접속이 필요해요. 배포 사이트 또는 이 PC의 localhost 주소를 이용해 주세요.'); return }
-    if (!navigator.geolocation) { setError('이 브라우저에서는 현재 위치를 가져올 수 없어요. 위치를 직접 입력해 주세요.'); return }
+    if (pending.current) return inFlight.current!
+    if (!window.isSecureContext) { setError('위치 확인에는 HTTPS 접속이 필요해요. 배포 사이트 또는 이 PC의 localhost 주소를 이용해 주세요.'); return Promise.resolve(null) }
+    if (!navigator.geolocation) { setError('이 브라우저에서는 현재 위치를 가져올 수 없어요. 위치를 직접 입력해 주세요.'); return Promise.resolve(null) }
     pending.current = true
+    const result=new Promise<CurrentCoordinates|null>(resolve=>{resolveRequest.current=resolve});inFlight.current=result
     const current = ++sequence.current
     setLoading(true); setError('')
     const success = (position: GeolocationPosition) => {
@@ -38,9 +42,10 @@ export function useCurrentLocation(fallback: string) {
       pending.current = false; setLoading(false)
       const { latitude: lat, longitude: lng, accuracy } = position.coords
       if (!Number.isFinite(lat) || Math.abs(lat)>90 || !Number.isFinite(lng) || Math.abs(lng)>180 || !Number.isFinite(accuracy) || accuracy<0) {
-        setError('정상적인 위치를 받지 못했어요. 다시 시도해 주세요.'); return
+        setError('정상적인 위치를 받지 못했어요. 다시 시도해 주세요.'); finish(null); return
       }
-      save({ label: '현재 위치', source: 'gps', coordinates: { lat, lng, accuracy, updatedAt: Date.now() } })
+      const coordinates={lat,lng,accuracy,updatedAt:Date.now()}
+      save({ label:'현재 위치',source:'gps',coordinates });finish(coordinates)
     }
     const failure = (reason: GeolocationPositionError) => {
       if (!alive.current || sequence.current !== current) return
@@ -50,6 +55,7 @@ export function useCurrentLocation(fallback: string) {
         : reason.code === 3
           ? '위치를 확인하는 데 시간이 오래 걸려요. 기기 위치 설정을 확인하고 다시 시도해 주세요.'
           : '현재 위치를 확인할 수 없어요. 기기의 위치 기능을 켜거나 직접 입력해 주세요.')
+      finish(null)
     }
     // Desktop devices may not provide a high-accuracy fix; retry using the browser's coarse location.
     navigator.geolocation.getCurrentPosition(success, reason => {
@@ -58,16 +64,17 @@ export function useCurrentLocation(fallback: string) {
         navigator.geolocation.getCurrentPosition(success, failure, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 })
       else failure(reason)
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 })
+    return result
   }, [save])
   useEffect(() => {
     alive.current = true
     // Defer one tick so StrictMode's setup/cleanup does not open two permission requests.
     const timer = setTimeout(() => { if (choice.source !== 'manual') request() }, 0)
-    return () => { clearTimeout(timer); alive.current = false; sequence.current++; pending.current = false }
+    return () => { clearTimeout(timer); alive.current = false; sequence.current++; pending.current = false;finish(null) }
   }, [request])
   const manual = useCallback((label: string) => {
     if (!label.trim()) return
-    sequence.current++; pending.current = false; setLoading(false); setError('')
+    sequence.current++; pending.current = false; finish(null);setLoading(false); setError('')
     save({ label: label.trim(), source: 'manual', coordinates: null })
   }, [save])
   return { label: choice.label, coordinates: choice.coordinates, source: choice.source, loading, error, request, manual }

@@ -16,6 +16,7 @@ import { ButtonHint, SaveFeedback, relativeDateTime, useSaveFeedback } from './u
 import { pickupDay } from './pickupTime'
 import { compareKnownDistance, deliveryWindow, estimatedBill, initialDeliverySlot } from './discoveryHelpers'
 import './discovery-fixes.css'
+import './location-choice.css'
 const BrowseMap=lazy(()=>import('./LocationMap'))
 const MatchLocationPicker=lazy(()=>import('./MatchLocationPicker'))
 
@@ -31,20 +32,35 @@ function StorePhoto({store}:{store:MenuStore}){
 
 export function LocationChoice(){
   const d=useMenuDiscovery(),{currentLocation}=useFlow()
-  const [open,setOpen]=useState(false)
-  const [pickMap,setPickMap]=useState(false),[point,setPoint]=useState<MatchLocation|null>(null)
+  const [open,setOpen]=useState(false),[pickMap,setPickMap]=useState(false),[point,setPoint]=useState<MatchLocation|null>(null)
+  const [feedback,setFeedback]=useState(''),requestVersion=useRef(0)
+  const useGPS=async()=>{
+    const version=++requestVersion.current;setFeedback('')
+    const coordinates=await currentLocation.request()
+    if(requestVersion.current!==version)return
+    if(coordinates){d.setMatchLocation(null);setPickMap(false);setFeedback('현재 위치를 출발점으로 적용했어요.')}
+    else setFeedback('위치를 바꾸지 않았어요. 다시 시도하거나 지도에서 선택해 주세요.')
+  }
+  const active=d.matchLocation
   return <>
-    <button className="baef-location" onClick={()=>setOpen(true)} aria-label="수령 지역 설정"><SmallIcon name="pin"/><span>{areaName(d.area)}</span><span aria-hidden="true">⌄</span></button>
-    {open&&<div className="baef-overlay" role="dialog" aria-modal="true" aria-labelledby="pickup-title" onKeyDown={e=>{if(e.key==='Escape')setOpen(false)}}><section className="baef-sheet baef-small-sheet"><div className="baef-sheet-title"><h2 id="pickup-title">어디에서 받을까요?</h2><button className="baef-icon-button" aria-label="수령 지역 닫기" onClick={()=>setOpen(false)}><SmallIcon name="close"/></button></div>
-      <p className="baef-muted">수령 지역이 달라도, 각자 400m 이내에서 만날 수 있는 배프를 찾아요.</p>
-      {PICKUP_AREAS.map(a=><button key={a.id} className={`baef-area-option ${a.id===d.area?'selected':''}`} onClick={()=>{d.setArea(a.id);setOpen(false)}}><span><b>{a.name}</b><small>{a.detail}</small></span><span>{a.id===d.area?'✓':'›'}</span></button>)}
-      <p className="baef-muted">지역은 희망 수령 장소예요. 매칭은 아래의 내 출발 위치를 기준으로 해요.<br/>거리 기준은 직선거리이며, 실제 걷는 경로와 수령 장소는 함께 확인해 주세요.</p>
-      <button disabled={currentLocation.loading} className="baef-button secondary" onClick={()=>{d.setMatchLocation(null);setPickMap(false);currentLocation.request()}}><SmallIcon name="pin"/>{currentLocation.loading?'현재 위치 확인 중…':'현재 위치 사용'}</button>
-      <button className="baef-button secondary" onClick={()=>{setPoint(d.matchLocation);setPickMap(v=>!v)}}>지도에서 내 출발 위치 지정</button>
-      {pickMap&&<><p className="baef-muted">지도에서 내가 출발할 곳을 눌러 주세요.</p><Suspense fallback={<p className="baef-muted">지도 불러오는 중…</p>}><MatchLocationPicker point={point} onChange={setPoint}/></Suspense><button className="baef-button" disabled={!point} onClick={()=>{d.setMatchLocation(point);setPickMap(false)}}>이 위치를 출발점으로 사용</button></>}
-      {d.manualLocation&&<p className="baef-muted">지도에 지정한 출발 위치를 사용 중이에요.</p>}
-      {currentLocation.coordinates&&<p className="baef-muted">현재 위치 · {currentLocation.coordinates.lat.toFixed(4)}, {currentLocation.coordinates.lng.toFixed(4)}<br/>정확도 약 {Math.ceil(currentLocation.coordinates.accuracy)}m · 출발 위치를 기준으로 매칭해요.</p>}
-      {currentLocation.error&&<p role="alert" className="baef-error">{currentLocation.error}</p>}
+    <button className="baef-location" onClick={()=>{setOpen(true);setPickMap(false);setFeedback('')}} aria-label="수령 지역 설정"><SmallIcon name="pin"/><span>{areaName(d.area)}</span><span aria-hidden="true">⌄</span></button>
+    {open&&<div className="baef-overlay" role="dialog" aria-modal="true" aria-labelledby="pickup-title" onKeyDown={e=>{if(e.key==='Escape'){if(pickMap)setPickMap(false);else setOpen(false)}}}><section className={`baef-sheet baef-small-sheet ${pickMap?'baef-location-map-sheet':''}`}><div className="baef-sheet-title"><h2 id="pickup-title">{pickMap?'내 출발 위치 선택':'어디에서 받을까요?'}</h2><button className="baef-icon-button" aria-label="수령 지역 닫기" onClick={()=>setOpen(false)}><SmallIcon name="close"/></button></div>
+      {pickMap?<>
+        <p className="baef-muted">지도를 눌러 출발점을 찍어 주세요. 지도를 움직인 뒤 중심점을 선택해도 돼요.</p>
+        <Suspense fallback={<p role="status">지도 불러오는 중…</p>}><MatchLocationPicker point={point} onChange={setPoint}/></Suspense>
+        <p className="baef-muted">{point?`선택한 위치 · ${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`:'출발점을 선택해 주세요.'}</p>
+        <button className="baef-button" disabled={!point} onClick={()=>{if(!point)return;requestVersion.current++;d.setMatchLocation(point);setPickMap(false);setFeedback('지도에서 고른 출발 위치를 적용했어요.')}}>이 위치를 출발점으로 사용</button>
+        <button className="baef-button secondary" onClick={()=>setPickMap(false)}>선택 취소</button>
+      </>:<>
+        <p className="baef-muted">희망 수령 지역을 고르고, 실제 출발 위치를 설정해 주세요.</p>
+        {PICKUP_AREAS.map(a=><button key={a.id} className={`baef-area-option ${a.id===d.area?'selected':''}`} onClick={()=>d.setArea(a.id)}><span><b>{a.name}</b><small>{a.detail}</small></span><span>{a.id===d.area?'✓':'›'}</span></button>)}
+        <div className="baef-active-origin"><b>{active?`적용된 출발 위치 · ${d.manualLocation?'지도 선택':'현재 위치'}`:'출발 위치를 설정해 주세요'}</b>{active&&<p>{active.lat.toFixed(5)}, {active.lng.toFixed(5)}{!d.manualLocation&&currentLocation.coordinates&&<><br/>GPS 정확도 약 {Math.ceil(currentLocation.coordinates.accuracy)}m{currentLocation.coordinates.accuracy>100&&' · 오차가 크면 지도에서 위치를 지정해 주세요.'}</>}</p>}<small>수령 지역과 별도로, 이 출발점을 기준으로 거리를 계산해요.</small></div>
+        <button disabled={currentLocation.loading} className="baef-button secondary" onClick={()=>void useGPS()}><SmallIcon name="pin"/>{currentLocation.loading?'현재 위치 확인 중…':'현재 위치 사용'}</button>
+        <button className="baef-button secondary" onClick={()=>{requestVersion.current++;setPoint(d.matchLocation);setPickMap(true)}}>지도에서 내 출발 위치 지정</button>
+        {feedback&&<p className="baef-muted" role="status">{feedback}</p>}
+        {currentLocation.error&&<p role="alert" className="baef-error">{currentLocation.error}</p>}
+        <button className="baef-button" onClick={()=>setOpen(false)}>설정 완료</button>
+      </>}
     </section></div>}
   </>
 }
