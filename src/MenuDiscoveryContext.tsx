@@ -21,7 +21,17 @@ export type MenuIntent = { user_id: string; menus: string[]; stores: string[]; s
 export type MenuMatch = { store_name: string; people_count: number }
 export type MenuNotification = { id: string; kind: 'menu_match' | 'group_invite'; payload: { stores: string[]; area: string; max_walk_m?: number; post_id?: string; starts_at?: string; ends_at?: string }; created_at: string; expires_at: string; read_at: string | null }
 export type Basket = { post_id: string; user_id: string; items: (CatalogItem & { quantity: number })[]; total: number }
-export type StoreDraft={quantities:Record<number,number>;goal:string;maxMembers:number;fee:string;meeting:string;note:string;deliveryTime:string;deadline:string;publicPoint:MatchLocation|null}
+export type StoreDraft={quantities:Record<number,number>;goal:string;maxMembers:number;fee:string;meeting:string;note:string;deliveryDay:string;deliveryClock:string;deadline:string;publicPoint:MatchLocation|null}
+type SavedDiscovery={menus?:string[];stores?:string[];selectionDate?:string;hour?:number;area?:string;search?:string;category?:string;view?:'list'|'map';tab?:'groups'|'stores';sort?:'recent'|'near';range?:'near'|'all';scroll?:number;drafts?:[string,StoreDraft][]}
+const preferenceKey=(owner:string)=>`baef-discovery-v2:${owner}`
+function readPreferences(owner:string):SavedDiscovery{
+ try{const saved=JSON.parse(sessionStorage.getItem(preferenceKey(owner))??'null');return saved&&typeof saved==='object'?saved:{}}catch{return {}}
+}
+function stringList(value:unknown){return Array.isArray(value)?value.filter((v):v is string=>typeof v==='string').slice(0,50):[]}
+function restoredDrafts(owner:string,value:unknown){
+ if(!Array.isArray(value))return new Map<string,StoreDraft>()
+ return new Map<string,StoreDraft>(value.filter((entry):entry is [string,StoreDraft]=>Array.isArray(entry)&&typeof entry[0]==='string'&&entry[0].startsWith(`${owner}:`)&&entry[1]&&typeof entry[1]==='object'&&typeof entry[1].deliveryDay==='string'&&typeof entry[1].deliveryClock==='string'&&typeof entry[1].meeting==='string'&&typeof entry[1].goal==='string'&&typeof entry[1].fee==='string'&&typeof entry[1].deadline==='string'&&typeof entry[1].note==='string'&&Number.isInteger(entry[1].maxMembers)&&entry[1].maxMembers>=2&&entry[1].maxMembers<=5&&entry[1].quantities&&typeof entry[1].quantities==='object'&&Object.values(entry[1].quantities).every(v=>Number.isInteger(v)&&Number(v)>=0&&Number(v)<=10)).slice(-30))
+}
 const fallbackCatalog: MenuStore[] = CAMPUS_STORES.filter(s => ['카페', '버거', '패스트푸드'].includes(s.category)).map(s => ({
   store_name: s.name, menu_key: s.category === '카페' ? 'coffee' : s.category === '버거' ? 'burger' : 'sandwich', goal_amount: s.demoMinOrder, menus: s.menus,
 }))
@@ -47,9 +57,30 @@ function useDiscoveryState() {
   const [area,setArea]=useState('cnu-main')
   const [search,setSearch]=useState(''),[browseCategory,setBrowseCategory]=useState('all'),[browseView,setBrowseView]=useState<'list'|'map'>('list')
   const [browseTab,setBrowseTab]=useState<'groups'|'stores'>('groups'),[sort,setSort]=useState<'recent'|'near'>('recent')
+  const [browseRange,setBrowseRange]=useState<'near'|'all'>('near')
   const listScroll=useRef(0)
   const storeDrafts=useRef(new Map<string,StoreDraft>())
-  useEffect(()=>{storeDrafts.current.clear()},[uid])
+  const owner=uid??'guest'
+  const [preferenceOwner,setPreferenceOwner]=useState<string|null>(null)
+  useEffect(()=>{
+    if(shared.initializing)return
+    const saved=readPreferences(owner),today=new Date(),tomorrow=new Date(today);tomorrow.setDate(today.getDate()+1)
+    const savedDay=saved.selectionDate===today.toDateString()?0:saved.selectionDate===tomorrow.toDateString()?1:null
+    setMenus(stringList(saved.menus));setStores(stringList(saved.stores));setArea(PICKUP_AREAS.some(a=>a.id===saved.area)?saved.area!:'cnu-main')
+    setDay(savedDay??(today.getHours()>=22?1:0));setHour(savedDay!=null&&Number.isInteger(saved.hour)&&saved.hour!>=11&&saved.hour!<=22?saved.hour!:defaultSlot())
+    setSearch(typeof saved.search==='string'?saved.search.slice(0,200):'');setBrowseCategory(['all',...FOOD_CHOICES.map(f=>f.id)].includes(saved.category??'')?saved.category!:'all')
+    setBrowseView(saved.view==='map'?'map':'list');setBrowseTab(saved.tab==='stores'?'stores':'groups');setSort(saved.sort==='near'?'near':'recent');setBrowseRange(saved.range==='all'?'all':'near')
+    listScroll.current=typeof saved.scroll==='number'&&Number.isFinite(saved.scroll)?Math.max(0,saved.scroll):0
+    storeDrafts.current=restoredDrafts(owner,saved.drafts);setPreferenceOwner(owner)
+  },[owner,shared.initializing])
+  const persistPreferences=()=>{
+    if(shared.initializing||preferenceOwner!==owner)return
+    const date=new Date();date.setDate(date.getDate()+day)
+    try{sessionStorage.setItem(preferenceKey(owner),JSON.stringify({menus,stores,selectionDate:date.toDateString(),hour,area,search,category:browseCategory,view:browseView,tab:browseTab,sort,range:browseRange,scroll:listScroll.current,drafts:[...storeDrafts.current]}))}catch{/* The current screen still works when browser storage is unavailable. */}
+  }
+  useEffect(persistPreferences,[owner,preferenceOwner,shared.initializing,menus,stores,day,hour,area,search,browseCategory,browseView,browseTab,sort,browseRange])
+  const persistDraft=(key:string,value:StoreDraft|null)=>{if(!key.startsWith(`${owner}:`))return;if(value)storeDrafts.current.set(key,value);else storeDrafts.current.delete(key);persistPreferences()}
+  const saveListScroll=(value:number)=>{if(shared.initializing||preferenceOwner!==owner)return;listScroll.current=value;persistPreferences()}
   const [intent,setIntent]=useState<MenuIntent|null>(null)
   const [matches,setMatches]=useState<MenuMatch[]>([])
   const [alerts,setAlerts]=useState<MenuNotification[]>([])
@@ -143,7 +174,7 @@ function useDiscoveryState() {
     &&[...activeIntent.stores].sort().join('|')===[...stores].sort().join('|')
   const currentAlerts=alerts.filter(n=>n.kind!=='menu_match'||(activeIntent&&!shared.active&&n.payload.stores.some(store=>matches.some(m=>m.store_name===store&&Number(m.people_count)>0))))
   return {catalog,menus,stores,day,hour,area,setDay,setHour,setArea,toggleMenu,toggleStore,candidateStores,
-    search,setSearch,browseCategory,setBrowseCategory,browseView,setBrowseView,browseTab,setBrowseTab,sort,setSort,listScroll,storeDrafts,
+    search,setSearch,browseCategory,setBrowseCategory,browseView,setBrowseView,browseTab,setBrowseTab,sort,setSort,browseRange,setBrowseRange,listScroll,storeDrafts,persistDraft,saveListScroll,preferencesReady:preferenceOwner===owner&&!shared.initializing,
     matchLocation,manualLocation,setMatchLocation,matchingStore,closeMatchingStore:()=>setMatchingStore(null),
     startMatchingRoom:(name:string)=>{if(shared.active){shared.setNotice('진행 중인 주문을 먼저 확인해 주세요.');return}if(!activeIntent||!matches.some(m=>m.store_name===name&&Number(m.people_count)>0)){setToast('매칭 조건이 바뀌었어요. 메뉴 알림을 다시 확인해 주세요.');return}const date=new Date(activeIntent.starts_at);setDay(date.toDateString()===new Date().toDateString()?0:1);setHour(date.getHours());setArea(activeIntent.area_id);setMatchingStore(name)},
     intent:activeIntent,matches,visibleMatches:sameSelection?matches:[],alerts:currentAlerts,baskets,connected,loading,saving,error,setError,toast,setToast,save,refresh,

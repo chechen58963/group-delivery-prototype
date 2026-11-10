@@ -97,7 +97,7 @@ export type Transaction = {
   meetingTime: string
   nearbyDelivery: { requesterId: string; address: string; agreed: boolean; wasClosed: boolean } | null
 }
-export type NotificationTarget = "menu" | "detail" | "applicants" | "chat" | "payment" | "receipt" | "complete"
+export type NotificationTarget = "menu" | "detail" | "applicants" | "chat" | "payment" | "delivery" | "receipt" | "complete"
 export type FlowEvent = { text: string; target: NotificationTarget }
 export function flowEvents(previous: Transaction | null, next: Transaction): FlowEvent[] {
   if (!previous || previous.post.id !== next.post.id)

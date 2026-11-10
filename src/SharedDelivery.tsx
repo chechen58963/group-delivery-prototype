@@ -1,16 +1,16 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import AuthDialog from './AuthDialog'
 import { relativeDateTime } from './uiFeedback'
 import { CAMPUS_STORES, CATEGORY_PHOTOS } from './campus'
 import { makeTransaction, type Post, type Transaction, type Action, type FlowEvent } from './workflow'
+import { appendNotification, mergeChatMessages, readAccountHistory, restoreChatCursors, restoreNotifications, saveAccountHistory, type SharedNotification } from './sharedHistory'
 
 type Tester = { user_id: string; nickname: string; active: boolean; suspended_until?:string|null }
 type SharedPost = { id: string; owner_id: string; restaurant: string; category: string; max_members: number; member_count: number; deadline: string; delivery_fee: number; min_order: number; meeting: string; note: string; status: string; pickup_lat?:number|null;pickup_lng?:number|null }
-type Member = { id: string; post_id: string; user_id: string; status: string; active: boolean }
+type Member = { id: string; post_id: string; user_id: string; status: string; active: boolean; created_at?:string }
 type SharedMessage = { id: number; sender_id: string; body: string; created_at: string }
-type Notification = FlowEvent & { id: number; postId: number; restaurant: string; read: boolean; time: number }
 type CreateInput = { restaurant: string; category: string; maxMembers: string; deadline: string; minAmount: string; currentAmount: string; deliveryTime: string; note: string }
 function explain(e: unknown) {
   const error = e as { code?: string; message?: string }
@@ -36,18 +36,32 @@ function useSharedState() {
   const [rawPosts, setRawPosts] = useState<SharedPost[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [messages, setMessages] = useState<SharedMessage[]>([])
+  const [messageRoom,setMessageRoom]=useState<string>()
+  const [olderAvailable,setOlderAvailable]=useState(false),[olderBusy,setOlderBusy]=useState(false)
+  const chatGeneration=useRef(0),olderLock=useRef(false)
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(''),6500);return()=>clearTimeout(timer)},[notice])
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notificationState,setNotificationState]=useState<{uid:string|undefined;items:SharedNotification[]}>({uid:undefined,items:[]})
   const ids = useRef(new Map<string, number>())
   const mutation = useRef(false)
   const sequence = useRef(0)
   const uid = session?.user.id
   const currentUid = useRef(uid)
   currentUid.current = uid
+  const notifications=notificationState.uid===uid?notificationState.items:[]
+  const setNotifications:Dispatch<SetStateAction<SharedNotification[]>>=useCallback(update=>{
+    const owner=currentUid.current;if(!owner)return
+    setNotificationState(before=>{
+      if(currentUid.current!==owner)return before
+      const previous=before.uid===owner?before.items:restoreNotifications(owner)
+      const items=typeof update==='function'?update(previous):update
+      return {uid:owner,items:items.slice(0,100)}
+    })
+  },[])
+  useEffect(()=>{if(notificationState.uid)saveAccountHistory(notificationState.uid,'notifications',notificationState.items)},[notificationState])
   const live = !!uid && !sample
   const me = testers.find(t => t.user_id === uid)
   const allowed = !!me?.active
@@ -60,12 +74,15 @@ function useSharedState() {
   const activeMember = members.find(m => m.user_id === uid && m.active)
   const activePost = rawPosts.find(p => p.id === activeMember?.post_id)
   const selected = rawPosts.find(p => numberFor(p.id) === selectedId)
-  const txSource = activePost ?? (selected && members.some(m => m.post_id === selected.id && m.user_id === uid) ? selected : undefined)
+  const txSource = selected && members.some(m => m.post_id === selected.id && m.user_id === uid) ? selected : activePost
   const ownMember = members.find(m => m.post_id === txSource?.id && m.user_id === uid)
-  const addNotification = useCallback((post: SharedPost, text: string, target: FlowEvent['target']) => {
-    const item: Notification = { id: ++sequence.current, postId: numberFor(post.id), restaurant: post.restaurant, text, target, read: false, time: Date.now() }
-    setNotifications(list => [item, ...list].slice(0, 100)); setNotice(text)
-  }, [numberFor])
+  const addNotification = useCallback((post: SharedPost, text: string, target: FlowEvent['target'],eventKey?:string) => {
+    if(!uid||currentUid.current!==uid)return
+    const item:SharedNotification={id:sequence.current=Math.max(sequence.current+1,Date.now()),postId:numberFor(post.id),sharedPostId:post.id,restaurant:post.restaurant,text,target,read:false,time:Date.now(),eventKey:eventKey?`${post.id}:${eventKey}`:undefined}
+    setNotifications(list=>appendNotification(list,item));setNotice(text)
+  }, [uid,numberFor,setNotifications])
+  const readNotification=(id:number)=>setNotifications(list=>list.map(n=>n.id===id?{...n,read:true}:n))
+  const readAllNotifications=()=>setNotifications(list=>list.map(n=>({...n,read:true})))
 
   useEffect(() => {
     if (!supabase) return
@@ -74,10 +91,12 @@ function useSharedState() {
   }, [])
   useEffect(() => {
     setRawPosts([]); setMembers([]); setTesters([]); setMessages([]); setReady(false)
-    setNotifications([]); setSelectedId(null); setError(''); setNotice('')
+    const restored=uid?restoreNotifications(uid):[]
+    setNotificationState({uid,items:restored});sequence.current=Math.max(Date.now(),...restored.map(n=>n.id));setSelectedId(null);setError('');setNotice('')
     if (!uid || sample || !supabase) return
     let alive = true, fetching = false
-    let previous: Member[] | null = null
+    const savedMembers=readAccountHistory<unknown>(uid,'members',null)
+    let previous:Member[]|null=Array.isArray(savedMembers)?savedMembers.filter((m):m is Member=>!!m&&typeof m.id==='string'&&typeof m.status==='string'):null
     async function refresh() {
       if (!supabase || fetching) return
       fetching = true
@@ -85,7 +104,7 @@ function useSharedState() {
         const t = await supabase.from('gd_testers').select('*').eq('user_id', uid!).maybeSingle()
         if (t.error) throw t.error
         if (!t.data?.active) {
-          if (alive) { setTesters(t.data ? [t.data] : []); setRawPosts([]); setMembers([]); setReady(true) }
+          if (alive&&currentUid.current===uid) { setTesters(t.data ? [t.data] : []); setRawPosts([]); setMembers([]); setReady(true) }
           return
         }
         const maintenance = await supabase.rpc('gd_action', { p_action: 'refresh' })
@@ -96,19 +115,20 @@ function useSharedState() {
           supabase.from('gd_participations').select('*'),
         ])
         for (const r of results) if (r.error) throw r.error
-        if (!alive) return
+        if (!alive||currentUid.current!==uid) return
         const nextMembers = results[2].data as Member[]
         const nextPosts = results[1].data as SharedPost[]
         if (previous) for (const m of nextMembers) {
           const old = previous.find(v => v.id === m.id)
           const p = nextPosts.find(v => v.id === m.post_id)
           if (!p) continue
-          if (m.user_id === uid && old && old.status !== m.status) addNotification(p, m.status === 'accepted' ? '참가 신청이 수락됐어요. 채팅방에 참여하세요.' : '신청·참여 상태가 변경됐어요.', m.status === 'accepted' ? 'chat' : 'detail')
-          if (p.owner_id === uid && m.status === 'pending' && (!old || old.status !== 'pending')) addNotification(p, '새 참가 신청이 도착했어요.', 'applicants')
+          if (m.user_id === uid && old && old.status !== m.status) addNotification(p, m.status === 'accepted' ? '참가 신청이 수락됐어요. 채팅방에 참여하세요.' : '신청·참여 상태가 변경됐어요.', m.status === 'accepted' ? 'chat' : 'detail',`member:${m.id}:${m.created_at??''}:${m.status}`)
+          if (p.owner_id === uid && m.status === 'pending' && (!old || old.status !== 'pending')) addNotification(p, '새 참가 신청이 도착했어요.', 'applicants',`member:${m.id}:${m.created_at??''}:pending`)
         }
         previous = nextMembers
+        saveAccountHistory(uid!,'members',nextMembers.filter(m=>m.user_id===uid||nextPosts.some(p=>p.id===m.post_id&&p.owner_id===uid)).slice(0,1000))
         setTesters(results[0].data as Tester[]); setRawPosts(nextPosts); setMembers(nextMembers); setReady(true); setError('')
-      } catch (e) { if (alive) { setError(explain(e)); setReady(true) } }
+      } catch (e) { if (alive&&currentUid.current===uid) { setError(explain(e)); setReady(true) } }
       finally { fetching = false }
     }
     void refresh()
@@ -120,34 +140,77 @@ function useSharedState() {
   }, [uid, sample, addNotification])
 
   const chatId = live && allowed && ownMember?.status === 'accepted' ? txSource?.id : undefined
+  const messagesRef=useRef(messages);messagesRef.current=messages
+  const postsRef=useRef(rawPosts);postsRef.current=rawPosts
   useEffect(() => {
-    setMessages([])
+    const generation=++chatGeneration.current
+    setMessages([]);setMessageRoom(chatId);setOlderAvailable(false);setOlderBusy(false);olderLock.current=false
     if (!chatId || !supabase) return
-    let alive = true, fetching = false, lastId: number | null = null
+    let alive = true, fetching = false, lastId:number|null=null
+    const cursors=restoreChatCursors(uid!)
+    const previousCursor=cursors[chatId]
     const load = async () => {
       if (!supabase || fetching) return
       fetching = true
       try {
-        const r = await supabase.from('gd_messages').select('*').eq('post_id', chatId).order('id', { ascending: false }).limit(200)
+        // IDs provide an unambiguous keyset even when timestamps are identical.
+        const base=supabase.from('gd_messages').select('*').eq('post_id',chatId)
+        const r=lastId===null?await base.order('id',{ascending:false}).limit(200):await base.gt('id',lastId).order('id',{ascending:true}).limit(200)
         if (r.error) throw r.error
-        if (!alive) return
-        const next = (r.data as SharedMessage[]).reverse()
-        const latest = next[next.length - 1]?.id ?? 0
-        if (lastId !== latest) {
-          const incoming = next.filter(m => lastId !== null && m.id > lastId && m.sender_id !== uid)
-          if (incoming.length) {
-            const p = rawPosts.find(v => v.id === chatId)
-            if (p) addNotification(p, `새 채팅: ${incoming[incoming.length - 1].body}`, 'chat')
-          }
-          setMessages(next); lastId = latest
+        if (!alive||chatGeneration.current!==generation||currentUid.current!==uid) return
+        const initial=lastId===null,next=initial?(r.data as SharedMessage[]).reverse():r.data as SharedMessage[]
+        const latest=next[next.length-1]?.id??lastId??0
+        const baseline=lastId??previousCursor
+        const incoming=next.filter(m=>baseline!==undefined&&m.id>baseline&&m.sender_id!==uid)
+        if(incoming.length){const p=postsRef.current.find(v=>v.id===chatId);if(p)addNotification(p,`새 채팅: ${incoming[incoming.length-1].body}`,'chat',`message:${incoming[incoming.length-1].id}`)}
+        if(initial||next.length){
+          setMessages(values=>mergeChatMessages(initial?[]:values,next));lastId=latest
+          if(initial)setOlderAvailable(next.length===200)
+          const current=restoreChatCursors(uid!)
+          saveAccountHistory(uid!,'chat-cursors',Object.fromEntries(Object.entries({...current,[chatId]:latest}).slice(-100)))
         }
-      } catch (e) { if (alive) setError(explain(e)) }
+      } catch (e) { if (alive&&currentUid.current===uid) setError(explain(e)) }
       finally { fetching = false }
     }
     void load(); const timer = setInterval(() => { if (!document.hidden) void load() }, 2000)
     window.addEventListener('shared-delivery-refresh', load)
     return () => { alive = false; clearInterval(timer); window.removeEventListener('shared-delivery-refresh', load) }
   }, [chatId, uid, addNotification])
+  // Reading an archived room must not suppress notifications from the current order.
+  const activeChatId=live&&allowed&&activeMember?.status==='accepted'?activePost?.id:undefined
+  useEffect(()=>{
+    if(!uid||!activeChatId||activeChatId===chatId)return
+    let alive=true,running=false
+    let cursor=restoreChatCursors(uid)[activeChatId]
+    const load=async()=>{
+      if(running)return;running=true
+      try{
+        const base=supabase.from('gd_messages').select('*').eq('post_id',activeChatId)
+        const r=cursor==null?await base.order('id',{ascending:false}).limit(1):await base.gt('id',cursor).order('id',{ascending:true}).limit(200)
+        if(r.error)throw r.error
+        if(!alive||currentUid.current!==uid)return
+        const next=r.data as SharedMessage[],last=next[next.length-1]
+        if(cursor!=null){const incoming=next.filter(m=>m.sender_id!==uid),post=postsRef.current.find(p=>p.id===activeChatId);if(post&&incoming.length)addNotification(post,`새 채팅: ${incoming[incoming.length-1].body}`,'chat',`message:${incoming[incoming.length-1].id}`)}
+        if(last){cursor=last.id;saveAccountHistory(uid,'chat-cursors',Object.fromEntries(Object.entries({...restoreChatCursors(uid),[activeChatId]:cursor}).slice(-100)))}
+      }catch{/* The open room remains usable while the next background poll retries. */}finally{running=false}
+    }
+    void load();const timer=setInterval(()=>{if(!document.hidden)void load()},3000)
+    window.addEventListener('shared-delivery-refresh',load);window.addEventListener('focus',load)
+    return()=>{alive=false;clearInterval(timer);window.removeEventListener('shared-delivery-refresh',load);window.removeEventListener('focus',load)}
+  },[uid,activeChatId,chatId,addNotification])
+  const loadOlderMessages=async()=>{
+    const before=messagesRef.current[0]?.id
+    if(!chatId||before==null||olderLock.current||!olderAvailable)return false
+    const generation=chatGeneration.current,owner=uid
+    olderLock.current=true;setOlderBusy(true)
+    try{
+      const r=await supabase.from('gd_messages').select('*').eq('post_id',chatId).lt('id',before).order('id',{ascending:false}).limit(100)
+      if(r.error)throw r.error
+      if(chatGeneration.current!==generation||currentUid.current!==owner)return false
+      setMessages(values=>mergeChatMessages(values,r.data as SharedMessage[]));setOlderAvailable(r.data.length===100);return true
+    }catch(e){if(chatGeneration.current===generation&&currentUid.current===owner)setError(explain(e));return false}
+    finally{if(chatGeneration.current===generation){olderLock.current=false;setOlderBusy(false)}}
+  }
 
   async function act(kind: string, id: string | null, data: Record<string, unknown> = {}) {
     if (!supabase || mutation.current || !allowed) return null
@@ -168,7 +231,7 @@ function useSharedState() {
       }
       window.dispatchEvent(new Event('shared-delivery-refresh'))
       return r.data as string
-    } catch (e) { setError(explain(e)); return null }
+    } catch (e) { if(currentUid.current===uid)setError(explain(e)); return null }
     finally { mutation.current = false; setBusy(false) }
   }
   function toPost(p: SharedPost): Post {
@@ -187,27 +250,33 @@ function useSharedState() {
       storeSource: store?.source, menuSource: store?.menuSource, menuBasis: store?.menuBasis, priceNote: store?.priceNote }
   }
   const posts = rawPosts.map(toPost)
-  let tx: Transaction | null = null
-  if (txSource && ownMember) {
-    const p = toPost(txSource)
-    tx = makeTransaction(p, p.menus ?? [], txSource.owner_id === uid ? 'leader' : 'participant')
-    tx.application = ownMember.status === 'pending' ? 'pending' : ownMember.status === 'accepted' ? 'accepted' : 'rejected'
-    tx.people = members.filter(m => m.post_id === txSource.id && m.status === 'accepted').map(m => ({
-      id: m.user_id === uid ? 'me' : m.user_id === txSource.owner_id ? 'leader' : m.user_id,
+  function transactionFor(source:SharedPost|undefined):Transaction|null{
+    const member=members.find(m=>m.post_id===source?.id&&m.user_id===uid)
+    if(!source||!member)return null
+    const p=toPost(source),tx=makeTransaction(p,p.menus??[],source.owner_id===uid?'leader':'participant')
+    tx.application=member.status==='pending'?'pending':member.status==='accepted'?'accepted':'rejected'
+    tx.people = members.filter(m => m.post_id === source.id && m.status === 'accepted').map(m => ({
+      id: m.user_id === uid ? 'me' : m.user_id === source.owner_id ? 'leader' : m.user_id,
       name: nickname(m.user_id), avatar: '🧑', items: p.menus ?? [], quantities: {}, menuConfirmed: false,
       location: { x: 0, y: 0 }, transferClaimed: false, paid: false, received: false,
     }))
-    tx.closed = p.status !== 'recruiting'; tx.cancelled = ['cancelled','completed'].includes(txSource.status) || ownMember.status === 'withdrawn'
-    tx.meeting = txSource.meeting
-    tx.messages = messages.map(m => ({ id: m.id, sender: nickname(m.sender_id), content: m.body,
+    tx.closed = p.status !== 'recruiting'; tx.cancelled = ['cancelled','completed'].includes(source.status) || member.status === 'withdrawn'
+    tx.meeting = source.meeting
+    tx.messages = (messageRoom===source.id?messages:[]).map(m => ({ id: m.id, sender: nickname(m.sender_id), content: m.body,
       isMe: m.sender_id === uid, time: new Date(m.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) }))
+    return tx
   }
+  const tx=transactionFor(txSource),activeTx=transactionFor(activePost)
+  const chatReadable=!!tx&&ownMember?.status==='accepted'
+  const chatEnded=!!tx&&(['completed','cancelled'].includes(txSource?.status??'')||ownMember?.status==='withdrawn')
+  const chatStatus=txSource?.status==='completed'?'거래 완료':txSource?.status==='cancelled'?'취소된 모임':ownMember?.status==='withdrawn'?'참여 종료':tx?.closed?'모집 마감':'모집 중'
   return {
     session, live, sample, setSample, initializing, loginOpen, setLoginOpen, authBusy, ready, busy, error, setError, numberFor,
-    notice, setNotice, allowed, me, nickname, posts, tx, selectedId, selectPost: setSelectedId,
+    notice, setNotice, allowed, me, nickname, posts, tx,activeTx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
-    notifications, setNotifications, addNotification,
+    notifications:notifications.map(n=>({...n,postId:numberFor(n.sharedPostId)})),setNotifications,addNotification,readNotification,readAllNotifications,
+    chatReadable,chatEnded,chatStatus,olderAvailable,olderBusy,loadOlderMessages,
     login: async (email: string, password: string) => {
       if (!supabase) { setError('로그인 연결 설정이 필요해요.'); return }
       setAuthBusy(true); setError('')
@@ -309,23 +378,34 @@ export function SharedChat({ pop, push, orderPanel, workflowControls }: { pop: (
   const s=useSharedDelivery(), tx=s.tx
   const [draft,setDraft]=useState(''), [panel,setPanel]=useState(false), [unseen,setUnseen]=useState(false)
   const list=useRef<HTMLDivElement>(null), follow=useRef(true)
+  const anchor=useRef<{room:string|undefined;height:number;top:number}|null>(null)
+  const room=tx?.post.sharedId,lastMessage=tx?.messages[tx.messages.length-1]?.id,firstMessage=tx?.messages[0]?.id
+  useEffect(()=>{setDraft('');setPanel(false);setUnseen(false);follow.current=true;anchor.current=null},[room])
+  useLayoutEffect(()=>{
+    const saved=anchor.current,element=list.current
+    if(!saved||!element||s.olderBusy||saved.room!==room)return
+    element.scrollTop=saved.top+element.scrollHeight-saved.height;anchor.current=null
+  },[firstMessage,s.olderBusy,room])
   useEffect(()=>{
-    if(follow.current) requestAnimationFrame(()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight})
+    if(lastMessage==null)return
+    if(follow.current&&!anchor.current)requestAnimationFrame(()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight})
     else setUnseen(true)
-  },[tx?.messages.length])
-  if(!tx||tx.application!=='accepted'||tx.cancelled)return <div className="p-6 text-center space-y-4"><p>참여 중인 채팅방이 없거나 승인을 기다리고 있어요.</p><button className="text-brand" onClick={pop}>돌아가기</button></div>
+  },[room,lastMessage])
+  const older=async()=>{const el=list.current;if(!el||s.olderBusy)return;anchor.current={room,height:el.scrollHeight,top:el.scrollTop};follow.current=false;const ok=await s.loadOlderMessages();if(!ok)anchor.current=null}
+  if(!tx||!s.chatReadable)return <div className="p-6 text-center space-y-4"><p>참여 중인 채팅방이 없거나 승인을 기다리고 있어요.</p><button className="text-brand" onClick={pop}>돌아가기</button></div>
   return <div className="chat-room flex-1 min-h-0 flex flex-col relative">
-    <header className="chat-header px-3 pt-3 pb-2 shrink-0"><div className="flex items-center gap-2"><button className="w-9 h-10 text-2xl" aria-label="채팅 나가기" onClick={pop}>‹</button><div className="flex-1 min-w-0"><h1 className="font-bold text-sm truncate">{tx.post.restaurant}</h1><p className="chat-muted text-[11px]">{tx.people.length}명 · {tx.closed?'모집 마감':'모집 중'}</p></div>{tx.role==='leader'&&<button className="text-brand text-xs" onClick={()=>push('applicants')}>신청자 관리</button>}</div>
-      <div className="chat-tools-row">{workflowControls}<button className="chat-tool chat-info-toggle" onClick={()=>setPanel(!panel)} aria-expanded={panel}>모임 정보 {panel?'접기':'보기'}</button></div>
+    <header className="chat-header px-3 pt-3 pb-2 shrink-0"><div className="flex items-center gap-2"><button className="w-9 h-10 text-2xl" aria-label="채팅 나가기" onClick={pop}>‹</button><div className="flex-1 min-w-0"><h1 className="font-bold text-sm truncate">{tx.post.restaurant}</h1><p className="chat-muted text-[11px]">{tx.people.length}명 · {s.chatStatus}</p></div>{tx.role==='leader'&&!s.chatEnded&&<button className="text-brand text-xs" onClick={()=>push('applicants')}>신청자 관리</button>}</div>
+      <div className="chat-tools-row">{!s.chatEnded&&workflowControls}<button className="chat-tool chat-info-toggle" onClick={()=>setPanel(!panel)} aria-expanded={panel}>모임 정보 {panel?'접기':'보기'}</button></div>
     </header>
     {panel&&<div className="chat-panel p-4 overflow-y-auto max-h-[45%] shrink-0 space-y-3 text-xs border-b border-gray-100">{orderPanel??<><p><b>수령 제안 장소</b> · {tx.meeting}</p><p><b>참가자</b> · {tx.people.map(p=>p.name).join(', ')}</p><details><summary className="cursor-pointer font-bold">음식점 메뉴</summary>{tx.post.menus?.map(m=><p className="py-1" key={m.id}>{m.name} · {m.price.toLocaleString()}원</p>)}</details></>}</div>}
     <div ref={list} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4" onScroll={()=>{const el=list.current;if(el){follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<80;if(follow.current)setUnseen(false)}}}>
-      {!tx.messages.length&&<p className="chat-muted text-center text-sm py-8">메뉴와 만날 시간을 이야기해 보세요.</p>}
+      {s.olderAvailable&&<button className="chat-tool block mx-auto text-xs px-4 py-2" disabled={s.olderBusy} onClick={()=>void older()}>{s.olderBusy?'이전 대화 불러오는 중…':'이전 대화 더 보기'}</button>}
+      {!tx.messages.length&&<p className="chat-muted text-center text-sm py-8">{s.chatEnded?'남아 있는 대화가 없어요.':'메뉴와 만날 시간을 이야기해 보세요.'}</p>}
       {tx.messages.map(m=><div key={m.id} className={`flex flex-col ${m.isMe?'items-end':'items-start'}`}><span className="chat-muted text-[10px] mb-1">{m.sender}</span><p className={`chat-bubble max-w-[85%] px-3 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words ${m.isMe?'chat-bubble-mine rounded-tr-sm':'rounded-tl-sm'}`} style={{overflowWrap:'anywhere'}}>{m.content}</p><time className="chat-muted text-[10px] mt-1">{m.time}</time></div>)}
     </div>
     {unseen&&<button className="chat-new-message self-center rounded-full py-2 px-4 text-xs mb-2" onClick={()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight;follow.current=true;setUnseen(false)}}>새 메시지 ↓</button>}
-    <form className="chat-composer flex items-end gap-2 px-3 py-3 shrink-0" onSubmit={async e=>{e.preventDefault();if(!draft.trim()||s.busy)return;const p=tx.post.sharedId!;if(await s.act('message',p,{body:draft.trim()})){setDraft('');follow.current=true}}}>
+    {s.chatEnded?<p className="chat-muted text-center text-xs py-4 border-t">{s.chatStatus} · 지난 대화는 계속 확인할 수 있어요.</p>:<form className="chat-composer flex items-end gap-2 px-3 py-3 shrink-0" onSubmit={async e=>{e.preventDefault();if(!draft.trim()||s.busy||s.chatEnded)return;const p=tx.post.sharedId!;if(await s.act('message',p,{body:draft.trim()})){setDraft('');follow.current=true}}}>
       <textarea aria-label="메시지 입력" maxLength={2000} rows={2} value={draft} onChange={e=>setDraft(e.target.value)} placeholder="메시지를 입력하세요" className="chat-input resize-none rounded-2xl px-3 py-3 flex-1 min-w-0 text-base outline-none"/><button disabled={s.busy||!draft.trim()} className="chat-send rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-40">전송</button>
-    </form>
+    </form>}
   </div>
 }

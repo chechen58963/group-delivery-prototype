@@ -1,0 +1,6 @@
+.baef-sync-conflict{padding:14px;border:1px solid var(--baef-accent);border-radius:10px;background:var(--baef-field);font-size:13px;line-height:1.7}
+.baef-sync-conflict .baef-button{margin-top:10px}
+.baef-receipt-reward{padding-top:18px;border-top:1px solid var(--baef-line);margin-top:18px;font-size:13px;line-height:1.7}
+.baef-shop-goal{padding:14px;background:var(--baef-field);border-radius:10px;font-size:13px;line-height:1.7;margin:8px 0 16px}
+.baef-shop-goal progress{display:block;width:100%;height:7px;accent-color:var(--baef-accent);margin:10px 0 5px}
+.baef-shop-goal small{color:var(--baef-muted)}

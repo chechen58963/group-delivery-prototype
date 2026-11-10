@@ -2,10 +2,11 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { orderChangeNotice } from './orderChangeNotice'
 import { supabase } from './supabase'
 import { useSharedDelivery } from './SharedDelivery'
+import { readAccountHistory, saveAccountHistory } from './sharedHistory'
 
 export type OrderPhase='menu'|'payment'|'ordered'|'delivering'|'arrived'|'completed'|'cancelled'
 export type OrderState={post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string}
-export type OrderPerson={post_id:string;user_id:string;food_total:number;fee:number;coupon_discount:number;claimed_amount:number;confirmed_amount:number;refunded_amount:number;refund_due:number;refund_sent:boolean;received_at:string|null;late_reported:boolean;late_ack:boolean;latitude:number|null;longitude:number|null}
+export type OrderPerson={post_id:string;user_id:string;food_total:number;fee:number;coupon_discount:number;claimed_amount:number;confirmed_amount:number;refunded_amount:number;refund_due:number;refund_sent:boolean;transfer_review_pending?:boolean;received_at:string|null;late_reported:boolean;late_ack:boolean;latitude:number|null;longitude:number|null}
 export type Reputation={user_id:string;rating:number|null;review_count:number;trades:number}
 export type OrderReview={id:string;post_id:string;reviewer_id:string;subject_id:string;stars:number;comment:string;created_at:string}
 export type OrderReport={id:string;post_id:string;reporter_id:string;subject_id:string;reason:string;detail:string;status:'pending'|'confirmed'|'dismissed';resolution:string|null}
@@ -30,7 +31,8 @@ function useLifecycleState(){
   const seenStates=useRef(new Map<string,OrderState>()),postsRef=useRef(s.rawPosts);postsRef.current=s.rawPosts
   useEffect(()=>{
     setStates([]);setPeople([]);setReviews([]);setReports([]);setReputations([]);setAvailable(false);setError('');setLoadError('')
-    seenStates.current.clear()
+    const previous=uid?readAccountHistory<unknown>(uid,'order-states',[]):[]
+    seenStates.current=new Map((Array.isArray(previous)?previous:[]).filter((v):v is OrderState=>!!v&&typeof v.post_id==='string'&&typeof v.phase==='string'&&v.phase in phaseLabel).map(v=>[v.post_id,v]))
     if(!uid||!s.allowed)return
     let alive=true,running=false,seen:Map<string,string>|null=null
     const load=async()=>{
@@ -40,7 +42,17 @@ function useLifecycleState(){
         for(const v of r)if(v.error)throw v.error
         if(!alive||pending.current||generation!==revision.current)return
         const next=r[0].data as OrderState[]
-        for(const value of next){const post=postsRef.current.find(p=>p.id===value.post_id);if(!post)continue;const text=orderChangeNotice(seenStates.current.get(value.post_id),value,uid);if(text)s.addNotification(post,text,'menu');seenStates.current.set(value.post_id,value)}
+        for(const value of next){
+          const post=postsRef.current.find(p=>p.id===value.post_id);if(!post)continue
+          const before=seenStates.current.get(value.post_id),text=orderChangeNotice(before,value,uid)
+          if(text)s.addNotification(post,text,'menu',`meeting:${value.updated_at}:${text}`)
+          if(before&&before.phase!==value.phase){
+            const target=value.phase==='completed'?'complete':value.phase==='cancelled'||value.phase==='payment'?'payment':value.phase==='arrived'?'receipt':value.phase==='ordered'||value.phase==='delivering'?'delivery':'menu'
+            s.addNotification(post,`주문 상태가 ‘${phaseLabel[value.phase]}’로 바뀌었어요.`,target,`phase:${value.updated_at}:${value.phase}`)
+          }
+          seenStates.current.set(value.post_id,value)
+        }
+        saveAccountHistory(uid,'order-states',[...seenStates.current.values()].slice(-300))
         if(seen){const changed=next.find(v=>seen!.has(v.post_id)&&seen!.get(v.post_id)!==v.phase);if(changed)s.setNotice(`주문 상태가 ‘${phaseLabel[changed.phase]}’로 바뀌었어요.`)}
         seen=new Map(next.map(v=>[v.post_id,v.phase]));setStates(next);setPeople(r[1].data as OrderPerson[]);setReviews(r[2].data as OrderReview[]);setReports(r[3].data as OrderReport[]);setReputations(r[4].data as Reputation[]);setAvailable(true);setLoadError('')
       }catch(e){if(alive&&generation===revision.current){setAvailable(false);setLoadError(['PGRST202','PGRST205','42P01'].includes((e as {code?:string}).code??'')?'복원한 기능을 이용하려면 공유 저장소 업데이트가 필요해요.':(e as {message?:string}).message??'진행 상태를 불러오지 못했어요.')}}finally{running=false}
@@ -67,12 +79,12 @@ function useLifecycleState(){
     if(!available){setError('공유 저장소 업데이트 후 이용할 수 있어요.');return false}
     pending.current=true;setBusy(true);setError('')
     try{
-      const r=action==='room-time'?await supabase.rpc('gd_update_room_time',{p_post:postId,p_start:data.start,p_end:data.end}):await supabase.rpc('gd_order_action',{p_action:action,p_post:postId,p_data:data});if(r.error)throw r.error
+      const r=action==='room-time'?await supabase.rpc('gd_update_room_time_checked',{p_post:postId,p_start:data.start,p_end:data.end,p_expected:data.expected??null}):await supabase.rpc('gd_order_action',{p_action:action,p_post:postId,p_data:data});if(r.error)throw r.error
       if(currentUid.current!==uid)return false
       revision.current++
       const [updated,updatedPeople]=await Promise.all([supabase.from('gd_order_states').select('*').eq('post_id',postId).maybeSingle(),supabase.from('gd_order_people').select('*').eq('post_id',postId)])
       if(currentUid.current!==uid)return false
-      if(updated.data)seenStates.current.set(postId,updated.data as OrderState)
+      if(updated.data){seenStates.current.set(postId,updated.data as OrderState);saveAccountHistory(uid,'order-states',[...seenStates.current.values()].slice(-300))}
       if(updated.data)setStates(values=>[...values.filter(v=>v.post_id!==postId),updated.data as OrderState])
       if(updatedPeople.data)setPeople(values=>[...values.filter(v=>v.post_id!==postId),...updatedPeople.data as OrderPerson[]])
       if(action==='review'){
@@ -89,7 +101,8 @@ function useLifecycleState(){
   const reputation=(id:string)=>reputations.find(v=>v.user_id===id)
   const myReputation=uid?reputation(uid):undefined
   const couponEligible=!!myReputation&&Number(myReputation.rating)>=4.8&&Number(myReputation.trades)>=5&&!people.some(p=>p.user_id===uid&&p.coupon_discount>0&&states.find(v=>v.post_id===p.post_id)?.phase!=='cancelled')
-  return {uid,states,people,reviews,reports,reputations,available,error:error||loadError,setError,busy,act,state,post,orderPeople,mine,owner,members,reputation,myReputation,couponEligible,selectedId}
+  const consistencyReady=available&&people.some(p=>Object.prototype.hasOwnProperty.call(p,'transfer_review_pending'))
+  return {consistencyReady,uid,states,people,reviews,reports,reputations,available,error:error||loadError,setError,busy,act,state,post,orderPeople,mine,owner,members,reputation,myReputation,couponEligible,selectedId}
 }
 type Lifecycle=ReturnType<typeof useLifecycleState>
 const Context=createContext<Lifecycle|null>(null)

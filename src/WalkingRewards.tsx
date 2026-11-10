@@ -61,7 +61,8 @@ export function WalkingRewardDetails(){
   const status=reward?`${walkDistance(reward.meters)} 누적${reward.points>0?` · +${reward.points}P`:''}`:plan?`${walkDistance(plan.meters)} 등록됨`:o.mine?.received_at?'거리 미등록':'거리 등록 · 선택'
   return <details className="baef-info-details baef-walk-details"><summary><span>수령 이동 포인트</span><small>{w.error?'불러오기 오류 · 확인':!w.ready?'불러오는 중…':status}</small></summary><div className="baef-info-content"><WalkingRewardPlan/></div></details>
 }
-export function WalkingRewardPlan(){
+export function WalkingRewardReceipt(){return <WalkingRewardPlan receipt/>}
+export function WalkingRewardPlan({receipt=false}:{receipt?:boolean}={}){
   const w=useWalkingRewards(),o=useDeliveryLifecycle(),d=useMenuDiscovery(),feedback=useSaveFeedback()
   const plan=w.plans.find(p=>p.post_id===o.selectedId),reward=w.rewards.find(p=>p.post_id===o.selectedId)
   const [manual,setManual]=useState(''),[useManual,setUseManual]=useState(false)
@@ -93,6 +94,11 @@ export function WalkingRewardPlan(){
     </>}
     {w.policyReady&&!reward&&displayed==null&&<p className="baef-muted">거래 완료 기본 20P · 거리를 등록하면 이동 포인트도 함께 적립돼요. 하루 최대 200P까지 받을 수 있어요.</p>}
     {w.error&&<p role="alert" className="baef-error">{w.error}</p>}
+    {receipt&&o.state?.phase==='arrived'&&<div className="baef-receipt-reward">
+      {!o.consistencyReady&&<p role="status">수령 확인 기능을 준비하고 있어요. 잠시 후 다시 시도해 주세요.</p>}
+      {!o.mine?.received_at&&<p>이번 수령 이동 <b>{walkDistance(displayed??0)}</b> · 전원 수령 완료 시 예상 <b>{w.policyReady?orderRewardEstimate(displayed??0,w.wallet?.today_earned??0):bonus}P</b><br/>{displayed==null?'거리 미입력 시 0m로 기록해요. 거리를 입력하면 이동 포인트도 함께 받을 수 있어요.':'아래 버튼을 누르면 이 거리 저장과 수령 확인을 함께 처리해요.'}</p>}
+      <button className="baef-button" disabled={!!o.mine?.received_at||o.busy||w.busy||!w.ready||!o.consistencyReady||(!nearRequester&&(useManual||mapped==null)&&manual.trim()!==''&&!validManual)} onClick={()=>void o.act('receive',{walk_meters:displayed??0,walk_source:nearRequester||useManual||mapped==null?'manual':'map'}).then(ok=>{if(ok)window.dispatchEvent(new Event('walking-rewards-refresh'))})}>{o.busy?'수령 확인 중…':o.mine?.received_at?'내 수령 확인 완료':'거리 저장하고 수령 완료'}</button>
+    </div>}
   </section>
 }
 export function WalkingRewardWallet(){
