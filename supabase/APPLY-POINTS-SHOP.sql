@@ -83,7 +83,9 @@ insert into public.gd_point_products(id,name,category,description,price,symbol,s
  ('coffee','카페 음료 교환권','음료','한 잔의 여유를 선물하세요.',3000,'coffee',1),
  ('convenience','편의점 모바일 상품권 1,000원','상품권','가까운 편의점에서 즐기는 작은 보상.',1000,'gift',2),
  ('icecream','아이스크림 교환권','간식','함께 주문한 뒤 달콤한 디저트 한 번.',2000,'icecream',3),
- ('culture','문화상품권 5,000원','상품권','차곡차곡 모은 포인트로 더 큰 즐거움.',5000,'culture',4)
+ ('culture','문화상품권 5,000원','상품권','차곡차곡 모은 포인트로 더 큰 즐거움.',5000,'culture',4),
+ ('ebike','전기자전거 이용료 1,000원 할인권','이동','가까운 이동부터 등하교까지, 전기자전거 이용료를 아껴보세요.',1000,'ebike',5),
+ ('escooter','전동킥보드 이용료 1,000원 할인권','이동','모아둔 포인트로 다음 전동킥보드 이동을 준비하세요.',1000,'escooter',6)
  on conflict(id) do nothing;
 create table if not exists public.gd_point_redemptions(
  id uuid primary key default gen_random_uuid(),user_id uuid not null references public.gd_testers(user_id),
