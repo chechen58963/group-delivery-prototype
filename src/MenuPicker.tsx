@@ -25,14 +25,12 @@ export default function MenuPicker({ storeName, menus, quantities, onChange, dis
       }
       return <div className="baef-menu-item" key={m.id} data-selected={total > 0}>
         <MenuPhoto storeName={storeName} name={m.name} temperature={temperature} />
-        <div className="baef-menu-description"><b>{m.name}</b><span>{m.price.toLocaleString('ko-KR')}원</span>
+        <div className="baef-menu-description"><b>{m.name}</b><span>{m.price.toLocaleString('ko-KR')}원{(temperatures.length>0||meta.size_label!=='기본')&&<small> · {meta.size_label==='기본'?'기본 사이즈':meta.size_label}</small>}</span>
           <div className="baef-menu-options">
             {dual ? <select aria-label={`${m.name} 온도`} disabled={disabled} value={temperature ?? ''} onChange={e => {
               const value = e.target.value as Temperature; setSelected(v => ({ ...v, [m.id]: value }))
               if (quantities[m.id]) { const next = { ...quantities }; next[choiceKey(m.id, value)] = (next[choiceKey(m.id, value)] ?? 0) + next[m.id]; delete next[m.id]; onChange(next) }
             }}><option value="" disabled>온도 선택</option>{temperatures.map(t => <option key={t} value={t}>{t}</option>)}</select> : temperatures.length === 1 ? <span className="baef-temperature">{temperatures[0]}</span> : null}
-            {meta.size_label !== '기본' && <span>{meta.size_label}</span>}
-            {meta.size_label === '기본' && temperatures.length > 0 && <span>기본 사이즈</span>}
           </div>
           {total > 0 && <small className="baef-menu-chosen">{[quantities[m.id] ? `${quantities[m.id]}개${dual ? ' · 온도 선택 필요' : ''}` : '', ...(['HOT', 'ICE'] as const).map(t => quantities[`${m.id}:${t}`] ? `${t} ${quantities[`${m.id}:${t}`]}개` : '')].filter(Boolean).join(' · ')} 담음</small>}
         </div>
