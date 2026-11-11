@@ -1,0 +1,20 @@
+.baef-menu-section > h3 { margin: 22px 0 4px; padding: 8px 0; font-size: 14px; font-weight: 700; color: var(--baef-ink); }
+.baef-menu-section:first-child > h3 { margin-top: 8px; }
+.baef-menu-item[data-selected="true"] { background: var(--accent-soft, #fff0e5); border-radius: 10px; box-shadow: inset 3px 0 0 var(--baef-accent); padding-left: 8px; padding-right: 8px; }
+.baef-menu-options { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; margin-top: 7px; color: var(--baef-muted); font-size: 11px; }
+.baef-menu-options > select { min-height: 36px; max-width: 100%; border: 1px solid var(--baef-line); border-radius: 6px; padding: 4px 6px; color: var(--baef-ink); background: var(--baef-canvas); font-size: 12px; }
+.baef-temperature { font-size: 10px; font-weight: 700; border: 1px solid var(--baef-line); padding: 2px 5px; border-radius: 4px; }
+.baef-menu-chosen { display: block; margin-top: 7px; color: var(--baef-accent); font-size: 11px; line-height: 1.5; }
+.baef-footer-bill { display: flex; flex-wrap: wrap; gap: 3px 8px; font-size: 11px; color: var(--baef-muted); margin-bottom: 5px; }
+.baef-recruit-preview { border-top: 1px solid var(--baef-line); margin-top: 18px; padding-top: 18px; }
+.baef-recruit-preview > h3 { font-size: 14px; font-weight: 650; margin-bottom: 10px; }
+.baef-recruit-preview > dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 15px; font-size: 12px; }
+.baef-recruit-preview dt { color: var(--baef-muted); }
+.baef-recruit-preview dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.baef-recruit-progress { margin: 10px 0; }
+.baef-recruit-progress > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; }
+.baef-recruit-progress b { color: var(--baef-accent); font-size: 13px; }
+.baef-recruit-progress > progress { display: block; width: 100%; height: 5px; margin-top: 8px; accent-color: var(--baef-accent); }
+.baef-deadline-fields { display: flex; gap: 10px; }
+.baef-deadline-fields > label { flex: 1; min-width: 0; }
+.baef-deadline-fields input, .baef-deadline-fields select { width: 100%; }

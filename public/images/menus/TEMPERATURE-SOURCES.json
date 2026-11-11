@@ -1,0 +1,132 @@
+[
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "카페 아메리카노",
+    "temperature": "ICE",
+    "matched_title": "(L) ICED 카페 아메리카노",
+    "src": "/images/menus/ediya-1-ice.webp",
+    "original": "https://ediya.com/files/menu/IMG_1671581786293.png",
+    "source_snapshot": "ediya-1.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "카페 라떼",
+    "temperature": "ICE",
+    "matched_title": "(L) ICED 카페 라떼",
+    "src": "/images/menus/ediya-2-ice.webp",
+    "original": "https://ediya.com/files/menu/IMG_1671582134737.png",
+    "source_snapshot": "ediya-more-latte2.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "토피 넛 라떼",
+    "temperature": "ICE",
+    "matched_title": "(L) ICED 토피넛 라떼",
+    "src": "/images/menus/ediya-3-ice.webp",
+    "original": "https://ediya.com/files/menu/IMG_1765782452900.png",
+    "source_snapshot": "ediya-toffee.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "바닐라 라떼",
+    "temperature": "ICE",
+    "matched_title": "(L) ICED 바닐라 라떼",
+    "src": "/images/menus/ediya-4-ice.webp",
+    "original": "https://ediya.com/files/menu/IMG_1764057139672.png",
+    "source_snapshot": "ediya-4.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "카페 모카",
+    "temperature": "ICE",
+    "matched_title": "(L) ICED 카페 모카",
+    "src": "/images/menus/ediya-5-ice.webp",
+    "original": "https://ediya.com/files/menu/IMG_1671586141487.png",
+    "source_snapshot": "ediya-5.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "카라멜 마끼아또",
+    "temperature": "ICE",
+    "matched_title": "(L) ICED 카라멜 마끼아또",
+    "src": "/images/menus/ediya-6-ice.webp",
+    "original": "https://ediya.com/files/menu/IMG_1671585861402.png",
+    "source_snapshot": "ediya-6.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "카페라떼",
+    "temperature": "HOT",
+    "matched_title": "카페라떼 HOT",
+    "src": "/images/menus/mega-5-hot.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610105821_1717984701991_RUKCqSZ_HO.jpg",
+    "source_snapshot": "mega-6.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "바닐라라떼",
+    "temperature": "HOT",
+    "matched_title": "바닐라라떼 HOT",
+    "src": "/images/menus/mega-6-hot.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610104603_1717983963750_lApih2z1h0.jpg",
+    "source_snapshot": "mega-6.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "카라멜마끼아또",
+    "temperature": "HOT",
+    "matched_title": "카라멜마끼아또 HOT",
+    "src": "/images/menus/mega-7-hot.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610105805_1717984685954_T1qos0ocDV.jpg",
+    "source_snapshot": "mega-6.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "카페라떼",
+    "temperature": "HOT",
+    "matched_title": "H-카페라떼",
+    "src": "/images/menus/compose-3-hot.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/760/303/6259e5462a9a15bae3a2709ffdd2b730.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "바닐라라떼",
+    "temperature": "HOT",
+    "matched_title": "H-바닐라라떼",
+    "src": "/images/menus/compose-4-hot.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/766/303/40868eb1535e59d5edfba7ad600969f4.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "카라멜마끼아또",
+    "temperature": "HOT",
+    "matched_title": "H-캬라멜마끼아또",
+    "src": "/images/menus/compose-5-hot.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/780/303/dbc6ad90d43f337ee14da89aabea694a.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "카페모카",
+    "temperature": "HOT",
+    "matched_title": "H-카페모카",
+    "src": "/images/menus/compose-6-hot.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/784/303/0912c6365f924a173df91dc4e8fdb252.jpg",
+    "source_snapshot": "compose-coffee.html"
+  }
+]

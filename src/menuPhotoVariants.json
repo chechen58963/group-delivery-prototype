@@ -1,0 +1,136 @@
+{
+  "써브웨이": {},
+  "맘스터치": {},
+  "이디야": {
+    "카페 아메리카노": {
+      "HOT": "/images/menus/ediya-1.webp",
+      "ICE": "/images/menus/ediya-1-ice.webp"
+    },
+    "카페 라떼": {
+      "HOT": "/images/menus/ediya-2.webp",
+      "ICE": "/images/menus/ediya-2-ice.webp"
+    },
+    "토피 넛 라떼": {
+      "HOT": "/images/menus/ediya-3.webp",
+      "ICE": "/images/menus/ediya-3-ice.webp"
+    },
+    "바닐라 라떼": {
+      "HOT": "/images/menus/ediya-4.webp",
+      "ICE": "/images/menus/ediya-4-ice.webp"
+    },
+    "카페 모카": {
+      "HOT": "/images/menus/ediya-5.webp",
+      "ICE": "/images/menus/ediya-5-ice.webp"
+    },
+    "카라멜 마끼아또": {
+      "HOT": "/images/menus/ediya-6.webp",
+      "ICE": "/images/menus/ediya-6-ice.webp"
+    },
+    "콜드브루": {
+      "ICE": "/images/menus/ediya-7.webp"
+    },
+    "딸기 요거트 플랫치노": {
+      "ICE": "/images/menus/ediya-11.webp"
+    }
+  },
+  "메가": {
+    "메가리카노": {
+      "ICE": "/images/menus/mega-1.webp"
+    },
+    "퐁크러쉬플레인": {
+      "ICE": "/images/menus/mega-2.webp"
+    },
+    "쿠키프라페": {
+      "ICE": "/images/menus/mega-3.webp"
+    },
+    "아메리카노 (ICED)": {
+      "ICE": "/images/menus/mega-4.webp"
+    },
+    "카페라떼": {
+      "HOT": "/images/menus/mega-5-hot.webp",
+      "ICE": "/images/menus/mega-5.webp"
+    },
+    "바닐라라떼": {
+      "HOT": "/images/menus/mega-6-hot.webp",
+      "ICE": "/images/menus/mega-6.webp"
+    },
+    "카라멜마끼아또": {
+      "HOT": "/images/menus/mega-7-hot.webp",
+      "ICE": "/images/menus/mega-7.webp"
+    },
+    "복숭아아이스티": {
+      "ICE": "/images/menus/mega-8.webp"
+    },
+    "딸기라떼": {
+      "ICE": "/images/menus/mega-9.webp"
+    },
+    "레몬에이드": {
+      "ICE": "/images/menus/mega-10.webp"
+    },
+    "청포도에이드": {
+      "ICE": "/images/menus/mega-11.webp"
+    },
+    "플레인요거트스무디": {
+      "ICE": "/images/menus/mega-12.webp"
+    }
+  },
+  "컴포즈": {
+    "아메리카노 (HOT)": {
+      "HOT": "/images/menus/compose-1.webp"
+    },
+    "아메리카노 (ICED)": {
+      "ICE": "/images/menus/compose-2.webp"
+    },
+    "카페라떼": {
+      "HOT": "/images/menus/compose-3-hot.webp",
+      "ICE": "/images/menus/compose-3.webp"
+    },
+    "바닐라라떼": {
+      "HOT": "/images/menus/compose-4-hot.webp",
+      "ICE": "/images/menus/compose-4.webp"
+    },
+    "카라멜마끼아또": {
+      "HOT": "/images/menus/compose-5-hot.webp",
+      "ICE": "/images/menus/compose-5.webp"
+    },
+    "카페모카": {
+      "HOT": "/images/menus/compose-6-hot.webp",
+      "ICE": "/images/menus/compose-6.webp"
+    },
+    "딸기라떼": {
+      "ICE": "/images/menus/compose-7.webp"
+    },
+    "쿠키초코프라페": {
+      "ICE": "/images/menus/compose-8.webp"
+    }
+  },
+  "빽다방": {
+    "앗!메리카노 (HOT)": {
+      "HOT": "/images/menus/paik-1.webp"
+    },
+    "바닐라라떼 (HOT)": {
+      "HOT": "/images/menus/paik-2.webp"
+    },
+    "원조커피 (HOT)": {
+      "HOT": "/images/menus/paik-3.webp"
+    },
+    "아이스티샷추가 (아샷추)": {
+      "ICE": "/images/menus/paik-7.webp"
+    },
+    "원조커피 (ICED)": {
+      "ICE": "/images/menus/paik-8.webp"
+    }
+  },
+  "롯데리아": {},
+  "더벤티": {
+    "아이스 아메리카노": {
+      "ICE": "/images/menus/venti-1.webp"
+    },
+    "오렌지과채주스": {
+      "ICE": "/images/menus/venti-7.webp"
+    },
+    "카페라떼": {
+      "ICE": "/images/menus/venti-8.webp"
+    }
+  }
+}

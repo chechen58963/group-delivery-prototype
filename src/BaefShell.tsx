@@ -13,6 +13,7 @@ import './order-entry.css'
 import { orderNextStep } from './orderGuidance'
 import { orderScreens, useAppNavigation } from './appNavigation'
 import './consistency.css'
+import RecruitmentProgress from './RecruitmentProgress'
 
 function canOpenOrderScreen(screen:Screen,post:{owner_id:string}|undefined,member:{status:string}|undefined,uid:string|undefined){
   if(screen==='detail')return true
@@ -120,7 +121,7 @@ function GroupDetail({pop,push}:{pop:()=>void;push:(s:Screen)=>void}){
   return <div className="baef-scroll"><div className="baef-page"><button className="baef-back" onClick={pop}><SmallIcon name="back"/>뒤로</button><div className="baef-group-head"><span className="baef-tag">{ended?'종료':open?'모집 중':'모집 마감'}</span><span>{p.member_count}/{p.max_members}명</span></div><h1 className="baef-detail-title">{p.restaurant}</h1><p className="baef-muted">{s.nickname(p.owner_id)}님이 함께 주문할 사람을 찾고 있어요.</p>
     {next&&<section className="baef-current-order"><span className="baef-eyebrow">{owner?'리더 · 다음 할 일':'참가자 · 다음 할 일'}</span><h2>{next.title}</h2><p>{next.description}</p><button className="baef-button" onClick={()=>push(next.route)}>{next.action}<span aria-hidden="true">→</span></button>{mine?.status==='accepted'&&!ended&&<div className="baef-order-links"><button onClick={()=>push('chat')}>채팅방 열기</button>{owner&&next.route!=='applicants'&&<button onClick={()=>push('applicants')}>신청자 관리</button>}</div>}</section>}
     {owner&&mine?.active&&<RoomTimeEditor/>}
-    <dl className="baef-detail-facts"><dt>수령 제안 장소</dt><dd>{p.meeting}</dd><dt>모집 마감</dt><dd>{new Date(p.deadline).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</dd><dt>목표 주문금액</dt><dd>{money(p.min_order)}</dd><dt>배달비</dt><dd>총 {money(p.delivery_fee)} · {Math.ceil(p.delivery_fee/Math.max(2,p.member_count)).toLocaleString()}원씩 예상</dd></dl>
+    {open&&<RecruitmentProgress postId={p.id} goal={p.min_order} members={p.member_count} maxMembers={p.max_members}/>}<dl className="baef-detail-facts"><dt>수령 제안 장소</dt><dd>{p.meeting}</dd><dt>모집 마감</dt><dd>{new Date(p.deadline).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</dd><dt>목표 주문금액</dt><dd>{money(p.min_order)}</dd><dt>배달비</dt><dd>총 {money(p.delivery_fee)} · {Math.ceil(p.delivery_fee/Math.max(2,p.member_count)).toLocaleString()}원씩 예상</dd></dl>
     {mine?.status==='accepted'&&<section className="baef-goal"><div><span>현재 모인 메뉴금액</span><b>{money(total)}</b></div><progress max={Math.max(1,p.min_order)} value={Math.min(total,p.min_order)} aria-label="주문 목표금액 달성도"/><p>{total>=p.min_order?'목표금액을 채웠어요. 주문 내용을 확인해 주세요.':`${money(p.min_order-total)} 더 모이면 목표금액을 채워요.`}</p></section>}
     {mine?.active&&<BasketEditor postId={p.id}/>}
     {people.length>0&&<OrderParticipants/>}

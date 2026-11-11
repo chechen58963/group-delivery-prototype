@@ -4,6 +4,7 @@ import { useSharedDelivery } from './SharedDelivery'
 import { CAMPUS_STORES } from './campus'
 import { useFlow } from './FlowContext'
 import { savedMatchLocation, storeMatchLocation, type MatchLocation } from './matchingLocation'
+import type { MenuChoice, MenuQuantities, SavedMenuItem } from './menuSelection'
 
 export const FOOD_CHOICES = [
   { id: 'coffee', name: '커피', subtitle: '한 잔만 필요할 때', photo: '1509042239860-f550ce710b93' },
@@ -20,8 +21,9 @@ export type MenuStore = { store_name: string; menu_key: string; goal_amount: num
 export type MenuIntent = { user_id: string; menus: string[]; stores: string[]; starts_at: string; ends_at: string; area_id: string; active: boolean; latitude: number|null; longitude: number|null }
 export type MenuMatch = { store_name: string; people_count: number }
 export type MenuNotification = { id: string; kind: 'menu_match' | 'group_invite'; payload: { stores: string[]; area: string; max_walk_m?: number; post_id?: string; starts_at?: string; ends_at?: string }; created_at: string; expires_at: string; read_at: string | null }
-export type Basket = { post_id: string; user_id: string; items: (CatalogItem & { quantity: number })[]; total: number }
-export type StoreDraft={quantities:Record<number,number>;goal:string;maxMembers:number;fee:string;meeting:string;note:string;deliveryDay:string;deliveryClock:string;deadline:string;publicPoint:MatchLocation|null}
+export type Basket = { post_id: string; user_id: string; items: SavedMenuItem[]; total: number }
+export type StoreDraft={quantities:MenuQuantities;goal:string;maxMembers:number;fee:string;meeting:string;note:string;deliveryDay:string;deliveryClock:string;deadline:string;publicPoint:MatchLocation|null}
+export type RecruitmentProgress={post_id:string;food_total:number;selected_people:number}
 type SavedDiscovery={menus?:string[];stores?:string[];selectionDate?:string;hour?:number;area?:string;search?:string;category?:string;view?:'list'|'map';tab?:'groups'|'stores';sort?:'recent'|'near';range?:'near'|'all';scroll?:number;drafts?:[string,StoreDraft][]}
 const preferenceKey=(owner:string)=>`baef-discovery-v2:${owner}`
 function readPreferences(owner:string):SavedDiscovery{
@@ -85,6 +87,8 @@ function useDiscoveryState() {
   const [matches,setMatches]=useState<MenuMatch[]>([])
   const [alerts,setAlerts]=useState<MenuNotification[]>([])
   const [baskets,setBaskets]=useState<Basket[]>([])
+  const [menuOptionsReady,setMenuOptionsReady]=useState(false)
+  const [recruitmentProgress,setRecruitmentProgress]=useState<RecruitmentProgress[]>([])
   const [connected,setConnected]=useState(false)
   const [loading,setLoading]=useState(false)
   const [saving,setSaving]=useState(false)
@@ -109,22 +113,26 @@ function useDiscoveryState() {
   useEffect(()=>{
     const generation=++epoch.current
     setIntent(null);setMatches([]);setAlerts([]);setBaskets([]);setConnected(false);setError('')
+    setMenuOptionsReady(false);setRecruitmentProgress([])
     if(!uid||!shared.allowed)return
     let alive=true,running=false,hydrated=false
     let seen:Set<string>|null=null
     const load=async()=>{
       if(running)return;running=true;setLoading(true)
       try{
-        const [own,found,notes,orders]=await Promise.all([
+        const [own,found,notes,orders,selectionInfo]=await Promise.all([
           supabase.from('gd_intents').select('*').eq('user_id',uid).maybeSingle(),
           supabase.rpc('gd_find_menu_matches'),
           supabase.from('gd_menu_notifications').select('*').gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(50),
           supabase.from('gd_baskets').select('*'),
+          supabase.rpc('gd_menu_selection_info'),
         ])
         for(const r of [own,found,notes,orders])if(r.error)throw r.error
         if(!alive||epoch.current!==generation)return
         const value=own.data as MenuIntent|null
         setIntent(value);setMatches((found.data??[]) as MenuMatch[]);setBaskets((orders.data??[]) as Basket[])
+        setMenuOptionsReady(!selectionInfo.error&&selectionInfo.data?.version===1)
+        setRecruitmentProgress(!selectionInfo.error&&Array.isArray(selectionInfo.data?.progress)?selectionInfo.data.progress:[])
         const next=(notes.data??[]) as MenuNotification[]
         if(seen){const fresh=next.find(n=>!seen!.has(n.id)&&!n.read_at);if(fresh){const matching=(found.data as MenuMatch[]??[]).filter(m=>fresh.payload.stores.includes(m.store_name)).sort((a,b)=>Number(b.people_count)-Number(a.people_count))[0];if(fresh.kind==='group_invite')setToast('함께 주문할 모집이 열렸어요. 알림을 확인해 보세요.');else if(matching&&Number(matching.people_count)>0)setToast(`${matching.store_name}에서 함께 주문할 배프 ${matching.people_count}명이 있어요. 알림에서 모집을 시작해 보세요.`)}}
         seen=new Set(next.map(n=>n.id));setAlerts(next);setConnected(true);setError('')
@@ -177,10 +185,13 @@ function useDiscoveryState() {
     search,setSearch,browseCategory,setBrowseCategory,browseView,setBrowseView,browseTab,setBrowseTab,sort,setSort,browseRange,setBrowseRange,listScroll,storeDrafts,persistDraft,saveListScroll,preferencesReady:preferenceOwner===owner&&!shared.initializing,
     matchLocation,manualLocation,setMatchLocation,matchingStore,closeMatchingStore:()=>setMatchingStore(null),
     startMatchingRoom:(name:string)=>{if(shared.active){shared.setNotice('진행 중인 주문을 먼저 확인해 주세요.');return}if(!activeIntent||!matches.some(m=>m.store_name===name&&Number(m.people_count)>0)){setToast('매칭 조건이 바뀌었어요. 메뉴 알림을 다시 확인해 주세요.');return}const date=new Date(activeIntent.starts_at);setDay(date.toDateString()===new Date().toDateString()?0:1);setHour(date.getHours());setArea(activeIntent.area_id);setMatchingStore(name)},
-    intent:activeIntent,matches,visibleMatches:sameSelection?matches:[],alerts:currentAlerts,baskets,connected,loading,saving,error,setError,toast,setToast,save,refresh,
+    intent:activeIntent,matches,visibleMatches:sameSelection?matches:[],alerts:currentAlerts,baskets,menuOptionsReady,recruitmentProgress,connected,loading,saving,error,setError,toast,setToast,save,refresh,
     cancel:async()=>{if(await run(()=>supabase.rpc('gd_cancel_intent'))) {setIntent(null);setMatches([]);setToast('메뉴 기다리기를 취소했어요.')}},
     readAlerts:async(ids:string[])=>{if(await run(()=>supabase.rpc('gd_mark_menu_notifications',{p_ids:ids})))setAlerts(values=>values.map(n=>ids.includes(n.id)?{...n,read_at:new Date().toISOString()}:n))},
-    saveBasket:async(post:string,items:{id:number;quantity:number}[])=>run(()=>supabase.rpc('gd_save_basket',{p_post:post,p_items:items})),
+    saveBasket:async(post:string,items:MenuChoice[])=>{
+      if(!menuOptionsReady&&items.some(i=>i.temperature)){setError('메뉴 옵션 연결을 확인한 뒤 다시 저장해 주세요.');return false}
+      return run(()=>supabase.rpc(menuOptionsReady?'gd_save_menu_basket':'gd_save_basket',{p_post:post,p_items:items}))
+    },
     invite:async(post:string)=>run(()=>supabase.rpc('gd_invite_menu_matches',{p_post:post,p_lat:matchLocation?.lat??null,p_lng:matchLocation?.lng??null})),
   }
 }
