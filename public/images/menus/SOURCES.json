@@ -1,0 +1,641 @@
+[
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "에그마요 (15cm)",
+    "matched_title": "에그마요",
+    "src": "/images/menus/subway-1.webp",
+    "original": "https://www.subway.co.kr/upload/menu/Egg-Mayo_20211231094817112.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "이탈리안 비엠티 (15cm)",
+    "matched_title": "이탈리안 비엠티",
+    "src": "/images/menus/subway-2.webp",
+    "original": "https://www.subway.co.kr/upload/menu/Italian_B.M.T_20211231094910899.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "로스트 치킨 (15cm)",
+    "matched_title": "로스트 치킨",
+    "src": "/images/menus/subway-3.webp",
+    "original": "https://www.subway.co.kr/upload/menu/Roasted-Chicken_20211231095032718.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "초코칩 쿠키",
+    "matched_title": "초코칩",
+    "src": "/images/menus/subway-4.webp",
+    "original": "https://www.subway.co.kr/upload/menu/chocolate_chip_20210315021446423.jpg",
+    "source_snapshot": "subway-cookie.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "스테이크 & 치즈 (15cm)",
+    "matched_title": "스테이크 & 치즈",
+    "src": "/images/menus/subway-5.webp",
+    "original": "https://www.subway.co.kr/upload/menu/Steak-%26-Cheese_20211231095455613.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "로티세리 바비큐 치킨 (15cm)",
+    "matched_title": "로티세리 바비큐 치킨",
+    "src": "/images/menus/subway-6.webp",
+    "original": "https://www.subway.co.kr/upload/menu/Rotisserie-Barbecue-Chicken_20211231023137878.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "쉬림프 (15cm)",
+    "matched_title": "쉬림프",
+    "src": "/images/menus/subway-7.webp",
+    "original": "https://www.subway.co.kr/upload/menu/Shrimp_front_20230703123439107.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "참치 (15cm)",
+    "matched_title": "참치",
+    "src": "/images/menus/subway-8.webp",
+    "original": "https://www.subway.co.kr/upload/menu/Tuna_20211231095535268.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "비엘티 (15cm)",
+    "matched_title": "비엘티",
+    "src": "/images/menus/subway-9.webp",
+    "original": "https://www.subway.co.kr/upload/menu/B.L.T_20211231094744175.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "베지 (15cm)",
+    "matched_title": "베지",
+    "src": "/images/menus/subway-10.webp",
+    "original": "https://www.subway.co.kr/upload/menu/Veggie-Delite_20211231095658375.png",
+    "source_snapshot": "subway.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "더블 초코칩 쿠키",
+    "matched_title": "더블 초코칩",
+    "src": "/images/menus/subway-11.webp",
+    "original": "https://www.subway.co.kr/upload/menu/double_chocolate_chip_20210315021500386.jpg",
+    "source_snapshot": "subway-cookie.html"
+  },
+  {
+    "brand": "subway",
+    "store": "써브웨이 대전충남대정문점",
+    "menu": "화이트 초코 마카다미아 쿠키",
+    "matched_title": "화이트 초코 마카다미아",
+    "src": "/images/menus/subway-12.webp",
+    "original": "https://www.subway.co.kr/upload/menu/white_choco_macadamia_20210315021402115.jpg",
+    "source_snapshot": "subway-cookie.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "싸이버거",
+    "matched_title": "Thigh Burger 싸이버거",
+    "src": "/images/menus/mom-1.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1781574164-JCDWG.png",
+    "source_snapshot": "mom-burgers-2.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "불싸이버거",
+    "matched_title": "Spicy Thigh Burger 불싸이버거",
+    "src": "/images/menus/mom-2.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1616055291-RNIEC.png",
+    "source_snapshot": "mom-burgers-2.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "화이트갈릭버거",
+    "matched_title": "White Garlic Burger 화이트갈릭버거",
+    "src": "/images/menus/mom-3.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1616055799-QYDPW.png",
+    "source_snapshot": "mom-burgers-2.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "휠렛버거",
+    "matched_title": "Fillet Burger 휠렛버거",
+    "src": "/images/menus/mom-5.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1616055945-EJEVO.png",
+    "source_snapshot": "mom-burgers-3.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "딥치즈버거",
+    "matched_title": "Deep Cheese Burger 딥치즈버거",
+    "src": "/images/menus/mom-6.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1616055336-FOPBZ.png",
+    "source_snapshot": "mom-burgers-2.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "싸이플렉스버거",
+    "matched_title": "Thigh Flex Burger 싸이플렉스버거",
+    "src": "/images/menus/mom-7.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1616480109-NHROT.png",
+    "source_snapshot": "mom-burgers-2.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "케이준양념감자 (중)",
+    "matched_title": "Cajun French Fries 케이준양념감자",
+    "src": "/images/menus/mom-9.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1765239967-OXHVA.png",
+    "source_snapshot": "mom-sides-2.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "코울슬로",
+    "matched_title": "Coleslaw 코울슬로",
+    "src": "/images/menus/mom-10.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1763456292-PZWZQ.png",
+    "source_snapshot": "mom-sides.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "콘샐러드",
+    "matched_title": "Corn Salad 콘샐러드",
+    "src": "/images/menus/mom-11.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1765240033-TSZCW.png",
+    "source_snapshot": "mom-sides-2.html"
+  },
+  {
+    "brand": "mom",
+    "store": "맘스터치 충남대점",
+    "menu": "바삭크림치즈볼 (4조각)",
+    "matched_title": "Crispy Cream Cheese Balls 바삭크림치즈볼",
+    "src": "/images/menus/mom-12.webp",
+    "original": "https://momstouch.co.kr/upload_file/product_info/1616054523-YFWKG.png",
+    "source_snapshot": "mom-sides-2.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "카페 아메리카노",
+    "matched_title": "(L) HOT 카페 아메리카노",
+    "src": "/images/menus/ediya-1.webp",
+    "original": "https://ediya.com/files/menu/IMG_1671581625569.png",
+    "source_snapshot": "ediya-1.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "카페 라떼",
+    "matched_title": "(L) HOT 카페 라떼",
+    "src": "/images/menus/ediya-2.webp",
+    "original": "https://ediya.com/files/menu/IMG_1671582054147.png",
+    "source_snapshot": "ediya-more-latte2.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "토피 넛 라떼",
+    "matched_title": "(L) HOT 토피넛 라떼",
+    "src": "/images/menus/ediya-3.webp",
+    "original": "https://ediya.com/files/menu/IMG_1694414812893.png",
+    "source_snapshot": "ediya-toffee.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "바닐라 라떼",
+    "matched_title": "(L) HOT 바닐라 라떼",
+    "src": "/images/menus/ediya-4.webp",
+    "original": "https://ediya.com/files/menu/IMG_1764057115455.png",
+    "source_snapshot": "ediya-4.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "카페 모카",
+    "matched_title": "(L) HOT 카페 모카",
+    "src": "/images/menus/ediya-5.webp",
+    "original": "https://ediya.com/files/menu/IMG_1671586052246.png",
+    "source_snapshot": "ediya-5.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "카라멜 마끼아또",
+    "matched_title": "(L) HOT 카라멜 마끼아또",
+    "src": "/images/menus/ediya-6.webp",
+    "original": "https://ediya.com/files/menu/IMG_1671585699141.png",
+    "source_snapshot": "ediya-6.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "콜드브루",
+    "matched_title": "(L) 콜드브루",
+    "src": "/images/menus/ediya-7.webp",
+    "original": "https://ediya.com/files/menu/IMG_1765780087808.png",
+    "source_snapshot": "ediya-more-cold3.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "초콜릿",
+    "matched_title": "(L) HOT 초콜릿",
+    "src": "/images/menus/ediya-9.webp",
+    "original": "https://ediya.com/files/menu/IMG_1765782625802.png",
+    "source_snapshot": "ediya-more-chocolate4.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "딸기 요거트 플랫치노",
+    "matched_title": "(L) 딸기 요거트 플랫치노",
+    "src": "/images/menus/ediya-11.webp",
+    "original": "https://ediya.com/files/menu/IMG_1765788979119.png",
+    "source_snapshot": "ediya-11.html"
+  },
+  {
+    "brand": "ediya",
+    "store": "이디야커피 충대정문점",
+    "menu": "플레인 와플",
+    "matched_title": "플레인 와플",
+    "src": "/images/menus/ediya-12.webp",
+    "original": "https://ediya.com/files/menu/IMG_1548049744616.png",
+    "source_snapshot": "ediya-12.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "메가리카노",
+    "matched_title": "메가리카노 ICE",
+    "src": "/images/menus/mega-1.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610132223_1717993343456_4KESgpG57t.jpg",
+    "source_snapshot": "mega-6.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "퐁크러쉬플레인",
+    "matched_title": "플레인퐁크러쉬 ICE",
+    "src": "/images/menus/mega-2.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610113328_1717986808464_JOQsVpbWKq.jpg",
+    "source_snapshot": "mega-7.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "쿠키프라페",
+    "matched_title": "쿠키프라페 ICE",
+    "src": "/images/menus/mega-3.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610115315_1717987995816_oiPZ2u5dJr.jpg",
+    "source_snapshot": "mega-5.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "아메리카노 (ICED)",
+    "matched_title": "아메리카노 ICE",
+    "src": "/images/menus/mega-4.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610133007_1717993807130_nwB5CATOJJ.jpg",
+    "source_snapshot": "mega-7.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "카페라떼",
+    "matched_title": "카페라떼 ICE",
+    "src": "/images/menus/mega-5.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610132819_1717993699956_cEyZRaBZh5.jpg",
+    "source_snapshot": "mega-6.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "바닐라라떼",
+    "matched_title": "바닐라라떼 ICE",
+    "src": "/images/menus/mega-6.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610132249_1717993369864_VIG6IR2byt.jpg",
+    "source_snapshot": "mega-6.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "카라멜마끼아또",
+    "matched_title": "카라멜마끼아또 ICE",
+    "src": "/images/menus/mega-7.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610132714_1717993634339_dshEGyCDsC.jpg",
+    "source_snapshot": "mega-6.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "복숭아아이스티",
+    "matched_title": "복숭아아이스티 ICE",
+    "src": "/images/menus/mega-8.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610132446_1717993486995_hvfli27vPn.jpg",
+    "source_snapshot": "mega-8.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "딸기라떼",
+    "matched_title": "딸기라떼 ICE",
+    "src": "/images/menus/mega-9.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20250116001724_1736954244791_8qDsY0gj14.jpg",
+    "source_snapshot": "mega.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "레몬에이드",
+    "matched_title": "레몬에이드 ICE",
+    "src": "/images/menus/mega-10.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610114557_1717987557279_GKXThr0HAc.jpg",
+    "source_snapshot": "mega-7.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "청포도에이드",
+    "matched_title": "청포도에이드 ICE",
+    "src": "/images/menus/mega-11.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240610115123_1717987883226_DMMQB84jmS.jpg",
+    "source_snapshot": "mega-8.html"
+  },
+  {
+    "brand": "mega",
+    "store": "메가MGC커피 대전충남대정문점",
+    "menu": "플레인요거트스무디",
+    "matched_title": "플레인요거트스무디 ICE",
+    "src": "/images/menus/mega-12.webp",
+    "original": "https://img.mega-mgccoffee.com/megahp/manager/upload/menu/20240612101151_1718154711606_iC5h64zrID.jpg",
+    "source_snapshot": "mega-7.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "아메리카노 (HOT)",
+    "matched_title": "H-아메리카노",
+    "src": "/images/menus/compose-1.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/751/303/11f9e8bb0340c8505d8c3b655530d346.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "아메리카노 (ICED)",
+    "matched_title": "I-아메리카노",
+    "src": "/images/menus/compose-2.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/753/303/6a917242a4ea3de7dca9b126c8c31262.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "카페라떼",
+    "matched_title": "I-카페라떼",
+    "src": "/images/menus/compose-3.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/762/303/b30fef7930874d1423505d89d153c3aa.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "바닐라라떼",
+    "matched_title": "I-바닐라라떼",
+    "src": "/images/menus/compose-4.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/768/303/05097606453a6d12a08b1074d140b5a0.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "카라멜마끼아또",
+    "matched_title": "I-캬라멜마끼아또",
+    "src": "/images/menus/compose-5.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/782/303/7b04ddf2136fdd4a99f312b0c381da2f.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "카페모카",
+    "matched_title": "I-카페모카",
+    "src": "/images/menus/compose-6.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/786/303/0623e86669410e3bf934c879e16916b9.jpg",
+    "source_snapshot": "compose-coffee.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "딸기라떼",
+    "matched_title": "I-딸기라떼",
+    "src": "/images/menus/compose-7.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/904/303/6914993a5c5dfab6ad405c407e47b2c1.jpg",
+    "source_snapshot": "compose-beverage.html"
+  },
+  {
+    "brand": "compose",
+    "store": "컴포즈커피 대전충남대점",
+    "menu": "쿠키초코프라페",
+    "matched_title": "쿠키초코프라페",
+    "src": "/images/menus/compose-8.webp",
+    "original": "https://composecoffee.com/files/attach/images/272857/958/303/052ce4ddd9a19143d1102f4eebe889ee.jpg",
+    "source_snapshot": "compose-frappe.html"
+  },
+  {
+    "brand": "paik",
+    "store": "빽다방 충남대후문점",
+    "menu": "앗!메리카노 (HOT)",
+    "matched_title": "아메리카노(HOT)",
+    "src": "/images/menus/paik-1.webp",
+    "original": "https://paikdabang.com/wp-content/uploads/2018/05/HOT-%EC%95%97%EB%A9%94%EB%A6%AC%EC%B9%B4%EB%85%B8-450x588.png",
+    "source_snapshot": "paik.html"
+  },
+  {
+    "brand": "paik",
+    "store": "빽다방 충남대후문점",
+    "menu": "바닐라라떼 (HOT)",
+    "matched_title": "바닐라라떼(HOT)",
+    "src": "/images/menus/paik-2.webp",
+    "original": "https://paikdabang.com/wp-content/uploads/2018/05/HOT-%EB%B0%94%EB%8B%90%EB%9D%BC%EB%9D%BC%EB%96%BC-1-450x588.png",
+    "source_snapshot": "paik.html"
+  },
+  {
+    "brand": "paik",
+    "store": "빽다방 충남대후문점",
+    "menu": "원조커피 (HOT)",
+    "matched_title": "원조커피(HOT)",
+    "src": "/images/menus/paik-3.webp",
+    "original": "https://paikdabang.com/wp-content/uploads/2018/05/HOT-%EC%9B%90%EC%A1%B0%EC%BB%A4%ED%94%BC-450x588.png",
+    "source_snapshot": "paik.html"
+  },
+  {
+    "brand": "paik",
+    "store": "빽다방 충남대후문점",
+    "menu": "사라다빵",
+    "matched_title": "사라다빵",
+    "src": "/images/menus/paik-6.webp",
+    "original": "https://paikdabang.com/wp-content/uploads/2017/05/%EC%82%AC%EB%9D%BC%EB%8B%A4%EB%B9%B5_new-450x588.png",
+    "source_snapshot": "paik-dessert.html"
+  },
+  {
+    "brand": "paik",
+    "store": "빽다방 충남대후문점",
+    "menu": "아이스티샷추가 (아샷추)",
+    "matched_title": "아이스티샷추가(아샷추)",
+    "src": "/images/menus/paik-7.webp",
+    "original": "https://paikdabang.com/wp-content/uploads/2018/01/%EC%95%84%EC%83%B7%EC%B6%94-450x588.png",
+    "source_snapshot": "paik.html"
+  },
+  {
+    "brand": "paik",
+    "store": "빽다방 충남대후문점",
+    "menu": "원조커피 (ICED)",
+    "matched_title": "원조커피(ICED)",
+    "src": "/images/menus/paik-8.webp",
+    "original": "https://paikdabang.com/wp-content/uploads/2018/05/ICED-%EC%9B%90%EC%A1%B0%EC%BB%A4%ED%94%BC-450x588.png",
+    "source_snapshot": "paik.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "리아 사각새우 더블 세트",
+    "matched_title": "리아 사각새우 더블 세트",
+    "src": "/images/menus/lotteria-1.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2026/10/29/20261029160703570_0.png",
+    "source_snapshot": "lotteria-set1.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "모짜렐라 인 더 버거 베이컨 세트",
+    "matched_title": "모짜렐라인더버거_베이컨 세트(버터번)",
+    "src": "/images/menus/lotteria-2.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2026/10/27/20261027150142282_4.png",
+    "source_snapshot": "lotteria-set2.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "새우버거",
+    "matched_title": "리아 새우",
+    "src": "/images/menus/lotteria-3.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2026/10/29/20261029170603761_7.png",
+    "source_snapshot": "lotteria.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "치킨버거",
+    "matched_title": "치킨버거",
+    "src": "/images/menus/lotteria-4.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2025/12/03/20251203084852773_5.png",
+    "source_snapshot": "lotteria.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "데리버거",
+    "matched_title": "데리버거",
+    "src": "/images/menus/lotteria-5.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2020/01/02/20200102234537645_5.png",
+    "source_snapshot": "lotteria.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "치킨휠레 (4조각)",
+    "matched_title": "치킨휠레4조각",
+    "src": "/images/menus/lotteria-6.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2019/12/20/20191220165353371_8.png",
+    "source_snapshot": "lotteria-REP_000119.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "화이어윙 (2조각)",
+    "matched_title": "화이어윙2조각",
+    "src": "/images/menus/lotteria-7.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2023/06/21/20230621175453874_9.png",
+    "source_snapshot": "lotteria-REP_000117.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "치킨휠레 (2조각)",
+    "matched_title": "치킨휠레2조각",
+    "src": "/images/menus/lotteria-8.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2020/11/03/20201103152232421_6.png",
+    "source_snapshot": "lotteria-REP_000119.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "치킨다리 (1조각)",
+    "matched_title": "치킨다리 1조각",
+    "src": "/images/menus/lotteria-9.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2024/10/30/20241030191751716_5.png",
+    "source_snapshot": "lotteria.html"
+  },
+  {
+    "brand": "lotteria",
+    "store": "롯데리아 충남대점",
+    "menu": "치킨다리 하프팩 (코울슬로)",
+    "matched_title": "치킨다리 하프팩(4조각)",
+    "src": "/images/menus/lotteria-10.webp",
+    "original": "https://img.lotteeatz.com/upload/product/2025/02/20/20250220132842689_6.png",
+    "source_snapshot": "lotteria.html"
+  },
+  {
+    "brand": "venti",
+    "store": "더벤티 충남대점",
+    "menu": "아이스 아메리카노",
+    "matched_title": "아이스 아메리카노 (라지/점보)",
+    "src": "/images/menus/venti-1.webp",
+    "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_oc3VbpqI_20260612155546.png",
+    "source_snapshot": "venti-2.html"
+  },
+  {
+    "brand": "venti",
+    "store": "더벤티 충남대점",
+    "menu": "오렌지과채주스",
+    "matched_title": "오렌지과채주스 (라지/점보)",
+    "src": "/images/menus/venti-7.webp",
+    "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_6aVmGE3d_20260612162033.png",
+    "source_snapshot": "venti-5.html"
+  },
+  {
+    "brand": "venti",
+    "store": "더벤티 충남대점",
+    "menu": "카페라떼",
+    "matched_title": "카페라떼 (라지/점보)",
+    "src": "/images/menus/venti-8.webp",
+    "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_0T7iGUDW_20260612155751.png",
+    "source_snapshot": "venti-2.html"
+  }
+]

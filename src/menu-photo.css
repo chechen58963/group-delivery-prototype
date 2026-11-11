@@ -1,0 +1,39 @@
+.baef-menu-photo {
+  display: block;
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #eeece8;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.baef-menu-photo > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.baef-menu-item > .baef-menu-description { flex: 1; min-width: 0; }
+.baef-menu-item > .baef-menu-description > b { overflow-wrap: anywhere; line-height: 1.5; }
+.baef-menu-photo:focus-visible, .baef-menu-photo-close:focus-visible { outline: 2px solid #c45120; outline-offset: 3px; }
+.baef-menu-photo-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  color: #282522;
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-family: 'Noto Sans KR', system-ui, sans-serif;
+}
+.baef-menu-photo-dialog::backdrop { background: rgb(0 0 0 / .65); }
+.baef-menu-photo-view { position: relative; }
+.baef-menu-photo-view > img { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; padding: 28px; }
+.baef-menu-photo-view > div { padding: 0 24px 24px; }
+.baef-menu-photo-view h2 { margin: 0; font-size: 18px; font-weight: 650; line-height: 1.5; }
+.baef-menu-photo-view p { margin: 6px 0 0; font-size: 13px; color: #79736d; }
+.baef-menu-photo-close { position: absolute; top: 10px; right: 10px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #f4f3f0; color: #282522; }
+@media (max-width: 360px) { .baef-menu-photo { flex-basis: 60px; width: 60px; height: 60px; } .baef-app .baef-menu-item { gap: 8px; } }

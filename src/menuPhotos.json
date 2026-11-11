@@ -1,0 +1,89 @@
+{
+  "써브웨이": {
+    "에그마요 (15cm)": "/images/menus/subway-1.webp",
+    "이탈리안 비엠티 (15cm)": "/images/menus/subway-2.webp",
+    "로스트 치킨 (15cm)": "/images/menus/subway-3.webp",
+    "초코칩 쿠키": "/images/menus/subway-4.webp",
+    "스테이크 & 치즈 (15cm)": "/images/menus/subway-5.webp",
+    "로티세리 바비큐 치킨 (15cm)": "/images/menus/subway-6.webp",
+    "쉬림프 (15cm)": "/images/menus/subway-7.webp",
+    "참치 (15cm)": "/images/menus/subway-8.webp",
+    "비엘티 (15cm)": "/images/menus/subway-9.webp",
+    "베지 (15cm)": "/images/menus/subway-10.webp",
+    "더블 초코칩 쿠키": "/images/menus/subway-11.webp",
+    "화이트 초코 마카다미아 쿠키": "/images/menus/subway-12.webp"
+  },
+  "맘스터치": {
+    "싸이버거": "/images/menus/mom-1.webp",
+    "불싸이버거": "/images/menus/mom-2.webp",
+    "화이트갈릭버거": "/images/menus/mom-3.webp",
+    "휠렛버거": "/images/menus/mom-5.webp",
+    "딥치즈버거": "/images/menus/mom-6.webp",
+    "싸이플렉스버거": "/images/menus/mom-7.webp",
+    "케이준양념감자 (중)": "/images/menus/mom-9.webp",
+    "코울슬로": "/images/menus/mom-10.webp",
+    "콘샐러드": "/images/menus/mom-11.webp",
+    "바삭크림치즈볼 (4조각)": "/images/menus/mom-12.webp"
+  },
+  "이디야": {
+    "카페 아메리카노": "/images/menus/ediya-1.webp",
+    "카페 라떼": "/images/menus/ediya-2.webp",
+    "토피 넛 라떼": "/images/menus/ediya-3.webp",
+    "바닐라 라떼": "/images/menus/ediya-4.webp",
+    "카페 모카": "/images/menus/ediya-5.webp",
+    "카라멜 마끼아또": "/images/menus/ediya-6.webp",
+    "콜드브루": "/images/menus/ediya-7.webp",
+    "초콜릿": "/images/menus/ediya-9.webp",
+    "딸기 요거트 플랫치노": "/images/menus/ediya-11.webp",
+    "플레인 와플": "/images/menus/ediya-12.webp"
+  },
+  "메가": {
+    "메가리카노": "/images/menus/mega-1.webp",
+    "퐁크러쉬플레인": "/images/menus/mega-2.webp",
+    "쿠키프라페": "/images/menus/mega-3.webp",
+    "아메리카노 (ICED)": "/images/menus/mega-4.webp",
+    "카페라떼": "/images/menus/mega-5.webp",
+    "바닐라라떼": "/images/menus/mega-6.webp",
+    "카라멜마끼아또": "/images/menus/mega-7.webp",
+    "복숭아아이스티": "/images/menus/mega-8.webp",
+    "딸기라떼": "/images/menus/mega-9.webp",
+    "레몬에이드": "/images/menus/mega-10.webp",
+    "청포도에이드": "/images/menus/mega-11.webp",
+    "플레인요거트스무디": "/images/menus/mega-12.webp"
+  },
+  "컴포즈": {
+    "아메리카노 (HOT)": "/images/menus/compose-1.webp",
+    "아메리카노 (ICED)": "/images/menus/compose-2.webp",
+    "카페라떼": "/images/menus/compose-3.webp",
+    "바닐라라떼": "/images/menus/compose-4.webp",
+    "카라멜마끼아또": "/images/menus/compose-5.webp",
+    "카페모카": "/images/menus/compose-6.webp",
+    "딸기라떼": "/images/menus/compose-7.webp",
+    "쿠키초코프라페": "/images/menus/compose-8.webp"
+  },
+  "빽다방": {
+    "앗!메리카노 (HOT)": "/images/menus/paik-1.webp",
+    "바닐라라떼 (HOT)": "/images/menus/paik-2.webp",
+    "원조커피 (HOT)": "/images/menus/paik-3.webp",
+    "사라다빵": "/images/menus/paik-6.webp",
+    "아이스티샷추가 (아샷추)": "/images/menus/paik-7.webp",
+    "원조커피 (ICED)": "/images/menus/paik-8.webp"
+  },
+  "롯데리아": {
+    "리아 사각새우 더블 세트": "/images/menus/lotteria-1.webp",
+    "모짜렐라 인 더 버거 베이컨 세트": "/images/menus/lotteria-2.webp",
+    "새우버거": "/images/menus/lotteria-3.webp",
+    "치킨버거": "/images/menus/lotteria-4.webp",
+    "데리버거": "/images/menus/lotteria-5.webp",
+    "치킨휠레 (4조각)": "/images/menus/lotteria-6.webp",
+    "화이어윙 (2조각)": "/images/menus/lotteria-7.webp",
+    "치킨휠레 (2조각)": "/images/menus/lotteria-8.webp",
+    "치킨다리 (1조각)": "/images/menus/lotteria-9.webp",
+    "치킨다리 하프팩 (코울슬로)": "/images/menus/lotteria-10.webp"
+  },
+  "더벤티": {
+    "아이스 아메리카노": "/images/menus/venti-1.webp",
+    "오렌지과채주스": "/images/menus/venti-7.webp",
+    "카페라떼": "/images/menus/venti-8.webp"
+  }
+}
