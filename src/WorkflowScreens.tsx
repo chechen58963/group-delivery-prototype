@@ -22,7 +22,7 @@ import {
   type Transaction,
 } from "./workflow"
 
-export type Screen = "main" | "category" | "list" | "detail" | "create" | "applicants" | "applicantProfile" | "chat" | "menu" | "payment" | "delivery" | "receipt" | "complete" | "rating" | "profile"
+export type Screen = "order" | "main" | "category" | "list" | "detail" | "create" | "applicants" | "applicantProfile" | "chat" | "menu" | "payment" | "delivery" | "receipt" | "complete" | "rating" | "profile"
 
 type Navigation = { pop: () => void ; push: (screen: Screen) => void }
 

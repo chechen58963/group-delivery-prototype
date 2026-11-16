@@ -5,8 +5,10 @@ import { useSharedDelivery } from './SharedDelivery'
 import { readAccountHistory, saveAccountHistory } from './sharedHistory'
 
 export type OrderPhase='menu'|'payment'|'ordered'|'delivering'|'arrived'|'completed'|'cancelled'
-export type OrderState={post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string}
+export type OrderState={post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string;pickup_mode?:'meet'|'contactless';pickup_proposer?:string|null;pickup_agreed_by?:string[];pickup_note?:string;pickup_dropped_at?:string|null}
 export type OrderPerson={post_id:string;user_id:string;food_total:number;fee:number;coupon_discount:number;claimed_amount:number;confirmed_amount:number;refunded_amount:number;refund_due:number;refund_sent:boolean;transfer_review_pending?:boolean;received_at:string|null;late_reported:boolean;late_ack:boolean;latitude:number|null;longitude:number|null}
+type PersonNoticeSnapshot=Pick<OrderPerson,'post_id'|'user_id'|'claimed_amount'|'confirmed_amount'|'received_at'>
+const personNoticeSnapshot=(p:PersonNoticeSnapshot):PersonNoticeSnapshot=>({post_id:p.post_id,user_id:p.user_id,claimed_amount:p.claimed_amount,confirmed_amount:p.confirmed_amount,received_at:p.received_at})
 export type Reputation={user_id:string;rating:number|null;review_count:number;trades:number}
 export type OrderReview={id:string;post_id:string;reviewer_id:string;subject_id:string;stars:number;comment:string;created_at:string}
 export type OrderReport={id:string;post_id:string;reporter_id:string;subject_id:string;reason:string;detail:string;status:'pending'|'confirmed'|'dismissed';resolution:string|null}
@@ -29,10 +31,13 @@ function useLifecycleState(){
   const [available,setAvailable]=useState(false),[error,setError]=useState(''),[loadError,setLoadError]=useState(''),[busy,setBusy]=useState(false)
   const pending=useRef(false),revision=useRef(0),currentUid=useRef(uid);currentUid.current=uid
   const seenStates=useRef(new Map<string,OrderState>()),postsRef=useRef(s.rawPosts);postsRef.current=s.rawPosts
+  const seenPeople=useRef<PersonNoticeSnapshot[]|null>(null)
   useEffect(()=>{
     setStates([]);setPeople([]);setReviews([]);setReports([]);setReputations([]);setAvailable(false);setError('');setLoadError('')
     const previous=uid?readAccountHistory<unknown>(uid,'order-states',[]):[]
     seenStates.current=new Map((Array.isArray(previous)?previous:[]).filter((v):v is OrderState=>!!v&&typeof v.post_id==='string'&&typeof v.phase==='string'&&v.phase in phaseLabel).map(v=>[v.post_id,v]))
+    const previousPeople=uid?readAccountHistory<unknown>(uid,'order-people',null):null
+    seenPeople.current=Array.isArray(previousPeople)?previousPeople.filter((p):p is PersonNoticeSnapshot=>!!p&&typeof p.post_id==='string'&&typeof p.user_id==='string'&&typeof p.confirmed_amount==='number'&&typeof p.claimed_amount==='number').map(personNoticeSnapshot):null
     if(!uid||!s.allowed)return
     let alive=true,running=false,seen:Map<string,string>|null=null
     const load=async()=>{
@@ -53,6 +58,15 @@ function useLifecycleState(){
           seenStates.current.set(value.post_id,value)
         }
         saveAccountHistory(uid,'order-states',[...seenStates.current.values()].slice(-300))
+        const nextPeople=r[1].data as OrderPerson[]
+        if(seenPeople.current)for(const person of nextPeople){
+          const before=seenPeople.current.find(p=>p.post_id===person.post_id&&p.user_id===person.user_id),post=postsRef.current.find(p=>p.id===person.post_id)
+          if(!before||!post)continue
+          if(person.user_id===uid&&person.confirmed_amount>before.confirmed_amount)s.addNotification(post,'리더가 내 입금을 확인했어요. 주문 진행을 확인해 주세요.','payment',`confirmed:${uid}:${person.confirmed_amount}:${Date.now()}`)
+          if(post.owner_id===uid&&person.user_id!==uid&&person.claimed_amount>before.claimed_amount)s.addNotification(post,`${s.nickname(person.user_id)}님이 송금을 표시했어요. 계좌의 입금을 확인해 주세요.`,'payment',`claimed:${person.user_id}:${person.claimed_amount}:${Date.now()}`)
+          if(person.user_id!==uid&&!before.received_at&&person.received_at)s.addNotification(post,`${s.nickname(person.user_id)}님이 음식 수령을 확인했어요.`,'receipt',`received:${person.user_id}:${person.received_at}`)
+        }
+        seenPeople.current=nextPeople.map(personNoticeSnapshot);saveAccountHistory(uid,'order-people',seenPeople.current.slice(-1000))
         if(seen){const changed=next.find(v=>seen!.has(v.post_id)&&seen!.get(v.post_id)!==v.phase);if(changed)s.setNotice(`주문 상태가 ‘${phaseLabel[changed.phase]}’로 바뀌었어요.`)}
         seen=new Map(next.map(v=>[v.post_id,v.phase]));setStates(next);setPeople(r[1].data as OrderPerson[]);setReviews(r[2].data as OrderReview[]);setReports(r[3].data as OrderReport[]);setReputations(r[4].data as Reputation[]);setAvailable(true);setLoadError('')
       }catch(e){if(alive&&generation===revision.current){setAvailable(false);setLoadError(['PGRST202','PGRST205','42P01'].includes((e as {code?:string}).code??'')?'복원한 기능을 이용하려면 공유 저장소 업데이트가 필요해요.':(e as {message?:string}).message??'진행 상태를 불러오지 못했어요.')}}finally{running=false}
@@ -79,7 +93,7 @@ function useLifecycleState(){
     if(!available){setError('공유 저장소 업데이트 후 이용할 수 있어요.');return false}
     pending.current=true;setBusy(true);setError('')
     try{
-      const r=action==='room-time'?await supabase.rpc('gd_update_room_time_checked',{p_post:postId,p_start:data.start,p_end:data.end,p_expected:data.expected??null}):await supabase.rpc('gd_order_action',{p_action:action,p_post:postId,p_data:data});if(r.error)throw r.error
+      const r=action.startsWith('pickup-')?await supabase.rpc('gd_pickup_action',{p_action:action.slice(7),p_post:postId,p_data:data}):action==='room-time'?await supabase.rpc('gd_update_room_time_checked',{p_post:postId,p_start:data.start,p_end:data.end,p_expected:data.expected??null}):await supabase.rpc('gd_order_action',{p_action:action,p_post:postId,p_data:data});if(r.error)throw r.error
       if(currentUid.current!==uid)return false
       revision.current++
       const [updated,updatedPeople]=await Promise.all([supabase.from('gd_order_states').select('*').eq('post_id',postId).maybeSingle(),supabase.from('gd_order_people').select('*').eq('post_id',postId)])
@@ -87,6 +101,7 @@ function useLifecycleState(){
       if(updated.data){seenStates.current.set(postId,updated.data as OrderState);saveAccountHistory(uid,'order-states',[...seenStates.current.values()].slice(-300))}
       if(updated.data)setStates(values=>[...values.filter(v=>v.post_id!==postId),updated.data as OrderState])
       if(updatedPeople.data)setPeople(values=>[...values.filter(v=>v.post_id!==postId),...updatedPeople.data as OrderPerson[]])
+      if(updatedPeople.data){seenPeople.current=[...(seenPeople.current??[]).filter(v=>v.post_id!==postId),...(updatedPeople.data as OrderPerson[]).map(personNoticeSnapshot)];saveAccountHistory(uid,'order-people',seenPeople.current.slice(-1000))}
       if(action==='review'){
         const [r,rep]=await Promise.all([supabase.from('gd_reviews').select('*').order('created_at',{ascending:false}),supabase.rpc('gd_reputation')])
         if(currentUid.current===uid){if(r.data)setReviews(r.data as OrderReview[]);if(rep.data)setReputations(rep.data as Reputation[])}
@@ -96,7 +111,7 @@ function useLifecycleState(){
       }
       window.dispatchEvent(new Event('shared-delivery-refresh'));window.dispatchEvent(new Event('menu-discovery-refresh'))
       return true
-    }catch(e){if(currentUid.current===uid)setError(action==='room-time'&&(e as {code?:string}).code==='PGRST202'?'방 시간 변경을 사용하려면 DB 업데이트가 필요해요.':(e as {code?:string}).code==='23505'?'이미 저장한 평가 또는 신고예요.':(e as {message?:string}).message??'저장하지 못했어요.');return false}finally{pending.current=false;setBusy(false)}
+    }catch(e){if(currentUid.current===uid)setError(action.startsWith('pickup-')&&(e as {code?:string}).code==='PGRST202'?'수령 방식 설정을 불러오지 못했어요. 잠시 후 새로고침해 주세요.':action==='room-time'&&(e as {code?:string}).code==='PGRST202'?'방 시간 변경을 사용하려면 DB 업데이트가 필요해요.':(e as {code?:string}).code==='23505'?'이미 저장한 평가 또는 신고예요.':(e as {message?:string}).message??'저장하지 못했어요.');return false}finally{pending.current=false;setBusy(false)}
   }
   const reputation=(id:string)=>reputations.find(v=>v.user_id===id)
   const myReputation=uid?reputation(uid):undefined

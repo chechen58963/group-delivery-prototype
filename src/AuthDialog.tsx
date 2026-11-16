@@ -8,6 +8,9 @@ export default function AuthDialog(){
   const [message,setMessage]=useState(''),[email,setEmail]=useState(''),[validation,setValidation]=useState('')
   const [showPassword,setShowPassword]=useState(false),[showConfirmation,setShowConfirmation]=useState(false)
   const panel=useRef<HTMLDivElement>(null)
+  const [now,setNow]=useState(Date.now()),[resent,setResent]=useState(false)
+  useEffect(()=>{if(s.signupRetryUntil<=Date.now())return;setNow(Date.now());const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer)},[s.signupRetryUntil])
+  const wait=Math.max(0,Math.ceil((s.signupRetryUntil-now)/1000))
   const busy=useRef(s.authBusy);busy.current=s.authBusy
   useEffect(()=>{
     const previous=document.activeElement as HTMLElement|null
@@ -39,7 +42,7 @@ export default function AuthDialog(){
   return <div className="baef-auth-overlay" role="dialog" aria-modal="true" aria-labelledby="auth-heading"><div ref={panel} className="baef-auth-panel">
     <header><span className="baef-wordmark">배프<span>.</span></span><button type="button" aria-label="로그인 닫기" disabled={s.authBusy} onClick={()=>s.setLoginOpen(false)}>×</button></header>
     <h2 id="auth-heading">{message?'이메일을 확인해 주세요':mode==='signup'?'배프와 한 끼를 시작해요':'다시 만나서 반가워요'}</h2>
-    {message?<><p className="baef-muted">{email}</p><p role="status" className="baef-auth-message">{message}</p><p className="baef-muted">이미 가입한 이메일이라면 로그인해 주세요.</p><button className="baef-button" onClick={()=>{setMessage('');setMode('login');s.setError('')}}>로그인으로 돌아가기</button></>:<>
+    {message?<><p className="baef-muted">{email}</p><p role="status" className="baef-auth-message">{message}</p><p className="baef-muted">메일이 보이지 않으면 스팸함도 확인해 주세요. 이미 가입한 이메일이라면 로그인해 주세요.</p>{s.error&&<p className="baef-error" role="alert">{s.error}</p>}{resent&&<p role="status" className="baef-auth-wait">인증 메일을 다시 요청했어요. 받은편지함을 확인해 주세요.</p>}<button className="baef-button secondary" disabled={s.authBusy||wait>0} onClick={()=>void s.resendSignup(email).then(ok=>{if(ok)setResent(true)})}>{s.authBusy?'메일 요청 중…':wait>0?`${wait}초 뒤 인증 메일 다시 요청`:'인증 메일 다시 요청'}</button><button className="baef-button" onClick={()=>{setMessage('');setMode('login');s.setError('')}}>로그인으로 돌아가기</button></>:<>
       <div className="baef-auth-tabs" aria-label="계정 메뉴">{(['login','signup'] as const).map(m=><button key={m} type="button" aria-pressed={mode===m} onClick={()=>{setMode(m);setValidation('');s.setError('')}}>{m==='login'?'로그인':'회원가입'}</button>)}</div>
       <form onSubmit={submit} className="baef-auth-form" key={mode}>
         {mode==='signup'&&<label>닉네임<input name="nickname" autoComplete="nickname" minLength={2} maxLength={20} placeholder="배프에게 보여줄 이름" required/></label>}
@@ -47,8 +50,8 @@ export default function AuthDialog(){
         <label>비밀번호<span className="baef-password-field"><input name="password" type={showPassword?'text':'password'} autoComplete={mode==='signup'?'new-password':'current-password'} minLength={mode==='signup'?8:undefined} maxLength={128} placeholder={mode==='signup'?'8자 이상 입력해 주세요':'비밀번호를 입력해 주세요'} required/><button type="button" aria-label={showPassword?'비밀번호 숨기기':'비밀번호 보기'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)}>{showPassword?'숨기기':'보기'}</button></span></label>
         {mode==='signup'&&<label>비밀번호 확인<span className="baef-password-field"><input name="confirmation" type={showConfirmation?'text':'password'} autoComplete="new-password" maxLength={128} required placeholder="한 번 더 입력해 주세요"/><button type="button" aria-label={showConfirmation?'확인 비밀번호 숨기기':'확인 비밀번호 보기'} aria-pressed={showConfirmation} onClick={()=>setShowConfirmation(v=>!v)}>{showConfirmation?'숨기기':'보기'}</button></span></label>}
         {(validation||s.error)&&<p className="baef-error" role="alert">{validation||s.error}</p>}
-        <button className="baef-button" disabled={s.authBusy}>{s.authBusy?'잠시만 기다려 주세요…':mode==='signup'?'회원가입':'로그인'}</button>
-        {mode==='signup'&&<p className="baef-muted">이메일 인증을 마치면 바로 이용할 수 있어요.</p>}
+        <button className="baef-button" disabled={s.authBusy||mode==='signup'&&wait>0}>{s.authBusy?'잠시만 기다려 주세요…':mode==='signup'&&wait>0?`${wait}초 뒤 다시 요청`:mode==='signup'?'회원가입':'로그인'}</button>
+        {mode==='signup'&&<p className="baef-auth-wait">{wait>0?'반복 요청을 잠시 막았어요. 발송 한도 오류는 운영자의 설정 확인이 필요할 수 있어요.':'이메일 인증을 마치면 바로 이용할 수 있어요.'}</p>}
       </form>
     </>}
   </div></div>

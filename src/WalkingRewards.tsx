@@ -75,8 +75,9 @@ export function WalkingRewardPlan({receipt=false}:{receipt?:boolean}={}){
   useEffect(()=>{setManual(plan?String(plan.meters):'');setUseManual(plan?.source==='manual');feedback.reset()},[o.selectedId])
   useEffect(()=>{if(plan&&feedback.status!=='dirty'){setManual(String(plan.meters));setUseManual(plan.source==='manual')}},[plan?.meters,plan?.source])
   if(!o.post||!o.members.some(m=>m.user_id===o.uid))return null
-  const dirty=feedback.status==='dirty'||!!plan&&proposed!=null&&proposed!==plan.meters
+  const dirty=feedback.status==='dirty'
   const displayed=reward?.meters??(nearRequester?0:dirty?proposed:plan?.meters??proposed)
+  const source=nearRequester?'manual':!dirty&&plan?plan.source:useManual||mapped==null?'manual':'map'
   const projected=w.totalMeters+(reward?0:displayed??0)
   const after=walkProgress(projected),bonus=w.policyReady?orderRewardEstimate(displayed??0,w.wallet?.today_earned??0):after.earned-walkProgress(w.totalMeters).earned
   const reason=!w.ready?w.error?'':'포인트를 불러오는 중이에요.':proposed==null?'편도 예상 이동거리를 0~400m로 입력해 주세요.':''
@@ -88,7 +89,7 @@ export function WalkingRewardPlan({receipt=false}:{receipt?:boolean}={}){
         {mapped!=null&&!useManual?<p className="baef-muted">출발점과 수령점의 직선거리 기준 · 한 모임에 최대 {WALK_ORDER_MAX_METERS}m</p>:<label className="baef-order-field">편도 예상 이동거리 (m)<input type="number" inputMode="numeric" min="0" max={WALK_ORDER_MAX_METERS} step="1" value={manual} onChange={e=>{setManual(e.target.value);feedback.change()}} placeholder="예: 350"/></label>}
         {mapped!=null&&<button className="baef-text-action" onClick={()=>{setUseManual(v=>!v);feedback.change()}}>{useManual?'지도상의 예상 거리 사용':'예상 거리 직접 입력'}</button>}
       </>}
-        <button className="baef-button secondary" disabled={!w.ready||w.busy||proposed==null} aria-describedby={reason?'walk-plan-reason':undefined} onClick={()=>{if(proposed==null)return;const version=feedback.begin();void w.save(o.post!.id,proposed,nearRequester||useManual||mapped==null?'manual':'map').then(ok=>{if(ok)feedback.saved(version)})}}>{w.busy?'저장 중…':'이번 예상 거리 저장'}</button><ButtonHint id="walk-plan-reason" reason={reason}/><SaveFeedback status={dirty?'dirty':feedback.status}/>
+        <button className="baef-button secondary" disabled={!w.ready||w.busy||proposed==null} aria-describedby={reason?'walk-plan-reason':undefined} onClick={()=>{if(proposed==null)return;const version=feedback.begin();void w.save(o.post!.id,displayed??proposed,source).then(ok=>{if(ok)feedback.saved(version)})}}>{w.busy?'저장 중…':'이번 예상 거리 저장'}</button><ButtonHint id="walk-plan-reason" reason={reason}/><SaveFeedback status={dirty?'dirty':feedback.status}/>
       </details>}
       {!editable&&o.mine?.received_at&&<p className="baef-muted">{plan?o.state?.phase==='completed'?'누적 내역을 불러오는 중이에요.':'모두 수령하면 누적 거리에 반영돼요.':w.policyReady?'이동 거리가 등록되지 않아 0m로 계산돼요.':'수령 전에 예상 거리를 등록하지 않은 모임이에요.'}</p>}
     </>}
@@ -97,7 +98,7 @@ export function WalkingRewardPlan({receipt=false}:{receipt?:boolean}={}){
     {receipt&&o.state?.phase==='arrived'&&<div className="baef-receipt-reward">
       {!o.consistencyReady&&<p role="status">수령 확인 기능을 준비하고 있어요. 잠시 후 다시 시도해 주세요.</p>}
       {!o.mine?.received_at&&<p>이번 수령 이동 <b>{walkDistance(displayed??0)}</b> · 전원 수령 완료 시 예상 <b>{w.policyReady?orderRewardEstimate(displayed??0,w.wallet?.today_earned??0):bonus}P</b><br/>{displayed==null?'거리 미입력 시 0m로 기록해요. 거리를 입력하면 이동 포인트도 함께 받을 수 있어요.':'아래 버튼을 누르면 이 거리 저장과 수령 확인을 함께 처리해요.'}</p>}
-      <button className="baef-button" disabled={!!o.mine?.received_at||o.busy||w.busy||!w.ready||!o.consistencyReady||(!nearRequester&&(useManual||mapped==null)&&manual.trim()!==''&&!validManual)} onClick={()=>void o.act('receive',{walk_meters:displayed??0,walk_source:nearRequester||useManual||mapped==null?'manual':'map'}).then(ok=>{if(ok)window.dispatchEvent(new Event('walking-rewards-refresh'))})}>{o.busy?'수령 확인 중…':o.mine?.received_at?'내 수령 확인 완료':'거리 저장하고 수령 완료'}</button>
+      <button className="baef-button" disabled={!!o.mine?.received_at||o.busy||w.busy||!w.ready||!o.consistencyReady||o.state?.pickup_mode==='contactless'&&!o.state.pickup_dropped_at||(!nearRequester&&(useManual||mapped==null)&&manual.trim()!==''&&!validManual)} onClick={()=>void o.act('receive',{walk_meters:displayed??0,walk_source:source}).then(ok=>{if(ok)window.dispatchEvent(new Event('walking-rewards-refresh'))})}>{o.busy?'수령 확인 중…':o.mine?.received_at?'내 수령 확인 완료':o.state?.pickup_mode==='contactless'&&!o.state.pickup_dropped_at?'음식 놓기 알림을 기다리고 있어요':'내 음식 수령 완료'}</button>
     </div>}
   </section>
 }

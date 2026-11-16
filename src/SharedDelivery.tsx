@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import AuthDialog from './AuthDialog'
+import { authErrorMessage } from './authErrors'
 import { relativeDateTime } from './uiFeedback'
 import { CAMPUS_STORES, CATEGORY_PHOTOS } from './campus'
 import { makeTransaction, type Post, type Transaction, type Action, type FlowEvent } from './workflow'
@@ -14,11 +15,11 @@ type SharedMessage = { id: number; sender_id: string; body: string; created_at: 
 type CreateInput = { restaurant: string; category: string; maxMembers: string; deadline: string; minAmount: string; currentAmount: string; deliveryTime: string; note: string }
 function explain(e: unknown) {
   const error = e as { code?: string; message?: string }
+  const authMessage=authErrorMessage(error);if(authMessage)return authMessage
   if (error.code === 'PGRST202' || error.code === 'PGRST205') return '공유 저장소 설정이 필요해요. 진행자에게 문의해 주세요.'
   if (error.message?.includes('Invalid login credentials')) return '이메일 또는 비밀번호를 확인해 주세요.'
   if (error.message?.includes('Email not confirmed')) return '메일의 인증 링크를 먼저 눌러 주세요.'
   if (['email_address_not_authorized','email_address_not_allowed'].includes(error.code??'')) return '인증 메일 발송 설정이 준비되지 않았어요. 운영자에게 알려주세요.'
-  if (error.code==='over_email_send_rate_limit'||error.code==='over_request_rate_limit') return '요청이 많아요. 잠시 기다린 뒤 다시 시도해 주세요.'
   if (error.code==='signup_disabled') return '현재 회원가입이 잠시 닫혀 있어요.'
   if (error.code==='user_already_exists') return '이미 가입한 이메일이에요. 로그인해 주세요.'
   if (error.message?.includes('Failed to fetch')) return '연결하지 못했어요. 인터넷 연결을 확인해 주세요.'
@@ -32,6 +33,9 @@ function useSharedState() {
   const [sample, setSample] = useState(() => new URLSearchParams(location.search).get('mode') === 'demo')
   const [loginOpen, setLoginOpen] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
+  const authPending=useRef(false),signupRetry=useRef(0)
+  const [signupRetryUntil,setSignupRetryUntil]=useState(0)
+  const pauseSignup=()=>{signupRetry.current=Date.now()+60000;setSignupRetryUntil(signupRetry.current)}
   const [testers, setTesters] = useState<Tester[]>([])
   const [rawPosts, setRawPosts] = useState<SharedPost[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -122,7 +126,7 @@ function useSharedState() {
           const old = previous.find(v => v.id === m.id)
           const p = nextPosts.find(v => v.id === m.post_id)
           if (!p) continue
-          if (m.user_id === uid && old && old.status !== m.status) addNotification(p, m.status === 'accepted' ? '참가 신청이 수락됐어요. 채팅방에 참여하세요.' : '신청·참여 상태가 변경됐어요.', m.status === 'accepted' ? 'chat' : 'detail',`member:${m.id}:${m.created_at??''}:${m.status}`)
+          if (m.user_id === uid && old && old.status !== m.status) addNotification(p, m.status === 'accepted' ? '참가 신청이 수락됐어요. 내 메뉴와 수령 장소를 확인해 주세요.' : '신청·참여 상태가 변경됐어요.', m.status === 'accepted' ? 'menu' : 'detail',`member:${m.id}:${m.created_at??''}:${m.status}`)
           if (p.owner_id === uid && m.status === 'pending' && (!old || old.status !== 'pending')) addNotification(p, '새 참가 신청이 도착했어요.', 'applicants',`member:${m.id}:${m.created_at??''}:pending`)
         }
         previous = nextMembers
@@ -271,7 +275,7 @@ function useSharedState() {
   const chatEnded=!!tx&&(['completed','cancelled'].includes(txSource?.status??'')||ownMember?.status==='withdrawn')
   const chatStatus=txSource?.status==='completed'?'거래 완료':txSource?.status==='cancelled'?'취소된 모임':ownMember?.status==='withdrawn'?'참여 종료':tx?.closed?'모집 마감':'모집 중'
   return {
-    session, live, sample, setSample, initializing, loginOpen, setLoginOpen, authBusy, ready, busy, error, setError, numberFor,
+    session, live, sample, setSample, initializing, loginOpen, setLoginOpen, authBusy, signupRetryUntil, ready, busy, error, setError, numberFor,
     notice, setNotice, allowed, me, nickname, posts, tx,activeTx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
@@ -279,19 +283,28 @@ function useSharedState() {
     chatReadable,chatEnded,chatStatus,olderAvailable,olderBusy,loadOlderMessages,
     login: async (email: string, password: string) => {
       if (!supabase) { setError('로그인 연결 설정이 필요해요.'); return }
-      setAuthBusy(true); setError('')
+      if(authPending.current)return
+      authPending.current=true;setAuthBusy(true); setError('')
       try { const r = await supabase.auth.signInWithPassword({ email: email.trim(), password }); if (r.error) throw r.error; setSample(false); setLoginOpen(false) }
-      catch (e) { setError(explain(e)) } finally { setAuthBusy(false) }
+      catch (e) { setError(explain(e)) } finally { authPending.current=false;setAuthBusy(false) }
     },
     signup: async (email: string, password: string, nickname: string): Promise<'email'|'signedIn'|null> => {
-      if(authBusy)return null
-      setAuthBusy(true);setError('')
+      if(authPending.current||Date.now()<signupRetry.current)return null
+      if(!supabase){setError('회원가입 연결 설정을 확인해 주세요.');return null}
+      authPending.current=true;setAuthBusy(true);setError('')
       try{
         const result=await supabase.auth.signUp({email:email.trim(),password,options:{data:{nickname:nickname.trim()},emailRedirectTo:window.location.origin+'/'}})
         if(result.error)throw result.error
         if(result.data.session){setSample(false);setLoginOpen(false);setNotice('회원가입이 완료됐어요. 먹고 싶은 메뉴를 골라보세요.');return 'signedIn'}
-        return 'email'
-      }catch(e){setError(explain(e));return null}finally{setAuthBusy(false)}
+        pauseSignup();return 'email'
+      }catch(e){if(String((e as {code?:string}).code??'').startsWith('over_'))pauseSignup();setError(explain(e));return null}finally{authPending.current=false;setAuthBusy(false)}
+    },
+    resendSignup: async(email:string)=>{
+      if(!supabase||authPending.current||Date.now()<signupRetry.current)return false
+      authPending.current=true;setAuthBusy(true);setError('')
+      try{const r=await supabase.auth.resend({type:'signup',email:email.trim(),options:{emailRedirectTo:window.location.origin+'/'}});if(r.error)throw r.error;pauseSignup();return true}
+      catch(e){if(String((e as {code?:string}).code??'').startsWith('over_'))pauseSignup();setError(explain(e));return false}
+      finally{authPending.current=false;setAuthBusy(false)}
     },
     logout: async () => { const r = await supabase?.auth.signOut({ scope: 'local' }); if (r?.error) setError(explain(r.error)) },
     create: async (input: CreateInput) => {

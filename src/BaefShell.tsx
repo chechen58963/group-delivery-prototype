@@ -6,19 +6,20 @@ import { StoreSheet, BaefNavigation, BasketEditor, DiscoveryCreate, MenuAlerts, 
 import type { Screen } from './WorkflowScreens'
 import './baef.css'
 import { useDeliveryLifecycle } from './DeliveryLifecycle'
-import { ApplicantReputation, RoomTimeEditor, OrderProgress, OrderChatControls, OrderMenu, OrderPayment, OrderDelivery, OrderReceipt, OrderComplete, OrderRating, OrderProfileExtras, OrderParticipants, MeetingTools } from './OrderScreens'
+import { OrderWorkspace, ApplicantReputation, RoomTimeEditor, OrderProgress, OrderChatControls, OrderMenu, OrderPayment, OrderDelivery, OrderReceipt, OrderComplete, OrderRating, OrderProfileExtras, OrderParticipants, MeetingTools } from './OrderScreens'
 import './ui-polish.css'
 import './readability.css'
 import './order-entry.css'
 import { orderNextStep } from './orderGuidance'
 import { orderScreens, useAppNavigation } from './appNavigation'
 import './consistency.css'
+import './feedback-improvements.css'
 import RecruitmentProgress from './RecruitmentProgress'
 
 function canOpenOrderScreen(screen:Screen,post:{owner_id:string}|undefined,member:{status:string}|undefined,uid:string|undefined){
   if(screen==='detail')return true
   if(screen==='applicants')return !!uid&&post?.owner_id===uid
-  if(screen==='payment')return member?.status==='accepted'||member?.status==='withdrawn'
+  if(screen==='order'||screen==='payment')return member?.status==='accepted'||member?.status==='withdrawn'
   return member?.status==='accepted'
 }
 
@@ -57,7 +58,8 @@ export default function BaefShell(){
     const update=()=>setHeight(viewport.height<window.innerHeight-100?viewport.height:null)
     viewport.addEventListener('resize',update);return()=>viewport.removeEventListener('resize',update)
   },[])
-  const push=(next:Screen)=>{
+  const push=(requested:Screen)=>{
+    const next:Screen=['menu','payment','delivery','receipt','complete'].includes(requested)?'order':requested
     if(next==='chat'){
       if(!s.session){s.setLoginOpen(true);return}
       if(s.tx?.application==='pending'){navigation.push('detail',s.tx.post.sharedId??null);return}
@@ -65,6 +67,9 @@ export default function BaefShell(){
     navigation.push(next,orderScreens.has(next)?s.selectedRaw?.id??s.tx?.post.sharedId??null:null)
   }
   const pop=navigation.pop
+  const important=s.notifications.filter(n=>!n.read&&!n.text.startsWith('새 채팅:')).sort((a,b)=>b.time-a.time)
+  const [dismissed,setDismissed]=useState<number|null>(null)
+  const attention=important.find(n=>n.id!==dismissed)
   const count=d.alerts.filter(n=>!n.read_at).length+s.notifications.filter(n=>!n.read).length
   const primary=['main','list','profile','chat'].includes(screen)
   const ongoingChat=screen==='chat'&&s.chatReadable
@@ -78,6 +83,7 @@ export default function BaefShell(){
     {!ongoingChat&&<header className="baef-header"><button className="baef-wordmark" onClick={()=>push('main')} aria-label="배프 홈">배프<span>.</span></button><div className="baef-header-actions"><SharedAccountControl/><button className="baef-icon-button baef-alert-button" aria-label={`알림 ${count}개`} onClick={()=>setAlerts(true)}><SmallIcon name="bell"/>{count>0&&<span>{Math.min(count,99)}</span>}</button></div></header>}
     {s.error&&!s.loginOpen&&<div className="baef-banner error" role="alert"><span>{s.error}</span><button aria-label="오류 안내 닫기" onClick={()=>s.setError('')}>×</button></div>}
     {(s.notice||d.toast)&&<div className="baef-toast" role="status"><span>{d.toast||s.notice}</span><button aria-label="안내 닫기" onClick={()=>{d.setToast('');s.setNotice('')}}>×</button></div>}
+    {attention&&!alerts&&!s.loginOpen&&<aside className="baef-action-alert" aria-label="확인할 주문 알림"><button onClick={()=>{s.readNotification(attention.id);s.selectPost(attention.sharedPostId?s.numberFor(attention.sharedPostId):attention.postId);push(attention.target as Screen)}}><b>{attention.restaurant}</b><small>{attention.text}</small><span className="baef-alert-link">내용 확인하기 →</span></button><button aria-label="이 알림 읽음 처리" onClick={()=>{s.readNotification(attention.id);setDismissed(attention.id)}}>×</button></aside>}
     <div className="baef-screen">
       {orderGate?<div className="baef-empty">{s.initializing||waitingForOrder||orderAccessBlocked?<p role="status">모임을 불러오는 중이에요.</p>:<><h1>로그인하고 모임을 확인해 주세요</h1><p>참가한 모임의 주문 진행과 대화를 이어볼 수 있어요.</p><button className="baef-button" onClick={()=>s.setLoginOpen(true)}>로그인</button><button className="baef-button secondary" onClick={()=>push('list')}>모집 둘러보기</button></>}</div>:<>
       {['menu','payment','delivery','receipt','complete','rating'].includes(screen)&&<OrderProgress push={push}/>}
@@ -87,6 +93,7 @@ export default function BaefShell(){
       {screen==='detail'&&<GroupDetail pop={pop} push={push}/>}
       {screen==='applicants'&&<SharedApplicants pop={pop} push={push} renderApplicant={userId=><ApplicantReputation userId={userId}/>}/>}
       {screen==='chat'&&(ongoingChat?<SharedChat pop={pop} push={push} workflowControls={<OrderChatControls push={push}/>} orderPanel={s.chatEnded?<><p><b>수령 장소</b> · {s.tx?.meeting}</p><OrderParticipants/></>:<><BasketEditor postId={s.tx!.post.sharedId!}/><MeetingTools/><OrderParticipants/></>}/>:<div className="baef-empty"><SmallIcon name="chat"/><h1>함께 주문하면 대화가 시작돼요</h1><p>메뉴를 골라 배프를 찾거나<br/>열린 모집에 참가해 보세요.</p><button className="baef-button" onClick={()=>push('list')}>함께 주문 둘러보기</button></div>)}
+      {screen==='order'&&<OrderWorkspace pop={pop} push={push}/>}
       {screen==='menu'&&<OrderMenu pop={pop} push={push}/>}
       {screen==='payment'&&<OrderPayment pop={pop} push={push}/>}
       {screen==='delivery'&&<OrderDelivery pop={pop} push={push}/>}
