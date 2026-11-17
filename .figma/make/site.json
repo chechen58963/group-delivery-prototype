@@ -1,11 +1,12 @@
 {
-  "title": "배프 · 한 잔도, 한 끼도 함께",
-  "description": "먹고 싶은 메뉴를 고르면 같은 시간, 같은 지역의 배프를 찾아드려요. 커피 한 잔, 햄버거 하나도 함께 주문하세요.",
+  "title": "배프 · 가볍게 함께 주문해요",
+  "description": "가까운 배프와 메뉴를 고르고 배달비를 나눠요. 커피 한 잔, 햄버거 하나도 함께 주문하세요.",
   "robots": {
     "index": false
   },
   "accessibility": {
     "addBypassLinks": false,
     "ignoreReducedMotion": false
-  }
+  },
+  "language": "ko"
 }

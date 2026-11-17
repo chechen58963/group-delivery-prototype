@@ -39,7 +39,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Screen = "order" | "main" | "category" | "list" | "detail" | "create" | "applicants" | "applicantProfile" | "chat" | "menu" | "payment" | "delivery" | "receipt" | "complete" | "rating" | "profile"
+type Screen = "orders" | "order" | "main" | "category" | "list" | "detail" | "create" | "applicants" | "applicantProfile" | "chat" | "menu" | "payment" | "delivery" | "receipt" | "complete" | "rating" | "profile"
 
 type Tab = "explore" | "new" | "chat" | "me"
 

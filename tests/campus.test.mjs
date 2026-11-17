@@ -4,7 +4,13 @@ import { readFile } from "node:fs/promises"
 import ts from "typescript"
 
 async function moduleFrom(path) {
-  const source = await readFile(new URL(path, import.meta.url), "utf8")
+  const file = new URL(path, import.meta.url)
+  let source = await readFile(file, "utf8")
+  // Resolve the catalogue fixture before evaluating the transpiled module as a data URL.
+  for (const match of [...source.matchAll(/import (\w+) from ['"](\.\/[^'"]+\.json)['"]/g)]) {
+    const json = JSON.parse(await readFile(new URL(match[2], file), "utf8"))
+    source = source.replace(match[0], `const ${match[1]} = ${JSON.stringify(json)}`)
+  }
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText
   return import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`)
 }
@@ -14,9 +20,9 @@ const { makeTransaction, latePenalty, LATE_SUSPENSION_MS } = await moduleFrom(".
 
 test("campus recruitment data use relevant store menus and remain within 700m", () => {
   assert.ok(CAMPUS_CENTER.lat > 36 && CAMPUS_CENTER.lat < 37)
-  assert.equal(CAMPUS_POSTS.length, 26)
-  assert.equal(CAMPUS_STORES.length, 12)
-  assert.equal(new Set(CAMPUS_POSTS.map(p => p.id)).size, 26)
+  assert.equal(CAMPUS_POSTS.length, 34)
+  assert.equal(CAMPUS_STORES.length, 16)
+  assert.equal(new Set(CAMPUS_POSTS.map(p => p.id)).size, 34)
   for (const p of CAMPUS_POSTS) {
     assert.ok(p.distance <= 700)
     assert.ok(p.menus.length && p.storeSource.startsWith("https://"))
@@ -32,7 +38,7 @@ test("catalogue update adds new stores once and preserves ongoing order and owne
   const owned = { ...CAMPUS_POSTS[0], id: 9999, restaurant: "내 모집글", leaderName: "나" }
   const saved = [owned, ...original]
   const merged = mergeCampusPosts(saved, CAMPUS_POSTS, 1)
-  assert.equal(merged.length, 27)
+  assert.equal(merged.length, 35)
   assert.deepEqual(merged.find(p => p.id === 1), original[0])
   assert.deepEqual(merged.find(p => p.id === owned.id), owned)
   assert.equal(merged.find(p => p.id === 2).status, "complete")

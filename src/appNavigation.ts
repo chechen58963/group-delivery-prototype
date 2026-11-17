@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Screen } from './WorkflowScreens'
 
-const screens=new Set<Screen>(['order','main','category','list','create','detail','applicants','chat','menu','payment','delivery','receipt','complete','rating','profile'])
+const screens=new Set<Screen>(['orders','order','main','category','list','create','detail','applicants','chat','menu','payment','delivery','receipt','complete','rating','profile'])
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export const orderScreens=new Set<Screen>(['order','detail','applicants','chat','menu','payment','delivery','receipt','complete','rating'])
 export function readAppRoute(search:string){
