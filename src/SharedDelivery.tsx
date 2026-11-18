@@ -9,7 +9,7 @@ import { appendNotification, mergeChatMessages, readAccountHistory, restoreChatC
 
 type Tester = { user_id: string; nickname: string; active: boolean; suspended_until?:string|null; is_virtual?:boolean }
 type VirtualRoom = {post_id:string;virtual_leader:boolean;auto_join:boolean}
-type SharedPost = { id: string; owner_id: string; restaurant: string; category: string; max_members: number; member_count: number; deadline: string; delivery_fee: number; min_order: number; meeting: string; note: string; status: string; pickup_lat?:number|null;pickup_lng?:number|null }
+type SharedPost = { public_virtual_leader?:boolean; id: string; owner_id: string; restaurant: string; category: string; max_members: number; member_count: number; deadline: string; delivery_fee: number; min_order: number; meeting: string; note: string; status: string; pickup_lat?:number|null;pickup_lng?:number|null }
 type Member = { id: string; post_id: string; user_id: string; status: string; active: boolean; created_at?:string }
 type SharedMessage = { id: number; sender_id: string; body: string; created_at: string }
 function explain(e: unknown) {
@@ -29,6 +29,7 @@ function explain(e: unknown) {
 function useSharedState() {
   const [session, setSession] = useState<Session | null>(null)
   const [initializing, setInitializing] = useState(!!supabase)
+  const [authRecovery,setAuthRecovery]=useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
   const authPending=useRef(false),signupRetry=useRef(0)
@@ -84,21 +85,22 @@ function useSharedState() {
   const addNotification = useCallback((post: SharedPost, text: string, target: FlowEvent['target'],eventKey?:string) => {
     if(!uid||currentUid.current!==uid)return
     const item:SharedNotification={id:sequence.current=Math.max(sequence.current+1,Date.now()),postId:numberFor(post.id),sharedPostId:post.id,restaurant:post.restaurant,text,target,read:false,time:Date.now(),eventKey:eventKey?`${post.id}:${eventKey}`:undefined}
-    setNotifications(list=>appendNotification(list,item));setNotice(text)
+    setNotifications(list=>appendNotification(list,item))
   }, [uid,numberFor,setNotifications])
   const readNotification=(id:number)=>setNotifications(list=>list.map(n=>n.id===id?{...n,read:true}:n))
   const readAllNotifications=()=>setNotifications(list=>list.map(n=>({...n,read:true})))
 
   useEffect(() => {
     if (!supabase) return
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => { setSession(next); setInitializing(false) })
+    const { data } = supabase.auth.onAuthStateChange((event, next) => { setSession(next); setInitializing(false);if(event==='PASSWORD_RECOVERY'){setAuthRecovery(true);setLoginOpen(true)} })
     return () => data.subscription.unsubscribe()
   }, [])
   useEffect(() => {
     setRawPosts([]); setMembers([]); setTesters([]); setMessages([]); setReady(false);setVirtualRooms([]);setVirtualReady(false)
     const restored=uid?restoreNotifications(uid):[]
     setNotificationState({uid,items:restored});sequence.current=Math.max(Date.now(),...restored.map(n=>n.id));setSelectedId(null);setError('');setNotice('')
-    if (!uid || !supabase) return
+    if (!supabase) return
+    if(!uid){let alive=true;void supabase.rpc('gd_public_rooms').then(r=>{if(alive&&currentUid.current===undefined){if(!r.error)setRawPosts((r.data??[]).map((p:SharedPost)=>({...p,owner_id:'',note:''})));setReady(true)}});return()=>{alive=false}}
     let alive = true, fetching = false
     const savedMembers=readAccountHistory<unknown>(uid,'members',null)
     let previous:Member[]|null=Array.isArray(savedMembers)?savedMembers.filter((m):m is Member=>!!m&&typeof m.id==='string'&&typeof m.status==='string'):null
@@ -280,7 +282,7 @@ function useSharedState() {
   const chatEnded=!!tx&&(['completed','cancelled'].includes(txSource?.status??'')||ownMember?.status==='withdrawn')
   const chatStatus=txSource?.status==='completed'?'거래 완료':txSource?.status==='cancelled'?'취소된 모임':ownMember?.status==='withdrawn'?'참여 종료':tx?.closed?'모집 마감':'모집 중'
   return {
-    session, initializing, loginOpen, setLoginOpen, authBusy, signupRetryUntil, ready, busy, error, setError, numberFor,
+    session, initializing, loginOpen, setLoginOpen, authRecovery, authBusy, signupRetryUntil, ready, busy, error, setError, numberFor,
     notice, setNotice, allowed, me, nickname,isVirtual,virtualRooms,virtualReady, posts, tx,activeTx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
@@ -310,6 +312,16 @@ function useSharedState() {
       try{const r=await supabase.auth.resend({type:'signup',email:email.trim(),options:{emailRedirectTo:window.location.origin+'/'}});if(r.error)throw r.error;pauseSignup();return true}
       catch(e){if(String((e as {code?:string}).code??'').startsWith('over_'))pauseSignup();setError(explain(e));return false}
       finally{authPending.current=false;setAuthBusy(false)}
+    },
+    requestPasswordReset:async(email:string)=>{
+      if(authPending.current)return false
+      authPending.current=true;setAuthBusy(true);setError('')
+      try{const r=await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo:window.location.origin+'/'});if(r.error)throw r.error;return true}catch(e){setError(explain(e));return false}finally{authPending.current=false;setAuthBusy(false)}
+    },
+    updatePassword:async(password:string)=>{
+      if(!authRecovery||authPending.current||password.length<8)return false
+      authPending.current=true;setAuthBusy(true);setError('')
+      try{const r=await supabase.auth.updateUser({password});if(r.error)throw r.error;setAuthRecovery(false);setLoginOpen(false);setNotice('비밀번호를 변경했어요.');return true}catch(e){setError(explain(e));return false}finally{authPending.current=false;setAuthBusy(false)}
     },
     logout: async () => { const r = await supabase?.auth.signOut({ scope: 'local' }); if (r?.error) setError(explain(r.error)) },
 

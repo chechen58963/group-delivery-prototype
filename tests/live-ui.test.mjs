@@ -100,11 +100,11 @@ test('full rooms are not advertised as available to join', () => {
   shared.rawPosts[0].member_count = 2
   assert.doesNotMatch(render(LiveExplore), /모집 상세/)
 })
-test('logged-out discovery offers login and browsing actual store menus', () => {
+test('logged-out discovery previews public rooms and explains who places the order', () => {
   reset()
   shared.session = null
-  assert.match(render(LiveExplore), /로그인하고 모집 보기/)
-  assert.doesNotMatch(render(LiveExplore), /모집 상세/)
+  assert.match(render(LiveExplore), /리더가 배달앱에서 주문/)
+  assert.match(render(LiveExplore), /모집 상세/)
   assert.match(render(LiveStorePicker), /이디야커피 충대정문점/)
 })
 test('order history is restricted to memberships of the current account', () => {

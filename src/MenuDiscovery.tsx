@@ -16,6 +16,7 @@ import { matchPrompts } from './matchPrompts'
 import { foodPhotoSource } from './foodPhotos'
 import { OrderRouteSteps } from './OrderGuide'
 import { ButtonHint, SaveFeedback, relativeDateTime, useSaveFeedback } from './uiFeedback'
+import {originName} from './userFlow'
 import { pickupDay, pickupTimeFields } from './pickupTime'
 import { deliveryWindow, estimatedBill, initialDeliverySlot } from './discoveryHelpers'
 import './discovery-fixes.css'
@@ -46,7 +47,7 @@ export function LocationChoice(){
   }
   const active=d.matchLocation
   return <>
-    <button className="baef-location" onClick={()=>{setOpen(true);setPickMap(false);setFeedback('')}} aria-label="출발 위치와 수령 지역 설정"><SmallIcon name="pin"/><span>{areaName(d.area)}</span><span aria-hidden="true">⌄</span></button>
+    <button className="baef-location" onClick={()=>{setOpen(true);setPickMap(false);setFeedback('')}} aria-label="출발 위치와 수령 지역 설정"><SmallIcon name="pin"/><span>{originName(d.matchLocation)}</span><span aria-hidden="true">⌄</span></button>
     <button className="baef-origin-summary" onClick={()=>setOpen(true)}>{active?`${d.manualLocation?'지도에서 정한 출발점 사용 중':'GPS 출발점 사용 중'} · 위치 확인 ›`:'출발 위치를 설정하면 가까운 모집을 찾을 수 있어요 ›'}</button>
     {open&&<div className="baef-overlay" role="dialog" aria-modal="true" aria-labelledby="pickup-title" onKeyDown={e=>{if(e.key==='Escape'){if(pickMap)setPickMap(false);else setOpen(false)}}}><section className={`baef-sheet baef-small-sheet ${pickMap?'baef-location-map-sheet':''}`}><div className="baef-sheet-title"><h2 id="pickup-title">{pickMap?'내 출발 위치 선택':'출발 위치와 수령 지역'}</h2><button className="baef-icon-button" aria-label="수령 지역 닫기" onClick={()=>setOpen(false)}><SmallIcon name="close"/></button></div>
       {pickMap?<>
@@ -56,7 +57,7 @@ export function LocationChoice(){
         <button className="baef-button" disabled={!point} onClick={()=>{if(!point)return;requestVersion.current++;d.setMatchLocation(point);setGPSAttempted(false);setPickMap(false);setFeedback('지도에서 고른 출발 위치를 적용했어요.')}}>이 위치를 출발점으로 사용</button>
         <button className="baef-button secondary" onClick={()=>setPickMap(false)}>선택 취소</button>
       </>:<>
-        <p className="baef-muted">희망 수령 지역을 고르고, 실제 출발 위치를 설정해 주세요.</p>
+        <p className="baef-muted">내 출발점은 거리 계산에, 희망 수령 지역은 메뉴 알림에 사용해요.</p>
         {PICKUP_AREAS.map(a=><button key={a.id} className={`baef-area-option ${a.id===d.area?'selected':''}`} onClick={()=>d.setArea(a.id)}><span><b>{a.name}</b><small>{a.detail}</small></span><span>{a.id===d.area?'✓':'›'}</span></button>)}
         <div className="baef-active-origin"><b>{active?`적용된 출발 위치 · ${d.manualLocation?'지도 선택':'현재 위치'}`:'출발 위치를 설정해 주세요'}</b>{active&&<p>{active.lat.toFixed(5)}, {active.lng.toFixed(5)}{!d.manualLocation&&currentLocation.coordinates&&<><br/>마지막 확인 {new Date(currentLocation.coordinates.updatedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}<br/>GPS 정확도 약 {Math.ceil(currentLocation.coordinates.accuracy)}m{currentLocation.coordinates.accuracy>100&&' · 오차가 크면 지도에서 위치를 지정해 주세요.'}</>}</p>}<small>수령 지역과 별도로, 이 출발점을 기준으로 거리를 계산해요.</small></div>
         {active&&<div className="baef-origin-preview"><Suspense fallback={<p role="status">출발 위치 지도 불러오는 중…</p>}><BrowseMap pins={[{id:'origin',point:{x:0,y:0},coordinates:active,label:'내 출발 위치',symbol:'나',kind:'me'}]} onSelect={()=>{}} title="현재 적용된 내 출발 위치" center={active}/></Suspense></div>}
@@ -70,7 +71,13 @@ export function LocationChoice(){
   </>
 }
 
-export function StoreSheet({store,close,push,targetPostId}:{store:MenuStore;close:()=>void;push:(s:Screen)=>void;targetPostId?:string}){
+export function StoreSheet(props:{store:MenuStore;close:()=>void;push:(s:Screen)=>void;targetPostId?:string;intent?:'create'}){
+ const s=useSharedDelivery(),[choice,setChoice]=useState<string|null>(props.targetPostId??(props.intent==='create'?'new':null))
+ const groups=s.posts.filter(p=>p.restaurant===props.store.store_name&&p.status==='recruiting'&&p.currentMembers<p.maxMembers)
+ if(choice)return <StoreOrderSheet {...props} targetPostId={choice==='new'?undefined:choice}/>
+ return <div className="baef-overlay" role="dialog" aria-modal="true"><section className="baef-sheet baef-small-sheet"><header className="baef-sheet-title"><h2>{props.store.store_name}</h2><button onClick={props.close} aria-label="가게 닫기">×</button></header><p>열린 모집에 참가하거나, 새 모집을 시작해 보세요.</p>{groups.map(p=><button className="baef-button secondary" key={p.id} onClick={()=>setChoice(p.sharedId!)}>{p.leaderName} · {p.currentMembers}/{p.maxMembers}명 · 참가할 메뉴 고르기</button>)}{!groups.length&&<p className="baef-muted">지금 열린 모집이 없어요.</p>}<button className="baef-button" onClick={()=>setChoice('new')}>내가 새 모집하기</button></section></div>
+}
+function StoreOrderSheet({store,close,push,targetPostId}:{store:MenuStore;close:()=>void;push:(s:Screen)=>void;targetPostId?:string}){
   const d=useMenuDiscovery(),s=useSharedDelivery(),o=useDeliveryLifecycle()
   const draftKey=`${s.session?.user.id??'guest'}:${store.store_name}:${targetPostId??'new'}`
   const [draft,setDraft]=useState<StoreDraft>(()=>{
@@ -80,7 +87,7 @@ export function StoreSheet({store,close,push,targetPostId}:{store:MenuStore;clos
   })
   const {quantities,goal,maxMembers,fee,meeting,note,deliveryDay,deliveryClock,deadline,publicPoint}=draft
   const [pending,setPending]=useState(false),[problem,setProblem]=useState(''),[mapOpen,setMapOpen]=useState(false),[step,setStep]=useState(0)
-  const groups=s.posts.filter(p=>p.restaurant===store.store_name&&p.status==='recruiting'&&(!targetPostId||p.sharedId===targetPostId))
+  const groups:typeof s.posts=[]
   const [newOpen,setNewOpen]=useState(!groups.length)
   const submitted=useRef(false),title=useRef<HTMLButtonElement>(null),existing=useRef<HTMLElement>(null)
   useEffect(()=>{title.current?.focus()},[])
