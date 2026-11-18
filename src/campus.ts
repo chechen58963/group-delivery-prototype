@@ -1,9 +1,8 @@
-import type { MenuItem, Post } from "./workflow"
+import type { MenuItem } from "./workflow"
 import expandedCatalog from "./catalogExpansion.json"
 
 export const CAMPUS_CENTER = { lat: 36.3621, lng: 127.3444 }
 export const CAMPUS_LOCATION = "충남대학교 정문 주변"
-export const MENU_CHECKED_ON = "2026-10-13"
 export const CATEGORY_PHOTOS: Record<string, string> = {
   치킨: "1626082927389-6cd097cdc6ec", 한식: "1512058564366-18510be2db19", 패스트푸드: "1528735602780-2552fd46c7af",
   중식: "1563245372-f21724e3856d", 카페: "1509042239860-f550ce710b93", 피자: "1571407970349-bc81e7e96d47",
@@ -20,8 +19,7 @@ function store(name: string, category: string, emoji: string, source: string, de
     menus: items.map(([name, price, category], index) => ({ id: index + 1, name, price, category })),
   }
 }
-// First five stores retain their order so existing recruitment IDs remain stable.
-// Reputation, recruitment locations and minimum order conditions are simulated.
+// Keep catalogue order and menu IDs stable for existing saved orders.
 const baseCampusStores: Store[] = [
   store("bhc 대전궁동점", "치킨", "🍗", "https://www.diningcode.com/profile.php?rid=ti2FyS4YcLQd", 20000, [
     ["뿌링클", 21000, "치킨"], ["콰삭킹", 21000, "치킨"], ["커링클", 21900, "치킨"], ["크리스피번(밀크)", 5500, "사이드"],
@@ -68,34 +66,3 @@ export const CAMPUS_STORES: Store[] = [
   }),
   ...expandedCatalog.filter(c=>!baseCampusStores.some(s=>s.name===c.store_name)).map(c=>store(c.store_name,c.menu_key==='coffee'?'카페':c.menu_key==='burger'?'버거':'패스트푸드',c.menu_key==='coffee'?'☕':c.menu_key==='burger'?'🍔':'🥪',c.source,c.goal_amount,c.menus.map(m=>[m.name,m.price,c.menu_key==='coffee'?'음료':c.menu_key==='burger'?'버거':'샌드위치'])))
 ]
-const oldStoreIndexes = Array.from({ length: 12 }, (_, i) => i % 5)
-const addedStoreIndexes = CAMPUS_STORES.slice(5).flatMap((_, i) => [i + 5, i + 5])
-export const CAMPUS_POSTS: Post[] = [...oldStoreIndexes, ...addedStoreIndexes].map((storeIndex, index) => {
-  const store = CAMPUS_STORES[storeIndex]
-  const members = index % 3 === 0 ? 2 : 1
-  return {
-    id: index < 12 ? index + 1 : 101 + index - 12,
-    restaurant: store.name, category: store.category, emoji: store.emoji,
-    currentMembers: members, maxMembers: 3, minOrderAmount: store.demoMinOrder,
-    currentAmount: store.menus[0].price * members,
-    distance: [120, 210, 85, 300, 110, 350, 160, 270, 430, 550, 190, 620][index % 12],
-    deadline: index % 2 ? "19:00" : "18:30", deliveryTime: "모집 마감 후 약 30분",
-    leaderRating: (46 + index % 4) / 10, leaderTrades: 8 + index * 3,
-    leaderName: ["공강한끼", "밥친구", "샌드위치친구", "짬뽕좋아", "커피타임"][index % 5] + (index >= 5 ? String(index) : ""),
-    status: "recruiting", gradFrom: "#f8b181", gradTo: "#e87945",
-    description: "충남대 정문 주변에서 각자 음식을 받아 가져가요. 정확한 장소와 시간은 채팅에서 합의해요.",
-    imageId: store.imageId, menus: store.menus, storeSource: store.source,
-    menuSource: store.menuSource, menuBasis: store.menuBasis, priceNote: store.priceNote,
-  }
-})
-// Preserve owned recruitment and ongoing orders when refreshing the catalogue.
-export function mergeCampusPosts(savedPosts: Post[], seedPosts: Post[], activeId?: number): Post[] {
-  const seeds = new Map(seedPosts.map(post => [post.id, post]))
-  const knownIds = new Set(savedPosts.map(post => post.id))
-  return [...savedPosts.map(post => {
-    const seed = seeds.get(post.id)
-    if (!seed || post.leaderName === "나" || post.id === activeId) return post
-    return { ...seed, status: post.status, ...(post.closesAt !== undefined ? { closesAt: post.closesAt } : {}) }
-  }), ...seedPosts.filter(post => !knownIds.has(post.id))]
-}
-export const WALKING_NOTE = "리더까지의 직선거리 기준 시연 추정 · 수령 장소 확정 후 달라질 수 있어요."

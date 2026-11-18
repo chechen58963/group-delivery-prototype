@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
 import { useSharedDelivery } from './SharedDelivery'
 import { money } from './MenuDiscoveryContext'
-import { useFlow } from './FlowContext'
+import { usePreferences } from './AppPreferences'
 import { BasketEditor, SmallIcon } from './MenuDiscovery'
 import { distanceM, midpoint, orderDue, phaseLabel, remainingTransfer, useDeliveryLifecycle } from './DeliveryLifecycle'
-import type { Screen } from './WorkflowScreens'
+import type { Screen } from './navigationTypes'
 import type { MapPin } from './LocationMap'
 import './order-flow.css'
 import { WalkingRewardDetails as WalkingRewardPlan, WalkingRewardWallet } from './WalkingRewards'
@@ -17,8 +17,8 @@ import { pickupTimestamp } from './pickupTime'
 import MeetingEditor from './MeetingEditor'
 import PickupMethod, { pickupAgreed } from './PickupMethod'
 import { WalkingRewardReceipt } from './WalkingRewards'
-import Icon from './v2/icons'
-import { Modal } from './v2/ui'
+import Icon from './ui/Icon'
+import { Modal } from './ui/Modal'
 const LocationMap=lazy(()=>import('./LocationMap'))
 type Navigate=(screen:Screen)=>void
 function InfoDetails({title,summary,children,initiallyOpen=false,id}:{title:string;summary:ReactNode;children:ReactNode;initiallyOpen?:boolean;id?:string}){
@@ -87,7 +87,7 @@ export function RoomTimeEditor(){
   return <InfoDetails title="모집 시간 변경" summary="방·참가자·메뉴·채팅을 유지하고 시간만 수정"><form key={`${o.selectedId}:${base}`} className="baef-order-form" onChange={feedback.change} onSubmit={submit}>{conflict&&<div className="baef-sync-conflict" role="status"><p>수령 시간이 변경됐어요. 최신 시간을 확인해 주세요.</p><button type="button" className="baef-button secondary" onClick={()=>{setBase(currentTime);setBaseVersion(o.state?.updated_at??null);feedback.reset()}}>최신 시간 불러오기</button></div>}<PickupTimeField value={base}/><p className="baef-muted">리더가 주문을 확정하기 전까지 변경할 수 있어요.</p><button className="baef-button secondary" disabled={o.busy||conflict}>{o.busy?'변경 중…':'이 방의 시간 변경'}</button><SaveFeedback status={feedback.status}/></form></InfoDetails>
 }
 export function MeetingTools(){
-  const o=useDeliveryLifecycle(),s=useSharedDelivery(),{currentLocation}=useFlow()
+  const o=useDeliveryLifecycle(),s=useSharedDelivery(),{currentLocation}=usePreferences()
   const [address,setAddress]=useState('')
   const feedback=useSaveFeedback()
   const positions=o.orderPeople.filter(p=>p.latitude!=null&&p.longitude!=null&&o.members.some(m=>m.user_id===p.user_id))

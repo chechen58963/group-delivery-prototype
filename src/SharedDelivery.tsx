@@ -1,18 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import AuthDialog from './AuthDialog'
 import { authErrorMessage } from './authErrors'
 import { relativeDateTime } from './uiFeedback'
 import { CAMPUS_STORES, CATEGORY_PHOTOS } from './campus'
-import { makeTransaction, type Post, type Transaction, type Action, type FlowEvent } from './workflow'
+import { makeTransaction, type Post, type Transaction, type FlowEvent } from './workflow'
 import { appendNotification, mergeChatMessages, readAccountHistory, restoreChatCursors, restoreNotifications, saveAccountHistory, type SharedNotification } from './sharedHistory'
 
 type Tester = { user_id: string; nickname: string; active: boolean; suspended_until?:string|null }
 type SharedPost = { id: string; owner_id: string; restaurant: string; category: string; max_members: number; member_count: number; deadline: string; delivery_fee: number; min_order: number; meeting: string; note: string; status: string; pickup_lat?:number|null;pickup_lng?:number|null }
 type Member = { id: string; post_id: string; user_id: string; status: string; active: boolean; created_at?:string }
 type SharedMessage = { id: number; sender_id: string; body: string; created_at: string }
-type CreateInput = { restaurant: string; category: string; maxMembers: string; deadline: string; minAmount: string; currentAmount: string; deliveryTime: string; note: string }
 function explain(e: unknown) {
   const error = e as { code?: string; message?: string }
   const authMessage=authErrorMessage(error);if(authMessage)return authMessage
@@ -30,7 +28,6 @@ function explain(e: unknown) {
 function useSharedState() {
   const [session, setSession] = useState<Session | null>(null)
   const [initializing, setInitializing] = useState(!!supabase)
-  const [sample, setSample] = useState(() => new URLSearchParams(location.search).get('mode') === 'demo')
   const [loginOpen, setLoginOpen] = useState(false)
   const [authBusy, setAuthBusy] = useState(false)
   const authPending=useRef(false),signupRetry=useRef(0)
@@ -66,7 +63,7 @@ function useSharedState() {
     })
   },[])
   useEffect(()=>{if(notificationState.uid)saveAccountHistory(notificationState.uid,'notifications',notificationState.items)},[notificationState])
-  const live = !!uid && !sample
+  const live = !!uid
   const me = testers.find(t => t.user_id === uid)
   const allowed = !!me?.active
   const nickname = (id: string) => testers.find(t => t.user_id === id)?.nickname ?? '참가자'
@@ -97,7 +94,7 @@ function useSharedState() {
     setRawPosts([]); setMembers([]); setTesters([]); setMessages([]); setReady(false)
     const restored=uid?restoreNotifications(uid):[]
     setNotificationState({uid,items:restored});sequence.current=Math.max(Date.now(),...restored.map(n=>n.id));setSelectedId(null);setError('');setNotice('')
-    if (!uid || sample || !supabase) return
+    if (!uid || !supabase) return
     let alive = true, fetching = false
     const savedMembers=readAccountHistory<unknown>(uid,'members',null)
     let previous:Member[]|null=Array.isArray(savedMembers)?savedMembers.filter((m):m is Member=>!!m&&typeof m.id==='string'&&typeof m.status==='string'):null
@@ -141,7 +138,7 @@ function useSharedState() {
     window.addEventListener('focus', focus)
     window.addEventListener('shared-delivery-refresh', focus)
     return () => { alive = false; clearInterval(timer); window.removeEventListener('focus', focus); window.removeEventListener('shared-delivery-refresh', focus) }
-  }, [uid, sample, addNotification])
+  }, [uid, addNotification])
 
   const chatId = live && allowed && ownMember?.status === 'accepted' ? txSource?.id : undefined
   const messagesRef=useRef(messages);messagesRef.current=messages
@@ -275,7 +272,7 @@ function useSharedState() {
   const chatEnded=!!tx&&(['completed','cancelled'].includes(txSource?.status??'')||ownMember?.status==='withdrawn')
   const chatStatus=txSource?.status==='completed'?'거래 완료':txSource?.status==='cancelled'?'취소된 모임':ownMember?.status==='withdrawn'?'참여 종료':tx?.closed?'모집 마감':'모집 중'
   return {
-    session, live, sample, setSample, initializing, loginOpen, setLoginOpen, authBusy, signupRetryUntil, ready, busy, error, setError, numberFor,
+    session, initializing, loginOpen, setLoginOpen, authBusy, signupRetryUntil, ready, busy, error, setError, numberFor,
     notice, setNotice, allowed, me, nickname, posts, tx,activeTx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
@@ -285,7 +282,7 @@ function useSharedState() {
       if (!supabase) { setError('로그인 연결 설정이 필요해요.'); return }
       if(authPending.current)return
       authPending.current=true;setAuthBusy(true); setError('')
-      try { const r = await supabase.auth.signInWithPassword({ email: email.trim(), password }); if (r.error) throw r.error; setSample(false); setLoginOpen(false) }
+      try { const r = await supabase.auth.signInWithPassword({ email: email.trim(), password }); if (r.error) throw r.error; setLoginOpen(false) }
       catch (e) { setError(explain(e)) } finally { authPending.current=false;setAuthBusy(false) }
     },
     signup: async (email: string, password: string, nickname: string): Promise<'email'|'signedIn'|null> => {
@@ -295,7 +292,7 @@ function useSharedState() {
       try{
         const result=await supabase.auth.signUp({email:email.trim(),password,options:{data:{nickname:nickname.trim()},emailRedirectTo:window.location.origin+'/'}})
         if(result.error)throw result.error
-        if(result.data.session){setSample(false);setLoginOpen(false);setNotice('회원가입이 완료됐어요. 먹고 싶은 메뉴를 골라보세요.');return 'signedIn'}
+        if(result.data.session){setLoginOpen(false);setNotice('회원가입이 완료됐어요. 먹고 싶은 메뉴를 골라보세요.');return 'signedIn'}
         pauseSignup();return 'email'
       }catch(e){if(String((e as {code?:string}).code??'').startsWith('over_'))pauseSignup();setError(explain(e));return null}finally{authPending.current=false;setAuthBusy(false)}
     },
@@ -307,29 +304,7 @@ function useSharedState() {
       finally{authPending.current=false;setAuthBusy(false)}
     },
     logout: async () => { const r = await supabase?.auth.signOut({ scope: 'local' }); if (r?.error) setError(explain(r.error)) },
-    create: async (input: CreateInput) => {
-      if (!live) { setSample(false); setLoginOpen(true); return false }
-      const date = new Date(); const [h,m] = input.deadline.split(':').map(Number); date.setHours(h,m,0,0)
-      const amount = (s: string) => Number(s.replace(/,/g, '').trim())
-      if (!input.restaurant.trim() || !input.category || !input.deadline || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now() || !input.minAmount.trim() || !Number.isInteger(amount(input.minAmount)) || amount(input.minAmount)<0 || !input.currentAmount.trim() || !Number.isInteger(amount(input.currentAmount)) || amount(input.currentAmount)<0 || !input.deliveryTime.trim() || !Number.isInteger(Number(input.maxMembers)) || Number(input.maxMembers)<2 || Number(input.maxMembers)>5) {
-        setError('음식점, 정수 금액, 인원(리더 포함 2~5명), 배달 예정 시간과 현재 시간 이후의 마감을 입력해 주세요.'); return false
-      }
-      const id = await act('create', null, { restaurant: input.restaurant.trim(), category: input.category,
-        max_members: Number(input.maxMembers), deadline: date.toISOString(), delivery_fee: 3000, min_order: amount(input.minAmount),
-        meeting: '채팅에서 조율', note: JSON.stringify({ format: 'campus-v1', text: input.note, currentAmount: amount(input.currentAmount), deliveryTime: input.deliveryTime }) })
-      if (id) { setSelectedId(numberFor(id)); setNotice('모집글을 등록했어요. 다른 참가자에게도 보여요.'); return true } return false
-    },
-    apply: async (p: Post) => {
-      if (!live || !p.sharedId) { setSample(false); setLoginOpen(!session); return false }
-      if (await act('apply', p.sharedId)) { setNotice('참가 신청을 보냈어요. 리더의 수락을 기다려 주세요.'); return true } return false
-    },
-    dispatch: (action: Action) => {
-      if (!txSource) return
-      if (action.type === 'message') { void act('message', txSource.id, { body: action.message.content }); return }
-      if (action.type === 'close') { void act('close', txSource.id); return }
-      if (action.type === 'cancel') { void act(txSource.owner_id === uid ? 'cancel' : 'withdraw', txSource.id); return }
-      setNotice('메뉴·송금·배달·수령 작업은 주문 진행 화면에서 확인해 주세요.')
-    },
+
   }
 }
 type Shared = ReturnType<typeof useSharedState>
@@ -339,32 +314,6 @@ export function SharedDeliveryProvider({ children }: { children: ReactNode }) {
   return <SharedContext.Provider value={value}>{children}</SharedContext.Provider>
 }
 export function useSharedDelivery() { const value = useContext(SharedContext); if (!value) throw new Error('SharedDeliveryProvider is required'); return value }
-
-export function SharedAccountControl() {
-  const s = useSharedDelivery()
-  return <>
-    <div className="flex items-center gap-2 mr-auto text-xs min-w-0">
-      <button className="text-brand truncate max-w-28 py-2" disabled={s.initializing} onClick={() => { if (!s.session) s.setLoginOpen(true); else if (confirm('로그아웃할까요?')) void s.logout() }}>{s.initializing ? '확인 중…' : s.session ? `${s.me?.nickname ?? '내 계정'} · 로그아웃` : '로그인'}</button>
-    </div>
-    {s.loginOpen && <AuthDialog/>}
-  </>
-}
-
-export function SharedDetailActions({ push }: { push: (s: 'applicants' | 'chat' | 'list') => void }) {
-  const s = useSharedDelivery(), p = s.selectedRaw
-  if (!p) return null
-  const mine = s.members.find(m => m.post_id === p.id && m.user_id === s.session?.user.id)
-  const leader = p.owner_id === s.session?.user.id
-  const ended = ['cancelled','completed'].includes(p.status)
-  const btn = 'w-full rounded-2xl py-3 px-4 text-sm font-bold disabled:opacity-40'
-  return <div className="space-y-2">
-    {mine?.status === 'pending' && mine.active && <p className="text-sm text-center bg-brand-50 p-3 rounded-xl">신청 완료 · 리더 수락을 기다리고 있어요.</p>}
-    {mine?.status === 'accepted' && <button className={`${btn} bg-brand text-white`} onClick={() => push(leader && !ended ? 'applicants' : 'chat')}>{leader && !ended ? '신청자 관리 · 채팅방' : '공동 채팅방으로'}</button>}
-    {!mine?.active && !ended && <button disabled={s.busy || s.active || p.status !== 'open' || new Date(p.deadline).getTime()<=Date.now()} className={`${btn} bg-brand text-white`} onClick={() => { const post=s.posts.find(v=>v.sharedId===p.id); if(post) void s.apply(post) }}>{s.active ? '다른 모집에 신청·참여 중이에요' : p.status !== 'open' ? '모집 마감' : '참가 신청하기'}</button>}
-    {mine?.active && !ended && <button disabled={s.busy} className={`${btn} border border-gray-200 text-gray-500`} onClick={() => { if(confirm(leader ? '모집을 취소할까요?' : '신청·참여를 취소할까요?')) void s.act(leader?'cancel':'withdraw',p.id) }}>{leader?'공동배달 취소':'신청·참여 취소'}</button>}
-    {ended && p.status==='cancelled'&&<p className="text-center text-sm text-gray-500">취소된 모집이에요.</p>}
-  </div>
-}
 
 export function SharedApplicants({ pop, push, renderApplicant }: { pop: () => void; push: (s: 'chat'|'menu') => void;renderApplicant?:(userId:string)=>ReactNode }) {
   const s=useSharedDelivery(), tx=s.tx, p=s.rawPosts.find(v=>v.id===tx?.post.sharedId)

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { useFlow } from './FlowContext'
+import { usePreferences } from './AppPreferences'
 import { SharedApplicants, SharedChat, useSharedDelivery } from './SharedDelivery'
 import { useMenuDiscovery, money } from './MenuDiscoveryContext'
 import { StoreSheet, BasketEditor, MenuAlerts, SmallIcon } from './MenuDiscovery'
-import type { Screen } from './WorkflowScreens'
+import type { Screen } from './navigationTypes'
 import './baef.css'
 import { useDeliveryLifecycle } from './DeliveryLifecycle'
 import { OrderWorkspace, ApplicantReputation, RoomTimeEditor, OrderProgress, OrderChatControls, OrderMenu, OrderPayment, OrderDelivery, OrderReceipt, OrderComplete, OrderRating, OrderProfileExtras, OrderParticipants, MeetingTools } from './OrderScreens'
@@ -16,7 +16,7 @@ import './consistency.css'
 import './feedback-improvements.css'
 import RecruitmentProgress from './RecruitmentProgress'
 import { LiveExplore, LiveOrders, LiveStorePicker, LiveMenuPreferences, liveStorePhoto } from './LiveDiscovery'
-import Icon, { type IconName } from './v2/icons'
+import Icon, { type IconName } from './ui/Icon'
 import StoreBrand from './StoreBrand'
 import AuthDialog from './AuthDialog'
 import { PersonProfile } from './OrderScreens'
@@ -29,10 +29,10 @@ function canOpenOrderScreen(screen:Screen,post:{owner_id:string}|undefined,membe
 }
 
 export default function BaefShell(){
-  const s=useSharedDelivery(),d=useMenuDiscovery(),flow=useFlow()
+  const s=useSharedDelivery(),d=useMenuDiscovery(),preferences=usePreferences()
   const navigation=useAppNavigation(),[alerts,setAlerts]=useState(false)
   useEffect(()=>{document.title='배프 · 가볍게 함께 주문해요'},[])
-  useEffect(()=>{document.documentElement.dataset.bvTheme=flow.isDark?'dark':'light';return()=>{delete document.documentElement.dataset.bvTheme}},[flow.isDark])
+  useEffect(()=>{document.documentElement.dataset.bvTheme=preferences.isDark?'dark':'light';return()=>{delete document.documentElement.dataset.bvTheme}},[preferences.isDark])
   const screen=navigation.route.screen
   const previousUser=useRef(s.session?.user.id)
   useEffect(()=>{
@@ -91,7 +91,7 @@ export default function BaefShell(){
     else push(next)
   }
   const showNav=['main','list','category','orders','profile'].includes(screen)
-  return <div className={`baef-app baef-live bv-app ${flow.isDark?'app-dark':''}`}>
+  return <div className={`baef-app baef-live bv-app ${preferences.isDark?'app-dark':''}`}>
     <a className="bv-skip" href="#baef-content">본문으로 건너뛰기</a>
     <aside className="bv-sidebar"><button className="bv-wordmark" aria-label="배프 홈" onClick={()=>push('main')}>배프<span>.</span></button><p className="bv-brand-note">가볍게 함께 주문해요</p><nav aria-label="주 메뉴">{nav.map(([next,label,icon])=><button key={next} className={mainNav===next?'active':''} aria-current={mainNav===next?'page':undefined} onClick={()=>navigate(next)}><Icon name={icon}/>{label}{next==='orders'&&s.active&&<i/>}</button>)}</nav><button className="bv-button secondary" onClick={()=>push('create')}><Icon name="plus" size={19}/>새 모집 시작</button><div className="bv-sidebar-bottom"><p>조금 걷고, 함께 아끼는<br/>우리 동네 주문 습관.</p><button className="bv-original-link" onClick={()=>push('profile')}><Icon name="walk" size={19}/>포인트·내 정보<Icon name="arrow" size={15}/></button></div></aside>
     <div className={`bv-main live-main ${ongoingChat?'chat-mode':''} live-screen-${screen}`} style={height?{height:`${height}px`}:undefined}>
@@ -161,15 +161,15 @@ function GroupDetail({pop,push}:{pop:()=>void;push:(s:Screen)=>void}){
 import { StoreSheet as JoinSheet } from './MenuDiscovery'
 
 function AccountScreen({push}:{push:(s:Screen)=>void}){
-  const s=useSharedDelivery(),d=useMenuDiscovery(),flow=useFlow()
+  const s=useSharedDelivery(),d=useMenuDiscovery(),preferences=usePreferences()
   const active=s.activeTx
-  const [preferences,setPreferences]=useState(false),[profile,setProfile]=useState(false)
+  const [preferencesOpen,setPreferencesOpen]=useState(false),[profile,setProfile]=useState(false)
   return <div className="baef-scroll"><div className="baef-page live-profile-page"><h1 className="baef-page-title">내 정보</h1><section className="baef-account"><span className="baef-large-avatar">{s.me?.nickname.slice(0,1)??'배'}</span><h2>{s.me?.nickname??'배프에 오신 걸 환영해요'}</h2><p className="baef-muted">{s.session?'함께 주문할 메뉴를 골라보세요.':'로그인하면 메뉴 알림과 함께 주문을 이용할 수 있어요.'}</p>{!s.session&&<button className="baef-button" onClick={()=>s.setLoginOpen(true)}>로그인</button>}</section>
     {s.session&&!s.allowed&&s.ready&&<p className="baef-error">메일의 인증 링크를 먼저 확인해 주세요. 인증을 마쳤는데 이용이 안 되면 다시 로그인해 주세요.</p>}
     {d.intent&&<section className="baef-profile-section"><h2>기다리는 메뉴</h2><p>{d.intent.menus.map(k=>FOOD_LABELS[k]??k).join(' · ')}</p><button className="baef-text-action" onClick={()=>push('main')}>선택 수정하기 →</button></section>}
     {s.active&&active&&<button className="baef-progress" onClick={()=>{s.selectPost(active.post.id);push('detail')}}><span><small>진행 중인 함께 주문</small><b>{active.post.restaurant}</b></span><span>›</span></button>}
-    {s.session&&<button className="live-profile-reviews" onClick={()=>setProfile(true)}><Icon name="star" size={21}/><span>내 평판과 받은 후기</span><Icon name="chevron" size={18}/></button>}{profile&&s.session&&<PersonProfile userId={s.session.user.id} close={()=>setProfile(false)}/>}<button className="live-profile-reviews" onClick={()=>setPreferences(true)}><Icon name="bell" size={21}/><span>관심 메뉴 알림 설정</span><Icon name="chevron" size={18}/></button>{preferences&&<LiveMenuPreferences close={()=>setPreferences(false)}/>}<OrderProfileExtras push={push}/>
-    <section className="baef-profile-section"><h2>화면 테마</h2><div className="baef-theme-options">{([{id:'light',label:'라이트'},{id:'dark',label:'다크'},{id:'system',label:'기기 설정'}] as const).map(t=><button key={t.id} aria-pressed={flow.themePreference===t.id} onClick={()=>flow.setThemePreference(t.id)}>{t.label}</button>)}</div></section>
+    {s.session&&<button className="live-profile-reviews" onClick={()=>setProfile(true)}><Icon name="star" size={21}/><span>내 평판과 받은 후기</span><Icon name="chevron" size={18}/></button>}{profile&&s.session&&<PersonProfile userId={s.session.user.id} close={()=>setProfile(false)}/>}<button className="live-profile-reviews" onClick={()=>setPreferencesOpen(true)}><Icon name="bell" size={21}/><span>관심 메뉴 알림 설정</span><Icon name="chevron" size={18}/></button>{preferencesOpen&&<LiveMenuPreferences close={()=>setPreferencesOpen(false)}/>}<OrderProfileExtras push={push}/>
+    <section className="baef-profile-section"><h2>화면 테마</h2><div className="baef-theme-options">{([{id:'light',label:'라이트'},{id:'dark',label:'다크'},{id:'system',label:'기기 설정'}] as const).map(t=><button key={t.id} aria-pressed={preferences.themePreference===t.id} onClick={()=>preferences.setThemePreference(t.id)}>{t.label}</button>)}</div></section>
     {s.session&&<button className="baef-text-cancel" onClick={()=>void s.logout()}>로그아웃</button>}
   </div></div>
 }

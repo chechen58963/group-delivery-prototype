@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap');
 @import 'leaflet/dist/leaflet.css';
 @import 'tailwindcss';
 
@@ -12,7 +11,6 @@
   --color-success: #22C55E;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
-  --font-family-display: 'Outfit', system-ui, sans-serif;
   --font-family-sans: 'Noto Sans KR', system-ui, sans-serif;
 }
 
@@ -77,35 +75,20 @@ input, textarea, select {
 .app-dark :is(.text-red-800, .text-red-700, .text-red-600, .text-red-500) { color: #f2a59b; }
 .app-dark :is(.bg-amber-50, .bg-amber-100, .bg-yellow-100) { background-color: #373020; }
 .app-dark :is(.text-amber-800, .text-amber-700, .text-yellow-900) { color: #dfc48b; }
-.prototype-banner { background: linear-gradient(135deg, #fff6ee, #ffe8d6); }
-.app-dark .prototype-banner { background: var(--accent-soft); border-color: #59402c; }
-.category-chip { --category: #8c8379; color: var(--ink); background: var(--surface); border-bottom: 2px solid var(--category); }
-.app-dark .category-chip { border-bottom-color: var(--category); }
 .app-page { background: var(--page); }
-.category-chicken { --category: #c59c53; }
-.category-pizza { --category: #c17c70; }
-.category-korean { --category: #7da087; }
-.category-chinese { --category: #a195bd; }
-.category-fastfood { --category: #b9a566; }
-.category-japanese { --category: #7f9fb5; }
-.category-cafe { --category: #75a7a0; }
-.category-snack { --category: #b189a0; }
 .chat-room { background: var(--page); color: var(--ink); }
 .chat-header, .chat-composer { background: var(--surface); }
 .chat-header { border-bottom: 1px solid var(--line); }
 .chat-muted { color: var(--muted); }
-.chat-status, .chat-tool, .chat-input { background: var(--raised); }
+.chat-tool, .chat-input { background: var(--raised); }
 .chat-input { color: var(--ink); }
 .chat-input::placeholder { color: var(--muted); }
 .chat-bubble { background: var(--surface); border: 1px solid var(--line); }
 .chat-bubble-mine { background: var(--bubble-mine); border-color: transparent; }
-.chat-next { background: var(--accent-soft); color: var(--accent-ink); border-top: 1px solid var(--line); }
 .chat-composer { border-top: 1px solid var(--line); }
 .chat-send { background: var(--color-brand); color: white; }
 .chat-new-message { background: var(--ink); color: var(--page); }
 .chat-panel { background: var(--surface); }
-.chat-panel-tabs { border-bottom: 1px solid var(--line); }
-.chat-tab-active { background: var(--accent-soft); color: var(--accent-ink); }
 .chat-room :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 3px; }
 
 .map-entry, .map-selection { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
@@ -129,4 +112,3 @@ input, textarea, select {
 .map-pin-selected .map-pin-content { border-color: #e97236; box-shadow: 0 0 0 4px #e9723644, 0 3px 10px #0004; }
 .map-pin:focus-visible { outline: 3px solid #e97236; outline-offset: 5px; border-radius: 50%; }
 .app-dark .location-map .leaflet-tile-pane { filter: brightness(.76) saturate(.65); }
-.campus-value { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-top: 3px solid var(--color-brand); }

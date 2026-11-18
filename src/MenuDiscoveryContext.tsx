@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { supabase } from './supabase'
 import { useSharedDelivery } from './SharedDelivery'
 import { CAMPUS_STORES } from './campus'
-import { useFlow } from './FlowContext'
+import { usePreferences } from './AppPreferences'
 import { savedMatchLocation, storeMatchLocation, type MatchLocation } from './matchingLocation'
 import type { MenuChoice, MenuQuantities, SavedMenuItem } from './menuSelection'
 
@@ -47,7 +47,7 @@ export function formatWindow(start: string, end: string) {
 function defaultSlot() { const h=new Date().getHours(); return h<18?18:h<22?h:18 }
 function useDiscoveryState() {
   const shared=useSharedDelivery(), uid=shared.session?.user.id
-  const {currentLocation}=useFlow()
+  const {currentLocation}=usePreferences()
   const [manualLocation,setManualLocation]=useState<MatchLocation|null>(savedMatchLocation)
   const matchLocation=manualLocation??currentLocation.coordinates
   const setMatchLocation=(point:MatchLocation|null)=>{setManualLocation(point);storeMatchLocation(point)}

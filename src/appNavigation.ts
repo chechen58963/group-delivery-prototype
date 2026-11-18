@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Screen } from './WorkflowScreens'
+import type { Screen } from './navigationTypes'
 
 const screens=new Set<Screen>(['orders','order','main','category','list','create','detail','applicants','chat','menu','payment','delivery','receipt','complete','rating','profile'])
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

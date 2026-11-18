@@ -1,7 +1,3 @@
-.baef-browse-range{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 8px}
-.baef-browse-range button{border:1px solid var(--baef-line);border-radius:20px;padding:8px 13px;font-size:13px;min-height:40px}
-.baef-browse-range button[aria-pressed=true]{border-color:var(--baef-accent);color:var(--baef-accent);background:var(--baef-soft)}
-.baef-browse-range button:disabled{opacity:.5}
 .baef-estimate{margin:16px 0 8px;border:1px solid var(--baef-line);border-radius:10px;padding:14px;background:var(--baef-field)}
 .baef-estimate h3{font-size:14px;font-weight:650;margin-bottom:10px}
 .baef-estimate dl{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px}

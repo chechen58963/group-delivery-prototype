@@ -1,5 +1,5 @@
 import type { OrderPhase } from './DeliveryLifecycle'
-import type { Screen } from './WorkflowScreens'
+import type { Screen } from './navigationTypes'
 
 export function orderNextStep({role,application,phase,count}:{role:'leader'|'participant';application:string;phase?:OrderPhase;count:number}):{title:string;description:string;action:string;route:Screen}{
   if(application==='pending')return {title:'리더의 수락을 기다리고 있어요',description:'수락되면 메뉴를 확인하고 채팅방에서 수령 장소를 정할 수 있어요.',action:'참가 신청 확인',route:'detail'}

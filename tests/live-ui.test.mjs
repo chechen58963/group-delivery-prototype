@@ -19,7 +19,7 @@ const mocks = {
   './MenuDiscoveryContext': { useMenuDiscovery: () => discovery, FOOD_CHOICES: [{ id: 'coffee', name: '커피' }, { id: 'burger', name: '햄버거' }, { id: 'sandwich', name: '샌드위치' }], money: n => n.toLocaleString('ko-KR') + '원', formatWindow: () => '오늘 18:00' },
   './MenuDiscovery': { LocationChoice: placeholder('위치 설정'), StoreSheet: placeholder('메뉴 선택'), BasketEditor: placeholder('메뉴 편집'), SmallIcon: placeholder('아이콘') },
   './WalkingRewards': { WalkingRewardDetails: placeholder('이동 포인트'), WalkingRewardWallet: placeholder('포인트 지갑'), WalkingRewardReceipt: placeholder('수령 포인트') },
-  './FlowContext': { useFlow: () => ({ currentLocation: {} }) },
+  './AppPreferences': { usePreferences: () => ({ currentLocation: {} }) },
   './RecruitmentProgress': { default: placeholder('모집 진행') },
 }
 const cache = new Map()
@@ -54,7 +54,7 @@ function reset() {
   discovery = { preferencesReady: true, listScroll: { current: 0 }, matchLocation: { lat: raw.pickup_lat, lng: raw.pickup_lng }, catalog: [{ store_name: raw.restaurant, menu_key: 'coffee', goal_amount: 8000, menus: [{ id: 1, name: '카페 아메리카노', price: 3200 }] }], browseCategory: 'all', browseRange: 'all', browseView: 'list', search: '', sort: 'recent', intent: null, error: '', baskets: [], setBrowseRange() {}, saveListScroll() {} }
   lifecycle = { states: [], members: [], reviews: [], reputations: [], reports: [], orderPeople: [], state: null, post: null, mine: null, owner: false, uid: 'me', selectedId: 'room-1', error: '', busy: false, reputation: () => undefined }
 }
-test('connected discovery renders actual fees, slots and store data without v2 sample rooms', () => {
+test('connected discovery renders actual fees, slots and store data without generated sample rooms', () => {
   reset()
   const html = render(LiveExplore)
   assert.match(html, /이디야커피 충대정문점 모집 상세/)
