@@ -46,6 +46,9 @@ const helpers = load('DeliveryLifecycle.tsx')
 mocks['./DeliveryLifecycle'] = { ...helpers, useDeliveryLifecycle: () => lifecycle }
 const { LiveExplore, LiveOrders, LiveStorePicker } = load('LiveDiscovery.tsx')
 const { OrderMenu, OrderPayment, OrderReceipt } = load('OrderScreens.tsx')
+const {default:OrderSuggestionsPanel}=load('OrderSuggestionsPanel.tsx')
+const {suggestionDraft}=load('orderSuggestions.ts')
+const {default:OrderWishEditor}=load('OrderWishEditor.tsx')
 const render = component => renderToStaticMarkup(React.createElement(component, { push() {}, pop() {} }))
 function reset() {
   const raw = { id: 'room-1', owner_id: 'leader', restaurant: '이디야커피 충대정문점', category: '카페', status: 'open', member_count: 1, max_members: 2, delivery_fee: 3000, min_order: 8000, meeting: '정문 벤치', deadline: '2026-12-01T09:00:00Z', pickup_lat: 36.3621, pickup_lng: 127.3444 }
@@ -221,4 +224,36 @@ test('pickup acknowledgement explains grace before confirming and shows remainin
  assert.match(html,/수령 여유 시간 10분/);assert.match(html,/수령 가능 안내 확인/)
  lifecycle.mine.pickup_notice_seen_at=new Date().toISOString();html=render(OrderReceipt)
  assert.match(html,/수령 여유 시간/);assert.match(html,/안내 확인/);assert.doesNotMatch(html,/>수령 가능 안내 확인</)
+})
+
+function prepareSuggestion(){
+ reset();discovery.suggestionsReady=true;discovery.alerts=[]
+ discovery.suggestions=[{id:'proposal',store:shared.rawPosts[0].restaurant,menu_key:'coffee',goal:8000,my_item:{id:1,name:'카페 아메리카노',price:3200},other_item:{id:2,name:'카페 라떼',price:4200},my_quantity:1,other_quantity:1,other_name:'주문친구',other_virtual:false,food_total:7400,shortfall:600,delivery_fee:3000,my_fee:1500,my_total:4700,ready_count:2,compromises:1,meeting:'충남대 정문',meeting_lat:36.3621,meeting_lng:127.3444,walk_m:100,starts_at:new Date(Date.now()+600000).toISOString(),expires_at:new Date(Date.now()+1200000).toISOString()}]
+}
+test('order proposals show actual menus, cost, shortfall and leader approval without assuming participation',()=>{
+ prepareSuggestion();const html=render(OrderSuggestionsPanel)
+ assert.match(html,/카페 아메리카노/);assert.match(html,/카페 라떼/);assert.match(html,/4,700원/)
+ assert.match(html,/600원 부족/);assert.match(html,/둘 다 지금 주문 가능/);assert.match(html,/참가 신청은 리더가 수락/)
+ assert.match(html,/이 조합으로 모집 준비/);assert.doesNotMatch(html,/자동 참가|참가 확정/)
+})
+test('expired proposals and active orders do not offer another suggested recruitment',()=>{
+ prepareSuggestion();discovery.suggestions[0].expires_at=new Date(Date.now()-1000).toISOString()
+ assert.doesNotMatch(render(OrderSuggestionsPanel),/이 조합으로 모집 준비/)
+ shared.active=true;assert.equal(render(OrderSuggestionsPanel),'')
+})
+test('a proposal seeds a reviewable two-person draft and rejects stale menu prices',()=>{
+ prepareSuggestion();const offer=discovery.suggestions[0]
+ const draft=suggestionDraft(offer,discovery.catalog)
+ assert.equal(draft.maxMembers,2);assert.equal(draft.fee,'3000');assert.equal(draft.meeting,'충남대 정문')
+ assert.equal(Object.values(draft.quantities).reduce((a,b)=>a+b,0),1)
+ assert.deepEqual(draft.publicPoint,{lat:36.3621,lng:127.3444})
+ offer.my_item.price=1;assert.equal(suggestionDraft(offer,discovery.catalog),null)
+})
+
+test('preference editor exposes the three flexibility levels and a time-limited ready choice',()=>{
+ prepareSuggestion();discovery.matchLocation={lat:36.3621,lng:127.3444}
+ const html=render(OrderWishEditor)
+ assert.match(html,/꼭 이 가게·메뉴/);assert.match(html,/다른 가게도 괜찮아요/);assert.match(html,/비슷한 메뉴도 괜찮아요/)
+ assert.match(html,/15분 동안 유효/);assert.match(html,/지금 주문할 조합 찾기/)
+ assert.match(html,/카페 아메리카노/)
 })

@@ -1,3 +1,5 @@
+import OrderSuggestions from './OrderSuggestionsPanel'
+import OrderWishEditor from './OrderWishEditor'
 import {plannedFromNote,timeLabel} from './orderTiming'
 import CancelOrderControl from './CancelOrderControl'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
@@ -87,6 +89,7 @@ export function LiveExplore({ push, compact = false }: { push: Navigate; compact
     <div className="live-location"><LocationChoice /></div>
     {!compact ? <div className="bv-home-intro"><div><p className="bv-eyebrow">오늘도 가볍게, 함께</p><h1>한 잔만 주문해도,<br />함께라면 가볍게.</h1><p className="bv-home-sub">가까운 배프와 주문하고 배달비를 나눠요.</p></div><div className="bv-intro-art" aria-hidden="true"><div className="bv-art-circle" /><img src="/images/menus/ediya-1-ice.webp" alt="" /><img src="/images/menus/subway-1.webp" alt="" /><span>함께라서<br /><b>가벼운 한 끼</b></span></div></div> : <h1 className="bv-screen-heading">함께 주문할 배프 찾기</h1>}
     {s.active && activeTx && next && <button className="bv-active-strip" onClick={() => { s.selectPost(activeTx.post.id); push(next.route) }}><span className="bv-active-dot" /><span><b>{next.title}</b><small>{activeTx.post.restaurant} · {next.action}</small></span><Icon name="arrow" size={20} /></button>}
+    {!compact&&<OrderSuggestions configure={()=>setPreferences(true)} push={push}/>}
     <OrderJourney/><div className="bv-search"><Icon name="search" size={21} /><input type="search" enterKeyHint="search" placeholder="가게나 먹고 싶은 메뉴 검색" aria-label="가게 또는 메뉴 검색" value={d.search} onChange={e => { d.setSearch(e.target.value); resetScroll() }} />{d.search && <button aria-label="검색어 지우기" onClick={() => { d.setSearch(''); resetScroll() }}><Icon name="close" size={18} /></button>}</div>
     <LiveCategories value={d.browseCategory} change={v => { d.setBrowseCategory(v); resetScroll() }} />
     <div className="bv-browse-layout"><section className="live-browse-results"><div className="bv-list-heading"><div><h2>지금 함께 주문할 배프{s.ready && s.session && <em>{groups.length}</em>}</h2><p>{nearby ? '내 출발 위치에서 수령점까지 400m 이내예요.' : '먹고 싶은 메뉴가 있는 모집을 찾아보세요.'}</p></div><div className="bv-list-options"><select aria-label="모집 정렬" value={d.sort === 'near' && !d.matchLocation ? 'recent' : d.sort} onChange={e => d.setSort(e.target.value as 'recent' | 'near')}><option value="recent">최근순</option><option value="near" disabled={!d.matchLocation}>가까운순</option></select><button onClick={() => d.setBrowseView(d.browseView === 'map' ? 'list' : 'map')} aria-pressed={d.browseView === 'map'}><Icon name={d.browseView === 'map' ? 'receipt' : 'map'} size={18} />{d.browseView === 'map' ? '목록' : '지도'}</button></div></div>
@@ -102,7 +105,7 @@ export function LiveExplore({ push, compact = false }: { push: Navigate; compact
       <button className="bv-create-prompt" onClick={() => push('create')}><span><b>찾는 가게가 없나요?</b><small>내가 먼저 함께 주문할 배프를 모아보세요</small></span><Icon name="plus" size={23} /></button>
     </section><aside className="bv-how-it-works"><span className="bv-eyebrow">배프와 주문하기</span><h2>커피 한 잔도<br />부담 없이.</h2><ol>{[['먹고 싶은 메뉴 담기', '근처 모집에서 내 메뉴를 골라요'], ['배달비 나누기', '주문 금액을 리더에게 보내요'], ['가까운 곳에서 받기', '약속한 장소에서 내 음식을 받아요']].map(([title, text], i) => <li key={title}><i>{i + 1}</i><span><b>{title}</b><small>{text}</small></span></li>)}</ol><p>조금 걷고, 함께 아끼는<br />우리 동네 주문 습관.</p></aside></div>
     <section className="live-store-preview"><div className="bv-section-title"><h2>가게부터 골라볼까요?</h2><button className="bv-text-button" onClick={() => push('create')}>모두 보기<Icon name="chevron" size={15} /></button></div><div className="live-brand-grid">{d.catalog.filter(matchesStore).map(c => <button key={c.store_name} onClick={() => setStore(c)}><StoreBrand name={c.store_name} fallback={<Icon name="bag" size={30} />} /><b>{c.store_name}</b><small>메뉴 {c.menus.length}개</small></button>)}</div>{!d.catalog.filter(matchesStore).length && <p className="baef-muted">검색 조건에 맞는 가게가 없어요.</p>}</section>
-    <div className="bv-preferences-link"><button onClick={() => setPreferences(true)}><Icon name="bell" size={21} /><span><b>{d.intent ? '관심 메뉴 알림을 기다리고 있어요' : '아직 뭘 먹을지 고민된다면?'}</b><small>먹고 싶은 메뉴가 겹치면 알려드려요</small></span><Icon name="chevron" size={17} /></button></div>
+    <div className="bv-preferences-link"><button onClick={() => setPreferences(true)}><Icon name="bell" size={21} /><span><b>{d.suggestionsReady?'내 메뉴·타협 범위 설정':d.intent ? '관심 메뉴 알림을 기다리고 있어요' : '아직 뭘 먹을지 고민된다면?'}</b><small>먹고 싶은 메뉴가 겹치면 알려드려요</small></span><Icon name="chevron" size={17} /></button></div>
     {d.error && <p className="baef-error" role="alert">{d.error}</p>}
     {store && <StoreSheet store={store} close={() => setStore(null)} push={push} />}
     {preferences && <LiveMenuPreferences close={() => setPreferences(false)} />}
@@ -110,6 +113,7 @@ export function LiveExplore({ push, compact = false }: { push: Navigate; compact
 }
 export function LiveMenuPreferences({ close }: { close: () => void }) {
   const d = useMenuDiscovery(), s = useSharedDelivery()
+  if (s.session&&d.suggestionsReady) return <OrderWishEditor close={close}/>
   if (!s.session) return <Modal title="먹고 싶은 메뉴 알림" close={close} footer={<button className="baef-button" onClick={() => { close(); s.setLoginOpen(true) }}>로그인하고 메뉴 알림 설정</button>}><p className="baef-muted">로그인하면 먹고 싶은 메뉴와 시간이 맞는 배프를 알려드려요.</p></Modal>
   const reason = s.active ? '진행 중인 주문을 먼저 확인해 주세요.' : !d.menus.length ? '먹고 싶은 메뉴를 하나 이상 골라 주세요.' : !d.stores.length ? '가능한 가게를 한 곳 이상 골라 주세요.' : !d.matchLocation ? '출발 위치를 먼저 설정해 주세요.' : ''
   return <Modal title="먹고 싶은 메뉴 알림" close={close} footer={<><button className="baef-button" disabled={d.saving || !!reason} onClick={() => void d.save().then(ok => { if (ok) close() })}>{d.saving ? '저장 중…' : d.intent ? '메뉴 알림 변경' : '이 메뉴로 알림 받기'}</button>{reason && <p className="baef-muted">{reason}</p>}</>}>

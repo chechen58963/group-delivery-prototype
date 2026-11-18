@@ -127,7 +127,7 @@ export default function BaefShell(){
       </>}
     </main>
     {showNav&&<nav className="bv-bottom-nav" aria-label="하단 메뉴">{nav.map(([next,label,icon])=><button key={next} className={mainNav===next?'active':''} aria-current={mainNav===next?'page':undefined} onClick={()=>navigate(next)}><Icon name={icon} size={23}/><span>{label}</span>{next==='orders'&&s.active&&<i/>}</button>)}</nav>}
-    {d.matchingStore&&d.catalog.find(c=>c.store_name===d.matchingStore)&&<StoreSheet key={d.matchingStore} store={d.catalog.find(c=>c.store_name===d.matchingStore)!} close={d.closeMatchingStore} push={push}/>}
+    {d.matchingStore&&d.catalog.find(c=>c.store_name===d.matchingStore)&&<StoreSheet intent="create" key={d.matchingStore} store={d.catalog.find(c=>c.store_name===d.matchingStore)!} close={d.closeMatchingStore} push={push}/>}
     {alerts&&<MenuAlerts close={()=>setAlerts(false)} push={push}/>}
     {chatMeeting&&<Modal title="수령 장소와 진행 안내" close={()=>setChatMeeting(false)}><MeetingTools/></Modal>}{s.loginOpen&&<AuthDialog/>}
   </div></div>

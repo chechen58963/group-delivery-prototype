@@ -5,6 +5,7 @@ import { CAMPUS_STORES } from './campus'
 import { usePreferences } from './AppPreferences'
 import { savedMatchLocation, storeMatchLocation, type MatchLocation } from './matchingLocation'
 import type { MenuChoice, MenuQuantities, SavedMenuItem } from './menuSelection'
+import {suggestionDraft,type OrderSuggestion,type OrderWish} from './orderSuggestions'
 
 export const FOOD_CHOICES = [
   { id: 'coffee', name: '커피', subtitle: '한 잔만 필요할 때', photo: '1509042239860-f550ce710b93' },
@@ -18,7 +19,7 @@ export const PICKUP_AREAS = [
 ] as const
 export type CatalogItem = { id: number; name: string; price: number }
 export type MenuStore = { store_name: string; menu_key: string; goal_amount: number; menus: CatalogItem[] }
-export type MenuIntent = { user_id: string; menus: string[]; stores: string[]; starts_at: string; ends_at: string; area_id: string; active: boolean; latitude: number|null; longitude: number|null }
+export type MenuIntent = { wish_store?:string|null;wish_menu_id?:number|null;wish_quantity?:number;flexibility?:'exact'|'brand'|'similar';ready_until?:string|null; user_id: string; menus: string[]; stores: string[]; starts_at: string; ends_at: string; area_id: string; active: boolean; latitude: number|null; longitude: number|null }
 export type MenuMatch = { store_name: string; people_count: number }
 export type MenuNotification = { id: string; kind: 'menu_match' | 'group_invite'; payload: { stores: string[]; area: string; max_walk_m?: number; post_id?: string; starts_at?: string; ends_at?: string }; created_at: string; expires_at: string; read_at: string | null }
 export type Basket = { post_id: string; user_id: string; items: SavedMenuItem[]; total: number }
@@ -85,6 +86,7 @@ function useDiscoveryState() {
   const saveListScroll=(value:number)=>{if(shared.initializing||preferenceOwner!==owner)return;listScroll.current=value;persistPreferences()}
   const [intent,setIntent]=useState<MenuIntent|null>(null)
   const [matches,setMatches]=useState<MenuMatch[]>([])
+  const [suggestions,setSuggestions]=useState<OrderSuggestion[]>([]),[suggestionsReady,setSuggestionsReady]=useState(false),[suggestionsError,setSuggestionsError]=useState('')
   const [alerts,setAlerts]=useState<MenuNotification[]>([])
   const [baskets,setBaskets]=useState<Basket[]>([])
   const [menuOptionsReady,setMenuOptionsReady]=useState(false)
@@ -112,7 +114,7 @@ function useDiscoveryState() {
   },[])
   useEffect(()=>{
     const generation=++epoch.current
-    setIntent(null);setMatches([]);setAlerts([]);setBaskets([]);setConnected(false);setError('')
+    setIntent(null);setMatches([]);setAlerts([]);setBaskets([]);setConnected(false);setError('');setSuggestions([]);setSuggestionsReady(false);setSuggestionsError('')
     setMenuOptionsReady(false);setRecruitmentProgress([])
     if(!uid||!shared.allowed)return
     let alive=true,running=false,hydrated=false
@@ -120,21 +122,23 @@ function useDiscoveryState() {
     const load=async()=>{
       if(running)return;running=true;setLoading(true)
       try{
-        const [own,found,notes,orders,selectionInfo]=await Promise.all([
+        const [own,found,notes,orders,selectionInfo,offers]=await Promise.all([
           supabase.from('gd_intents').select('*').eq('user_id',uid).maybeSingle(),
           supabase.rpc('gd_find_menu_matches'),
           supabase.from('gd_menu_notifications').select('*').gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(50),
           supabase.from('gd_baskets').select('*'),
           supabase.rpc('gd_menu_selection_info'),
+          supabase.rpc('gd_order_suggestions'),
         ])
         for(const r of [own,found,notes,orders])if(r.error)throw r.error
         if(!alive||epoch.current!==generation)return
         const value=own.data as MenuIntent|null
+        if(!offers.error)setSuggestionsReady(true);setSuggestions(!offers.error&&Array.isArray(offers.data)?offers.data:[]);setSuggestionsError(offers.error&&!['PGRST202','PGRST205'].includes(offers.error.code)?'주문 조합을 불러오지 못했어요. 다시 확인해 주세요.':'')
         setIntent(value);setMatches((found.data??[]) as MenuMatch[]);setBaskets((orders.data??[]) as Basket[])
         setMenuOptionsReady(!selectionInfo.error&&selectionInfo.data?.version===1)
         setRecruitmentProgress(!selectionInfo.error&&Array.isArray(selectionInfo.data?.progress)?selectionInfo.data.progress:[])
         const next=(notes.data??[]) as MenuNotification[]
-        if(seen){const fresh=next.find(n=>!seen!.has(n.id)&&!n.read_at);if(fresh){const matching=(found.data as MenuMatch[]??[]).filter(m=>fresh.payload.stores.includes(m.store_name)).sort((a,b)=>Number(b.people_count)-Number(a.people_count))[0];if(fresh.kind==='group_invite')setToast('함께 주문할 모집이 열렸어요. 알림을 확인해 보세요.');else if(matching&&Number(matching.people_count)>0)setToast(`${matching.store_name}에서 함께 주문할 배프 ${matching.people_count}명이 있어요. 알림에서 모집을 시작해 보세요.`)}}
+        if(seen){const fresh=next.find(n=>!seen!.has(n.id)&&!n.read_at);if(fresh){const matching=(found.data as MenuMatch[]??[]).filter(m=>fresh.payload.stores.includes(m.store_name)).sort((a,b)=>Number(b.people_count)-Number(a.people_count))[0];if(fresh.kind==='group_invite')setToast('함께 주문할 모집이 열렸어요. 알림을 확인해 보세요.');else if(!offers.error&&Array.isArray(offers.data)&&offers.data.length)setToast('함께 주문할 메뉴 조합을 찾았어요. 가게와 예상 비용을 확인해 주세요.');else if(offers.error?.code==='PGRST202'&&matching&&Number(matching.people_count)>0)setToast(`${matching.store_name}에서 함께 주문할 배프 ${matching.people_count}명이 있어요. 알림에서 모집을 시작해 보세요.`)}}
         seen=new Set(next.map(n=>n.id));setAlerts(next);setConnected(true);setError('')
         if(!hydrated&&value?.active&&new Date(value.ends_at).getTime()>Date.now()){
           setMenus(value.menus);setStores(value.stores);setArea(value.area_id)
@@ -175,18 +179,41 @@ function useDiscoveryState() {
     if(result)setToast('선택을 저장했어요. 메뉴와 시간이 맞는 사람이 생기면 알려드릴게요.')
     return result
   }
+  const saveOrderWish=async(wish:OrderWish)=>{
+    if(!matchLocation){setError('상단에서 내 출발 위치를 정해 주세요.');return false}
+    const start=new Date();start.setDate(start.getDate()+day);start.setHours(hour,0,0,0)
+    const end=new Date(start.getTime()+3600000)
+    const ok=await run(()=>supabase.rpc('gd_save_order_preference',{p_store:wish.store,p_menu:wish.menu,p_quantity:wish.quantity,p_flex:wish.flexibility,p_ready:wish.ready,p_start:start.toISOString(),p_end:end.toISOString(),p_area:area,p_lat:matchLocation.lat,p_lng:matchLocation.lng}))
+    if(ok){setToast(wish.ready?'15분 동안 지금 주문 가능한 배프를 우선 찾아요.':'메뉴와 타협 범위를 저장했어요. 함께 주문할 조합을 찾아요.');refresh()}
+    return ok
+  }
+  const startSuggestedOrder=async(offer:OrderSuggestion)=>{
+    if(lock.current)return false
+    if(shared.active){shared.setNotice('진행 중인 주문을 먼저 확인해 주세요.');return false}
+    lock.current=true;setSaving(true)
+    try{
+      const r=await supabase.rpc('gd_order_suggestions');if(r.error)throw r.error
+      if(currentUid.current!==uid)return false
+      const fresh=(r.data as OrderSuggestion[]).find(v=>v.id===offer.id),draft=fresh?suggestionDraft(fresh,catalog):null
+      if(!fresh||!draft){setToast('상대의 조건이나 메뉴가 바뀌었어요. 최신 제안을 확인해 주세요.');refresh();return false}
+      const key=`${uid}:${fresh.store}:new`;storeDrafts.current.set(key,draft);persistPreferences()
+      setMatchingStore(fresh.store);return true
+    }catch{setToast('조합을 다시 확인하지 못했어요. 잠시 후 다시 선택해 주세요.');return false}
+    finally{lock.current=false;setSaving(false)}
+  }
   const savedDate=new Date();savedDate.setDate(savedDate.getDate()+day);savedDate.setHours(hour,0,0,0)
   const sameSelection=!!activeIntent&&activeIntent.area_id===area&&new Date(activeIntent.starts_at).getTime()===savedDate.getTime()
     &&!!matchLocation&&activeIntent.latitude===matchLocation.lat&&activeIntent.longitude===matchLocation.lng
     &&[...activeIntent.menus].sort().join('|')===[...menus].sort().join('|')
     &&[...activeIntent.stores].sort().join('|')===[...stores].sort().join('|')
-  const currentAlerts=alerts.filter(n=>n.kind!=='menu_match'||(activeIntent&&!shared.active&&n.payload.stores.some(store=>matches.some(m=>m.store_name===store&&Number(m.people_count)>0))))
+  const currentAlerts=alerts.filter(n=>n.kind!=='menu_match'||(activeIntent&&!shared.active&&n.payload.stores.some(store=>suggestionsReady?suggestions.some(v=>v.store===store):matches.some(m=>m.store_name===store&&Number(m.people_count)>0))))
   return {catalog,menus,stores,day,hour,area,setDay,setHour,setArea,toggleMenu,toggleStore,candidateStores,
     search,setSearch,browseCategory,setBrowseCategory,browseView,setBrowseView,browseTab,setBrowseTab,sort,setSort,browseRange,setBrowseRange,listScroll,storeDrafts,persistDraft,saveListScroll,preferencesReady:preferenceOwner===owner&&!shared.initializing,
     matchLocation,manualLocation,setMatchLocation,matchingStore,closeMatchingStore:()=>setMatchingStore(null),
     startMatchingRoom:(name:string)=>{if(shared.active){shared.setNotice('진행 중인 주문을 먼저 확인해 주세요.');return}if(!activeIntent||!matches.some(m=>m.store_name===name&&Number(m.people_count)>0)){setToast('매칭 조건이 바뀌었어요. 메뉴 알림을 다시 확인해 주세요.');return}const date=new Date(activeIntent.starts_at);setDay(date.toDateString()===new Date().toDateString()?0:1);setHour(date.getHours());setArea(activeIntent.area_id);setMatchingStore(name)},
+    suggestions,suggestionsReady,suggestionsError,saveOrderWish,startSuggestedOrder,
     intent:activeIntent,matches,visibleMatches:sameSelection?matches:[],alerts:currentAlerts,baskets,menuOptionsReady,recruitmentProgress,connected,loading,saving,error,setError,toast,setToast,save,refresh,
-    cancel:async()=>{if(await run(()=>supabase.rpc('gd_cancel_intent'))) {setIntent(null);setMatches([]);setToast('메뉴 기다리기를 취소했어요.')}},
+    cancel:async()=>{if(await run(()=>supabase.rpc('gd_cancel_intent'))) {setIntent(null);setMatches([]);setSuggestions([]);setToast('메뉴 기다리기를 취소했어요.')}},
     readAlerts:async(ids:string[])=>{if(await run(()=>supabase.rpc('gd_mark_menu_notifications',{p_ids:ids})))setAlerts(values=>values.map(n=>ids.includes(n.id)?{...n,read_at:new Date().toISOString()}:n))},
     saveBasket:async(post:string,items:MenuChoice[])=>{
       if(!menuOptionsReady&&items.some(i=>i.temperature)){setError('메뉴 옵션 연결을 확인한 뒤 다시 저장해 주세요.');return false}

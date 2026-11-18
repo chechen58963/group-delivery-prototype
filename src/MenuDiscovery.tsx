@@ -1,3 +1,4 @@
+import OrderSuggestions from './OrderSuggestionsPanel'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { usePreferences } from './AppPreferences'
 import { useSharedDelivery } from './SharedDelivery'
@@ -191,11 +192,12 @@ export function MenuAlerts({close,push}:{close:()=>void;push:(s:Screen)=>void}){
   const d=useMenuDiscovery(),s=useSharedDelivery()
   const unread=d.alerts.filter(n=>!n.read_at).length+s.notifications.filter(n=>!n.read).length
   const entries=[
-    ...matchPrompts(d.alerts,d.matches).map(match=>({key:`match:${match.store}`,time:new Date(match.createdAt).getTime(),view:<button className={`baef-alert-item ${match.unread?'unread':''}`} onClick={()=>{void d.readAlerts(match.ids);d.startMatchingRoom(match.store);close();push('create')}}><span className="baef-alert-symbol"><SmallIcon name="people"/></span><div><b>함께 주문할 배프 {match.count}명이 있어요</b><p>{match.store} · 메뉴와 시간이 겹쳐요.</p><p>모집을 시작해 볼까요? →</p><small>{relativeDateTime(match.createdAt)}</small></div></button>})),
+    ...matchPrompts(d.alerts,d.matches).map(match=>({key:`match:${match.store}`,time:new Date(match.createdAt).getTime(),view:<button className={`baef-alert-item ${match.unread?'unread':''}`} onClick={()=>void (async()=>{await d.readAlerts(match.ids);if(d.suggestionsReady){const offer=d.suggestions.find(v=>v.store===match.store);if(!offer||!await d.startSuggestedOrder(offer))return}else d.startMatchingRoom(match.store);close();push('create')})()}><span className="baef-alert-symbol"><SmallIcon name="people"/></span><div><b>함께 주문할 배프 {match.count}명이 있어요</b><p>{match.store} · 메뉴와 시간이 겹쳐요.</p><p>모집을 시작해 볼까요? →</p><small>{relativeDateTime(match.createdAt)}</small></div></button>})),
     ...d.alerts.filter(n=>n.kind==='group_invite').map(n=>({key:`invite:${n.id}`,time:new Date(n.created_at).getTime(),view:<button className={`baef-alert-item ${!n.read_at?'unread':''}`} onClick={()=>{void d.readAlerts([n.id]);if(n.payload.post_id){const p=s.posts.find(p=>p.sharedId===n.payload.post_id);if(p){s.selectPost(p.id);close();push('detail');return}}close();push('list')}}><span className="baef-alert-symbol"><SmallIcon name="people"/></span><div><b>함께 주문할 모집이 열렸어요</b><p>{n.payload.stores.join(' · ')}</p><small>{areaName(n.payload.area)} · {relativeDateTime(n.created_at)}</small></div></button>})),
     ...s.notifications.map(n=>({key:`order:${n.id}`,time:n.time,view:<button className={`baef-alert-item ${!n.read?'unread':''}`} onClick={()=>{s.readNotification(n.id);s.selectPost(n.sharedPostId?s.numberFor(n.sharedPostId):n.postId);close();push(n.target as Screen)}}><span className="baef-alert-symbol"><SmallIcon name="chat"/></span><div><b>{n.restaurant}</b><p>{n.text}</p><small>{relativeDateTime(n.time)}</small></div></button>})),
   ].sort((a,b)=>b.time-a.time)
   return <section className="baef-alert-panel"><header className="baef-sheet-title"><h1 className="baef-page-title">알림</h1><button className="baef-icon-button" aria-label="알림 닫기" onClick={close}><SmallIcon name="close"/></button></header><div className="baef-alert-toolbar"><span>{unread>0?`읽지 않은 알림 ${unread}개`:'모든 알림을 확인했어요'}</span><button className="baef-text-action" disabled={!unread||d.saving} onClick={()=>{const ids=d.alerts.filter(n=>!n.read_at).map(n=>n.id);if(ids.length)void d.readAlerts(ids);s.readAllNotifications()}}>모두 읽음</button></div><div className="baef-alert-scroll">
+    <OrderSuggestions push={push} close={close}/>
     {entries.map(entry=><div key={entry.key}>{entry.view}</div>)}
     {!entries.length&&<div className="baef-empty"><SmallIcon name="bell"/><h3>아직 도착한 알림이 없어요</h3><p>메뉴가 겹치거나 신청이 도착하면<br/>여기에 알려드릴게요.</p></div>}
   </div></section>
