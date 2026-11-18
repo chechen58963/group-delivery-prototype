@@ -228,9 +228,9 @@
 .baef-live .live-store-grid h2 { font-size: 17px; line-height: 1.5; margin: 3px 0 8px; }
 .baef-live .live-store-grid p { font-size: 12px; color: var(--bv-muted); }
 .baef-live .live-order-history { display: grid; gap: 14px; margin-top: 30px; }
-.baef-live .live-order-history > button { border: 1px solid var(--bv-line); border-radius: 16px; padding: 24px; display: flex; gap: 22px; align-items: center; text-align: left; }
-.baef-live .live-order-history > button > img { width: 85px; height: 95px; object-fit: contain; background: var(--bv-soft); border-radius: 13px; }
-.baef-live .live-order-history > button > span { flex: 1; min-width: 0; }
+.baef-live .live-order-history > article > button { border: 1px solid var(--bv-line); border-radius: 16px; padding: 24px; display: flex; gap: 22px; align-items: center; text-align: left; }
+.baef-live .live-order-history > article > button > img { width: 85px; height: 95px; object-fit: contain; background: var(--bv-soft); border-radius: 13px; }
+.baef-live .live-order-history > article > button > span { flex: 1; min-width: 0; }
 .baef-live .live-order-history small { font-size: 12px; color: var(--bv-muted); }
 .baef-live .live-order-history small[data-active=true] { color: var(--bv-accent); font-weight: 700; }
 .baef-live .live-order-history h2 { font-size: 19px; margin: 5px 0; }
@@ -357,8 +357,8 @@
   .baef-live .live-store-grid > button { padding: 22px 0; border: 0; border-bottom: 1px solid var(--bv-line); border-radius: 0; gap: 16px; }
   .baef-live .live-store-grid .baef-store-brand { width: 64px; height: 70px; }
   .baef-live .live-store-grid h2 { font-size: 16px; }
-  .baef-live .live-order-history > button { padding: 18px 14px; gap: 14px; }
-  .baef-live .live-order-history > button > img { width: 65px; height: 82px; }
+  .baef-live .live-order-history > article > button { padding: 18px 14px; gap: 14px; }
+  .baef-live .live-order-history > article > button > img { width: 65px; height: 82px; }
   .baef-live .live-order-history h2 { font-size: 16px; }
   .baef-live .live-order-history p { font-size: 12px; }
 }
@@ -381,3 +381,5 @@
 .baef-virtual-switch input{width:18px;height:18px;accent-color:var(--bv-accent)}
 .baef-virtual-switch small{grid-column:2;color:var(--bv-muted);font-size:12px;line-height:1.6}
 .ux-journey{margin:16px 0;padding:14px 16px;background:var(--bv-soft);border-radius:12px;font-size:14px}.ux-journey summary{cursor:pointer;font-weight:600}.ux-journey ol{list-style:none;padding:14px 0;display:flex;flex-wrap:wrap;gap:12px}.ux-journey li{display:flex;align-items:center;gap:6px}.ux-journey li span{color:var(--bv-accent);font-weight:700}.ux-journey p{color:var(--bv-muted);line-height:1.7}.ux-place-candidates{margin:16px 0}.ux-place-candidates h3{font-size:15px}.ux-chat-meeting{white-space:normal;text-align:left}
+
+.baef-cancel-order{display:block;min-height:44px;padding:10px 16px;border:1px solid #c74a3c;border-radius:10px;color:#b12b20;font-size:14px;font-weight:700;background:var(--bv-bg);margin:10px 0 16px auto}.baef-timing-panel{padding:18px 0;border-bottom:1px solid var(--bv-line);margin-bottom:16px}.baef-timing-panel h2{font-size:17px;margin-bottom:8px}.baef-timing-panel details{margin-top:14px}.baef-eta-range{display:grid;grid-template-columns:1fr 1fr;gap:12px}.baef-order-list-item>button:first-child{width:100%}.baef-order-list-item>.baef-cancel-order{margin-top:8px}

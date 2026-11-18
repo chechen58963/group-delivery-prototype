@@ -5,8 +5,8 @@ import { useSharedDelivery } from './SharedDelivery'
 import { readAccountHistory, saveAccountHistory } from './sharedHistory'
 
 export type OrderPhase='menu'|'payment'|'ordered'|'delivering'|'arrived'|'completed'|'cancelled'
-export type OrderState={post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string;pickup_mode?:'meet'|'contactless';pickup_proposer?:string|null;pickup_agreed_by?:string[];pickup_note?:string;pickup_dropped_at?:string|null}
-export type OrderPerson={post_id:string;user_id:string;food_total:number;fee:number;coupon_discount:number;claimed_amount:number;confirmed_amount:number;refunded_amount:number;refund_due:number;refund_sent:boolean;transfer_review_pending?:boolean;received_at:string|null;late_reported:boolean;late_ack:boolean;latitude:number|null;longitude:number|null}
+export type OrderState={planned_order_at?:string|null;delivery_eta_start?:string|null;delivery_eta_end?:string|null;post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string;pickup_mode?:'meet'|'contactless';pickup_proposer?:string|null;pickup_agreed_by?:string[];pickup_note?:string;pickup_dropped_at?:string|null}
+export type OrderPerson={pickup_notice_seen_at?:string|null;post_id:string;user_id:string;food_total:number;fee:number;coupon_discount:number;claimed_amount:number;confirmed_amount:number;refunded_amount:number;refund_due:number;refund_sent:boolean;transfer_review_pending?:boolean;received_at:string|null;late_reported:boolean;late_ack:boolean;latitude:number|null;longitude:number|null}
 type PersonNoticeSnapshot=Pick<OrderPerson,'post_id'|'user_id'|'claimed_amount'|'confirmed_amount'|'received_at'>
 const personNoticeSnapshot=(p:PersonNoticeSnapshot):PersonNoticeSnapshot=>({post_id:p.post_id,user_id:p.user_id,claimed_amount:p.claimed_amount,confirmed_amount:p.confirmed_amount,received_at:p.received_at})
 export type Reputation={user_id:string;rating:number|null;review_count:number;trades:number}
@@ -50,10 +50,10 @@ function useLifecycleState(){
         for(const value of next){
           const post=postsRef.current.find(p=>p.id===value.post_id);if(!post)continue
           const before=seenStates.current.get(value.post_id),text=orderChangeNotice(before,value,uid)
-          if(text)s.addNotification(post,text,'menu',`meeting:${value.updated_at}:${text}`)
+          if(text)s.addNotification(post,text,text.includes('도착 예상')?'delivery':'menu',`meeting:${value.updated_at}:${text}`)
           if(before&&before.phase!==value.phase){
             const target=value.phase==='completed'?'complete':value.phase==='cancelled'||value.phase==='payment'?'payment':value.phase==='arrived'?'receipt':value.phase==='ordered'||value.phase==='delivering'?'delivery':'menu'
-            s.addNotification(post,`주문 상태가 ‘${phaseLabel[value.phase]}’로 바뀌었어요.`,target,`phase:${value.updated_at}:${value.phase}`)
+            s.addNotification(post,value.phase==='arrived'?(value.pickup_mode==='contactless'?'음식이 도착했어요. 리더의 음식 놓기 안내를 기다려 주세요.':'음식이 도착해 수령할 수 있어요. 장소를 확인해 주세요.'):`주문 상태가 ‘${phaseLabel[value.phase]}’로 바뀌었어요.`,target,`phase:${value.updated_at}:${value.phase}`)
           }
           seenStates.current.set(value.post_id,value)
         }

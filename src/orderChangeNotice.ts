@@ -9,6 +9,7 @@ export function orderChangeNotice(before:OrderState|undefined,after:OrderState,u
   if(!before.nearby_agreed&&after.nearby_agreed)return '근처 수령 제안에 동의했어요. 수령 장소와 배달비 분담을 확인해 주세요.'
   if(before.nearby_requester&&!after.nearby_requester)return '근처 수령 제안이 취소됐어요.'
   if(before.meeting!==after.meeting||before.meeting_lat!==after.meeting_lat||before.meeting_lng!==after.meeting_lng)return '수령 장소 후보가 변경됐어요. 지도에서 확인해 주세요.'
-  if(before.meeting_time!==after.meeting_time)return '수령 시간이 변경됐어요. 새 약속 시간을 확인해 주세요.'
+  if(before.planned_order_at!==after.planned_order_at)return '주문 예정 시간이 변경됐어요. 모임을 확인해 주세요.'
+  if(before.delivery_eta_start!==after.delivery_eta_start||before.delivery_eta_end!==after.delivery_eta_end)return '리더가 도착 예상 시간을 변경했어요. 배달 진행을 확인해 주세요.'
   return null
 }

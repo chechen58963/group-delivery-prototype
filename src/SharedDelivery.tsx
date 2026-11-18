@@ -1,3 +1,4 @@
+import CancelOrderControl from './CancelOrderControl'
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -342,7 +343,7 @@ export function SharedApplicants({ pop, push, renderApplicant }: { pop: () => vo
   const pending=s.members.filter(m=>m.post_id===p.id&&m.status==='pending'&&m.active)
   const people=s.members.filter(m=>m.post_id===p.id&&m.status==='accepted')
   const closed=p.status!=='open'||new Date(p.deadline).getTime()<=Date.now()
-  return <div className="flex-1 overflow-y-auto bg-gray-50"><header className="bg-white border-b border-gray-100 p-4 flex items-center gap-4"><button onClick={pop}>‹ 뒤로</button><h1 className="font-bold">신청자 관리</h1></header><div className="p-4 space-y-4">
+  return <div className="flex-1 overflow-y-auto bg-gray-50"><header className="bg-white border-b border-gray-100 p-4 flex items-center gap-4"><button onClick={pop}>‹ 뒤로</button><h1 className="font-bold">신청자 관리</h1><CancelOrderControl postId={p.id}/></header><div className="p-4 space-y-4">
     <div className="bg-white rounded-2xl p-4 space-y-2"><h2 className="font-bold">{p.restaurant}</h2><p className="text-sm">현재 {p.member_count} / {p.max_members}명 · {closed?'모집 마감':'모집 중'}</p><p className="text-xs text-gray-500">신청자를 수락하면 각자 메뉴를 정할 수 있어요. 2명 이상 모이면 주문을 준비해 주세요.</p></div>
     {s.virtualReady&&!ended&&!closed&&<label className="baef-virtual-switch"><input type="checkbox" checked={!!s.virtualRooms.find(v=>v.post_id===p.id)?.auto_join} disabled={s.busy} onChange={e=>void s.act(e.target.checked?'virtual-enable':'virtual-disable',p.id)}/>가상 참가자 자동 신청<small>신청이 오면 수락해 주세요. 끄면 대기 중인 가상 신청이 취소돼요.</small></label>}
     {!pending.length && <p className="text-gray-500 text-sm text-center py-6">대기 중인 신청자가 없어요.</p>}

@@ -141,6 +141,22 @@ test('order finalization stays disabled until menu, goal, meeting and account ch
   assert.match(html, /11,600원/)
   assert.match(html, /disabled=""[^>]*>주문 확정하고 송금으로/)
 })
+
+test('leader cancellation is visible before ordering and hidden after an order is placed',()=>{
+  prepareOrder();shared.rawPosts[0]=lifecycle.post
+  lifecycle.states=[{...lifecycle.state,post_id:'room-1'}]
+  assert.match(render(OrderMenu),/>모집 취소</)
+  lifecycle.states[0].phase='ordered'
+  assert.doesNotMatch(render(OrderMenu),/>모집 취소</)
+})
+
+test('a pickup place without an agreed arrival time can be finalized',()=>{
+  prepareOrder();lifecycle.state.meeting_time=null
+  const html=render(OrderMenu)
+  assert.match(html,/>주문 확정하고 송금으로</)
+  assert.doesNotMatch(html,/disabled=""[^>]*>주문 확정하고 송금으로/)
+  assert.doesNotMatch(html,/수령 장소와 시간을 저장/)
+})
 test('participant preparation cannot confirm the leader order and exposes pending pickup proposals', () => {
   prepareOrder()
   lifecycle.owner = false
