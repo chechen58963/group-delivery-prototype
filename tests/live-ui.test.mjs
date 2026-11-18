@@ -62,6 +62,24 @@ test('connected discovery renders actual fees, slots and store data without gene
   assert.match(html, /1 \/ 2명/)
   assert.doesNotMatch(html, /아아 한 잔, 같이 시킬 분|민지|1,280 P/)
 })
+
+test('virtual rooms are explicitly identified in the normal discovery list',()=>{
+  reset();shared.isVirtual=()=>true
+  assert.match(render(LiveExplore),/가상 유저의 모집/)
+})
+
+test('a virtual leader offers order progression without asking the real participant to transfer',()=>{
+  reset();shared.isVirtual=()=>true
+  lifecycle.post=shared.rawPosts[0]
+  lifecycle.state={phase:'payment'}
+  lifecycle.mine={food_total:3200,fee:1500,coupon_discount:0}
+  lifecycle.members=[{user_id:'me'}]
+  const html=render(OrderPayment)
+  assert.match(html,/가상 리더의 주문/)
+  assert.match(html,/주문 진행/)
+  assert.match(html,/4,700원/)
+  assert.doesNotMatch(html,/송금했어요|계좌번호|남은 송금액/)
+})
 test('nearby discovery filters actual coordinates, while all-range discovery keeps distant posts', () => {
   reset()
   shared.rawPosts[0].pickup_lat += .02

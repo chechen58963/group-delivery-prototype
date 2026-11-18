@@ -27,7 +27,7 @@ export default function PickupMethod({receipt=false}:{receipt?:boolean}){
   const generation=useRef(0)
   useEffect(()=>{generation.current++;setNote('');setPhoto('');setError('');setLoading(false);return()=>{generation.current++}},[o.selectedId,o.uid])
   useEffect(()=>{
-    setPhoto('');if(!receipt||!state?.pickup_dropped_at||!o.selectedId)return
+    setPhoto('');if(!receipt||!state?.pickup_dropped_at||!o.selectedId||s.isVirtual?.(o.post?.owner_id??''))return
     let alive=true;setLoading(true);setError('')
     void supabase.from('gd_pickup_photos').select('photo').eq('post_id',o.selectedId).maybeSingle().then(r=>{
       if(!alive)return

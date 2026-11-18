@@ -1,25 +1,23 @@
-import { lazy, Suspense, createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 import { useSharedDelivery } from './SharedDelivery'
-import { useDeliveryLifecycle, distanceM } from './DeliveryLifecycle'
-import { useMenuDiscovery } from './MenuDiscoveryContext'
-import { WALK_MILESTONE_METERS, WALK_MILESTONE_POINTS, WALK_ORDER_MAX_METERS, WALK_DAILY_LIMIT, orderRewardEstimate, walkDistance, walkEstimate, walkProgress } from './walkRewards'
+import { useDeliveryLifecycle } from './DeliveryLifecycle'
+import { useGpsWalk } from './useGpsWalk'
+import { WALK_MILESTONE_POINTS, WALK_DAILY_LIMIT, orderRewardEstimate, walkDistance, walkProgress } from './walkRewards'
 import './walking-rewards.css'
-import { ButtonHint, SaveFeedback, relativeDateTime, useSaveFeedback } from './uiFeedback'
+import { relativeDateTime } from './uiFeedback'
 
 const PointsShop=lazy(()=>import('./PointsShop'))
 type PointWallet={balance:number;today_earned:number;earned:number;spent:number;rule_version:number}
-type WalkPlan={post_id:string;user_id:string;meters:number;source:'map'|'manual'}
 type WalkReward={post_id:string;user_id:string;meters:number;points:number;awarded_at:string;rule_version?:number}
 function useWalkState(){
   const s=useSharedDelivery(),o=useDeliveryLifecycle(),uid=s.session?.user.id
-  const [plans,setPlans]=useState<WalkPlan[]>([]),[rewards,setRewards]=useState<WalkReward[]>([])
-  const [ready,setReady]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('')
+  const [rewards,setRewards]=useState<WalkReward[]>([])
+  const [ready,setReady]=useState(false),[busy]=useState(false),[error,setError]=useState('')
   const [wallet,setWallet]=useState<PointWallet|null>(null)
-  const lock=useRef(false),current=useRef(uid);current.current=uid
   const phases=o.states.map(v=>`${v.post_id}:${v.phase}`).join('|')
   useEffect(()=>{
-    setPlans([]);setRewards([]);setWallet(null);setReady(false);setError('')
+    setRewards([]);setWallet(null);setReady(false);setError('')
   },[uid,s.allowed])
   useEffect(()=>{
     if(!uid||!s.allowed)return
@@ -27,28 +25,19 @@ function useWalkState(){
     const load=async()=>{
       if(running)return;running=true
       try{
-        const [p,r,w]=await Promise.all([supabase.from('gd_walk_plans').select('*').eq('user_id',uid),supabase.from('gd_walk_rewards').select('*').eq('user_id',uid).order('awarded_at',{ascending:false}),supabase.rpc('gd_point_wallet')])
-        if(p.error||r.error)throw p.error??r.error
+        const [r,w]=await Promise.all([supabase.from('gd_walk_rewards').select('*').eq('user_id',uid).order('awarded_at',{ascending:false}),supabase.rpc('gd_point_wallet')])
+        if(r.error)throw r.error
         if(!alive)return
-        setWallet(!w.error&&w.data?.[0]?Object.fromEntries(Object.entries(w.data[0]).map(([key,value])=>[key,Number(value)])) as PointWallet:null);setPlans(p.data as WalkPlan[]);setRewards(r.data as WalkReward[]);setReady(true);setError(value=>value==='이동 포인트 저장소 업데이트 후 적립할 수 있어요.'||value==='이동 포인트를 불러오지 못했어요.'?'':value)
+        setWallet(!w.error&&w.data?.[0]?Object.fromEntries(Object.entries(w.data[0]).map(([key,value])=>[key,Number(value)])) as PointWallet:null);setRewards(r.data as WalkReward[]);setReady(true);setError(value=>value==='이동 포인트 저장소 업데이트 후 적립할 수 있어요.'||value==='이동 포인트를 불러오지 못했어요.'?'':value)
       }catch(e){if(alive){setReady(false);setError(['PGRST205','PGRST202','42P01'].includes((e as {code?:string}).code??'')?'이동 포인트 저장소 업데이트 후 적립할 수 있어요.':'이동 포인트를 불러오지 못했어요.')}}finally{running=false}
     }
     void load();const timer=setInterval(()=>{if(!document.hidden)void load()},4000)
     window.addEventListener('walking-rewards-refresh',load);window.addEventListener('focus',load)
     return()=>{alive=false;clearInterval(timer);window.removeEventListener('walking-rewards-refresh',load);window.removeEventListener('focus',load)}
   },[uid,s.allowed,phases])
-  const save=async(post:string,meters:number,source:'map'|'manual')=>{
-    if(lock.current||!uid)return false
-    if(!ready){setError('이동 포인트 저장소 업데이트 후 적립할 수 있어요.');return false}
-    lock.current=true;setBusy(true);setError('')
-    try{
-      const r=await supabase.rpc('gd_set_walk_plan',{p_post:post,p_meters:meters,p_source:source});if(r.error)throw r.error
-      if(current.current!==uid)return false
-      setPlans(values=>[...values.filter(v=>v.post_id!==post),{post_id:post,user_id:uid,meters,source}]);return true
-    }catch(e){if(current.current===uid)setError((e as {message?:string}).message??'예상 거리를 저장하지 못했어요.');return false}finally{lock.current=false;setBusy(false)}
-  }
+  const gps=useGpsWalk(uid,o.people.filter(p=>p.user_id===uid&&!p.received_at&&['ordered','delivering','arrived'].includes(o.states.find(s=>s.post_id===p.post_id)?.phase??'')&&!(o.states.find(s=>s.post_id===p.post_id)?.nearby_agreed&&o.states.find(s=>s.post_id===p.post_id)?.nearby_requester===uid)).map(p=>p.post_id))
   const totalMeters=rewards.reduce((sum,r)=>sum+r.meters,0),points=wallet?.balance??null
-  return {plans,rewards,ready,busy,error,save,totalMeters,points,wallet,policyReady:wallet?.rule_version===2,...walkProgress(totalMeters)}
+  return {rewards,ready,busy,error,gps,totalMeters,points,wallet,policyReady:wallet?.rule_version===2,...walkProgress(totalMeters)}
 }
 type Walking=ReturnType<typeof useWalkState>
 const Context=createContext<Walking|null>(null)
@@ -56,49 +45,35 @@ export function WalkingRewardsProvider({children}:{children:ReactNode}){const va
 function useWalkingRewards(){const value=useContext(Context);if(!value)throw new Error('WalkingRewardsProvider required');return value}
 export function WalkingRewardDetails(){
   const w=useWalkingRewards(),o=useDeliveryLifecycle()
-  const plan=w.plans.find(p=>p.post_id===o.selectedId),reward=w.rewards.find(p=>p.post_id===o.selectedId)
+  const reward=w.rewards.find(p=>p.post_id===o.selectedId)
   if(!o.post||!o.members.some(m=>m.user_id===o.uid))return null
-  const status=reward?`${walkDistance(reward.meters)} 누적${reward.points>0?` · +${reward.points}P`:''}`:plan?`${walkDistance(plan.meters)} 등록됨`:o.mine?.received_at?'거리 미등록':'거리 등록 · 선택'
+  const status=w.gps.record?.post===o.selectedId&&w.gps.recording?'GPS 기록 중':reward?`${walkDistance(reward.meters)} 누적${reward.points>0?` · +${reward.points}P`:''}`:o.mine?.received_at?'수령 완료':'GPS 자동 기록'
   return <details className="baef-info-details baef-walk-details"><summary><span>수령 이동 포인트</span><small>{w.error?'불러오기 오류 · 확인':!w.ready?'불러오는 중…':status}</small></summary><div className="baef-info-content"><WalkingRewardPlan/></div></details>
 }
 export function WalkingRewardReceipt(){return <WalkingRewardPlan receipt/>}
 export function WalkingRewardPlan({receipt=false}:{receipt?:boolean}={}){
-  const w=useWalkingRewards(),o=useDeliveryLifecycle(),d=useMenuDiscovery(),feedback=useSaveFeedback()
-  const plan=w.plans.find(p=>p.post_id===o.selectedId),reward=w.rewards.find(p=>p.post_id===o.selectedId)
-  const [manual,setManual]=useState(''),[useManual,setUseManual]=useState(false)
+  const w=useWalkingRewards(),o=useDeliveryLifecycle()
+  const reward=w.rewards.find(p=>p.post_id===o.selectedId)
   const nearRequester=!!o.state?.nearby_agreed&&o.state.nearby_requester===o.uid
-  const pickup=o.state?.meeting_lat!=null&&o.state.meeting_lng!=null?{lat:o.state.meeting_lat,lng:o.state.meeting_lng}:!o.state?.nearby_agreed&&(!o.state||o.state.meeting===o.post?.meeting)&&o.post?.pickup_lat!=null&&o.post.pickup_lng!=null?{lat:o.post.pickup_lat,lng:o.post.pickup_lng}:null
-  const mapped=pickup&&d.matchLocation?walkEstimate(distanceM(d.matchLocation,pickup)):null
-  const manualNumber=Number(manual),validManual=manual.trim()!==''&&Number.isInteger(manualNumber)&&manualNumber>=0&&manualNumber<=WALK_ORDER_MAX_METERS
-  const proposed=nearRequester?0:!useManual&&mapped!=null?mapped:validManual?manualNumber:null
-  const editable=!!o.mine&&!o.mine.received_at&&o.state?.phase!=='completed'&&o.state?.phase!=='cancelled'
-  useEffect(()=>{setManual(plan?String(plan.meters):'');setUseManual(plan?.source==='manual');feedback.reset()},[o.selectedId])
-  useEffect(()=>{if(plan&&feedback.status!=='dirty'){setManual(String(plan.meters));setUseManual(plan.source==='manual')}},[plan?.meters,plan?.source])
+  const mine=w.gps.record?.post===o.selectedId?w.gps.record:null
+  const meters=reward?.meters??(nearRequester?0:mine?.meters??0)
+  const canRecord=!!o.mine&&!o.mine.received_at&&['ordered','delivering','arrived'].includes(o.state?.phase??'')&&!nearRequester
+  const recording=!!mine&&w.gps.recording
   if(!o.post||!o.members.some(m=>m.user_id===o.uid))return null
-  const dirty=feedback.status==='dirty'
-  const displayed=reward?.meters??(nearRequester?0:dirty?proposed:plan?.meters??proposed)
-  const source=nearRequester?'manual':!dirty&&plan?plan.source:useManual||mapped==null?'manual':'map'
-  const projected=w.totalMeters+(reward?0:displayed??0)
-  const after=walkProgress(projected),bonus=w.policyReady?orderRewardEstimate(displayed??0,w.wallet?.today_earned??0):after.earned-walkProgress(w.totalMeters).earned
-  const reason=!w.ready?w.error?'':'포인트를 불러오는 중이에요.':proposed==null?'편도 예상 이동거리를 0~400m로 입력해 주세요.':''
   return <section className="baef-walk-card"><div className="baef-section-title"><h2>수령 이동 포인트</h2><span>{w.policyReady?'완료 20P + 이동 5m당 1P':`누적 1km마다 ${WALK_MILESTONE_POINTS}P`}</span></div>
     {reward?<><p>이번 모임에서 <b>{walkDistance(reward.meters)}</b>를 누적했어요.</p>{reward.points>0&&<strong className="baef-walk-earned">이번 거래 적립 · +{reward.points}P</strong>}</>:<>
-      <p>이번 편도 예상 이동 <b>{displayed==null?'미등록':walkDistance(displayed)}</b>{plan&&!dirty&&<span className="baef-walk-saved"> · 등록됨</span>}</p>
-      {w.ready&&displayed!=null&&<p className="baef-muted">완료 후 누적 {walkDistance(projected)}{bonus>0?` · ${bonus}P 적립`:''}<br/>{w.policyReady?'하루 최대 200P까지 적립돼요.':`다음 ${WALK_MILESTONE_POINTS}P까지 ${walkDistance(after.remaining)}`}</p>}
-      {editable&&<details className="baef-walk-edit" open={!plan}><summary>이번 모임의 예상 거리 등록</summary>{nearRequester?<p className="baef-muted">내 근처에서 받기를 요청한 사람은 0m로 기록해요.</p>:<>
-        {mapped!=null&&!useManual?<p className="baef-muted">출발점과 수령점의 직선거리 기준 · 한 모임에 최대 {WALK_ORDER_MAX_METERS}m</p>:<label className="baef-order-field">편도 예상 이동거리 (m)<input type="number" inputMode="numeric" min="0" max={WALK_ORDER_MAX_METERS} step="1" value={manual} onChange={e=>{setManual(e.target.value);feedback.change()}} placeholder="예: 350"/></label>}
-        {mapped!=null&&<button className="baef-text-action" onClick={()=>{setUseManual(v=>!v);feedback.change()}}>{useManual?'지도상의 예상 거리 사용':'예상 거리 직접 입력'}</button>}
+      <p>자동 기록한 이동 <b aria-live="polite">{walkDistance(meters)}</b>{recording&&' · 기록 중'}</p>
+      {nearRequester?<p className="baef-muted">내 근처에서 받기를 요청한 사람은 0m로 기록해요.</p>:<>
+        {canRecord?<><button className="baef-button secondary" onClick={()=>recording?w.gps.stop('기록을 멈췄어요. 다시 출발하면 이어서 기록해요.'):w.gps.start(o.post!.id)}>{recording?'이동 기록 멈추기':mine?'이어서 이동 기록':'수령하러 출발 · GPS 기록'}</button><p role="status" className="baef-muted">{mine?w.gps.message:'출발 버튼을 누르면 이동거리를 자동으로 기록해요.'}</p></>:!o.mine?.received_at&&<p className="baef-muted">주문이 완료되면 출발 버튼으로 GPS 기록을 시작할 수 있어요.</p>}
+        <p className="baef-muted">화면을 열어 둔 동안 기록해요. 위치 오차가 큰 구간은 제외하며, 한 모임에 최대 400m까지 반영해요.</p>
       </>}
-        <button className="baef-button secondary" disabled={!w.ready||w.busy||proposed==null} aria-describedby={reason?'walk-plan-reason':undefined} onClick={()=>{if(proposed==null)return;const version=feedback.begin();void w.save(o.post!.id,displayed??proposed,source).then(ok=>{if(ok)feedback.saved(version)})}}>{w.busy?'저장 중…':'이번 예상 거리 저장'}</button><ButtonHint id="walk-plan-reason" reason={reason}/><SaveFeedback status={dirty?'dirty':feedback.status}/>
-      </details>}
-      {!editable&&o.mine?.received_at&&<p className="baef-muted">{plan?o.state?.phase==='completed'?'누적 내역을 불러오는 중이에요.':'모두 수령하면 누적 거리에 반영돼요.':w.policyReady?'이동 거리가 등록되지 않아 0m로 계산돼요.':'수령 전에 예상 거리를 등록하지 않은 모임이에요.'}</p>}
+      {w.policyReady&&<p className="baef-muted">전원 수령 완료 후 예상 {orderRewardEstimate(meters,w.wallet?.today_earned??0)}P · 하루 최대 200P</p>}
     </>}
-    {w.policyReady&&!reward&&displayed==null&&<p className="baef-muted">거래 완료 기본 20P · 거리를 등록하면 이동 포인트도 함께 적립돼요. 하루 최대 200P까지 받을 수 있어요.</p>}
     {w.error&&<p role="alert" className="baef-error">{w.error}</p>}
     {receipt&&o.state?.phase==='arrived'&&<div className="baef-receipt-reward">
       {!o.consistencyReady&&<p role="status">수령 확인 기능을 준비하고 있어요. 잠시 후 다시 시도해 주세요.</p>}
-      {!o.mine?.received_at&&<p>이번 수령 이동 <b>{walkDistance(displayed??0)}</b> · 전원 수령 완료 시 예상 <b>{w.policyReady?orderRewardEstimate(displayed??0,w.wallet?.today_earned??0):bonus}P</b><br/>{displayed==null?'거리 미입력 시 0m로 기록해요. 거리를 입력하면 이동 포인트도 함께 받을 수 있어요.':'아래 버튼을 누르면 이 거리 저장과 수령 확인을 함께 처리해요.'}</p>}
-      <button className="baef-button" disabled={!!o.mine?.received_at||o.busy||w.busy||!w.ready||!o.consistencyReady||o.state?.pickup_mode==='contactless'&&!o.state.pickup_dropped_at||(!nearRequester&&(useManual||mapped==null)&&manual.trim()!==''&&!validManual)} onClick={()=>void o.act('receive',{walk_meters:displayed??0,walk_source:source}).then(ok=>{if(ok)window.dispatchEvent(new Event('walking-rewards-refresh'))})}>{o.busy?'수령 확인 중…':o.mine?.received_at?'내 수령 확인 완료':o.state?.pickup_mode==='contactless'&&!o.state.pickup_dropped_at?'음식 놓기 알림을 기다리고 있어요':'내 음식 수령 완료'}</button>
+      {!o.mine?.received_at&&<p>수령 완료 시 기록한 {walkDistance(meters)}를 함께 저장해요.</p>}
+      <button className="baef-button" disabled={!!o.mine?.received_at||o.busy||w.busy||!w.ready||!o.consistencyReady||o.state.pickup_mode==='contactless'&&!o.state.pickup_dropped_at} onClick={()=>{const measured=nearRequester?0:mine?w.gps.stop():0;void o.act('receive',{walk_meters:measured,walk_source:'gps'}).then(ok=>{if(ok)window.dispatchEvent(new Event('walking-rewards-refresh'))})}}>{o.busy?'수령 확인 중…':o.mine?.received_at?'내 수령 확인 완료':o.state.pickup_mode==='contactless'&&!o.state.pickup_dropped_at?'음식 놓기 알림을 기다리고 있어요':'내 음식 수령 완료'}</button>
     </div>}
   </section>
 }

@@ -7,7 +7,8 @@ import { CAMPUS_STORES, CATEGORY_PHOTOS } from './campus'
 import { makeTransaction, type Post, type Transaction, type FlowEvent } from './workflow'
 import { appendNotification, mergeChatMessages, readAccountHistory, restoreChatCursors, restoreNotifications, saveAccountHistory, type SharedNotification } from './sharedHistory'
 
-type Tester = { user_id: string; nickname: string; active: boolean; suspended_until?:string|null }
+type Tester = { user_id: string; nickname: string; active: boolean; suspended_until?:string|null; is_virtual?:boolean }
+type VirtualRoom = {post_id:string;virtual_leader:boolean;auto_join:boolean}
 type SharedPost = { id: string; owner_id: string; restaurant: string; category: string; max_members: number; member_count: number; deadline: string; delivery_fee: number; min_order: number; meeting: string; note: string; status: string; pickup_lat?:number|null;pickup_lng?:number|null }
 type Member = { id: string; post_id: string; user_id: string; status: string; active: boolean; created_at?:string }
 type SharedMessage = { id: number; sender_id: string; body: string; created_at: string }
@@ -36,6 +37,8 @@ function useSharedState() {
   const [testers, setTesters] = useState<Tester[]>([])
   const [rawPosts, setRawPosts] = useState<SharedPost[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [virtualRooms,setVirtualRooms]=useState<VirtualRoom[]>([])
+  const [virtualReady,setVirtualReady]=useState(false)
   const [messages, setMessages] = useState<SharedMessage[]>([])
   const [messageRoom,setMessageRoom]=useState<string>()
   const [olderAvailable,setOlderAvailable]=useState(false),[olderBusy,setOlderBusy]=useState(false)
@@ -67,6 +70,7 @@ function useSharedState() {
   const me = testers.find(t => t.user_id === uid)
   const allowed = !!me?.active
   const nickname = (id: string) => testers.find(t => t.user_id === id)?.nickname ?? '참가자'
+  const isVirtual = (id:string) => !!testers.find(t=>t.user_id===id)?.is_virtual
   const numberFor = useCallback((id: string) => {
     if (!ids.current.has(id)) ids.current.set(id, 1000000 + ids.current.size)
     return ids.current.get(id)!
@@ -91,7 +95,7 @@ function useSharedState() {
     return () => data.subscription.unsubscribe()
   }, [])
   useEffect(() => {
-    setRawPosts([]); setMembers([]); setTesters([]); setMessages([]); setReady(false)
+    setRawPosts([]); setMembers([]); setTesters([]); setMessages([]); setReady(false);setVirtualRooms([]);setVirtualReady(false)
     const restored=uid?restoreNotifications(uid):[]
     setNotificationState({uid,items:restored});sequence.current=Math.max(Date.now(),...restored.map(n=>n.id));setSelectedId(null);setError('');setNotice('')
     if (!uid || !supabase) return
@@ -110,6 +114,8 @@ function useSharedState() {
         }
         const maintenance = await supabase.rpc('gd_action', { p_action: 'refresh' })
         if (maintenance.error) throw maintenance.error
+        const virtual=await supabase.rpc('gd_virtual_tick')
+        if(alive&&currentUid.current===uid)setVirtualReady(!virtual.error)
         const results = await Promise.all([
           supabase.from('gd_testers').select('*'),
           supabase.from('gd_posts').select('*').order('created_at', { ascending: false }),
@@ -128,6 +134,8 @@ function useSharedState() {
         }
         previous = nextMembers
         saveAccountHistory(uid!,'members',nextMembers.filter(m=>m.user_id===uid||nextPosts.some(p=>p.id===m.post_id&&p.owner_id===uid)).slice(0,1000))
+        if(!virtual.error){const rooms=await supabase.from('gd_virtual_rooms').select('post_id,virtual_leader,auto_join');if(alive&&currentUid.current===uid&&!rooms.error)setVirtualRooms(rooms.data as VirtualRoom[])}
+        if(!alive||currentUid.current!==uid)return
         setTesters(results[0].data as Tester[]); setRawPosts(nextPosts); setMembers(nextMembers); setReady(true); setError('')
       } catch (e) { if (alive&&currentUid.current===uid) { setError(explain(e)); setReady(true) } }
       finally { fetching = false }
@@ -217,7 +225,7 @@ function useSharedState() {
     if (!supabase || mutation.current || !allowed) return null
     mutation.current = true; setBusy(true); setError('')
     try {
-      const r = await supabase.rpc('gd_action', { p_action: kind, p_post: id, p_data: data })
+      const r = kind.startsWith('virtual-')?await supabase.rpc('gd_virtual_control',{p_post:id,p_action:kind.slice(8)}):await supabase.rpc('gd_action', { p_action: kind, p_post: id, p_data: data })
       if (r.error) throw r.error
       if (currentUid.current !== uid) return null
       const [p, m] = await Promise.all([
@@ -231,7 +239,7 @@ function useSharedState() {
         setRawPosts(p.data as SharedPost[]); setMembers(m.data as Member[])
       }
       window.dispatchEvent(new Event('shared-delivery-refresh'))
-      return r.data as string
+      return (kind.startsWith('virtual-')?id:r.data) as string
     } catch (e) { if(currentUid.current===uid)setError(explain(e)); return null }
     finally { mutation.current = false; setBusy(false) }
   }
@@ -273,7 +281,7 @@ function useSharedState() {
   const chatStatus=txSource?.status==='completed'?'거래 완료':txSource?.status==='cancelled'?'취소된 모임':ownMember?.status==='withdrawn'?'참여 종료':tx?.closed?'모집 마감':'모집 중'
   return {
     session, initializing, loginOpen, setLoginOpen, authBusy, signupRetryUntil, ready, busy, error, setError, numberFor,
-    notice, setNotice, allowed, me, nickname, posts, tx,activeTx, selectedId, selectPost: setSelectedId,
+    notice, setNotice, allowed, me, nickname,isVirtual,virtualRooms,virtualReady, posts, tx,activeTx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
     notifications:notifications.map(n=>({...n,postId:numberFor(n.sharedPostId)})),setNotifications,addNotification,readNotification,readAllNotifications,
@@ -324,6 +332,7 @@ export function SharedApplicants({ pop, push, renderApplicant }: { pop: () => vo
   const closed=p.status!=='open'||new Date(p.deadline).getTime()<=Date.now()
   return <div className="flex-1 overflow-y-auto bg-gray-50"><header className="bg-white border-b border-gray-100 p-4 flex items-center gap-4"><button onClick={pop}>‹ 뒤로</button><h1 className="font-bold">신청자 관리</h1></header><div className="p-4 space-y-4">
     <div className="bg-white rounded-2xl p-4 space-y-2"><h2 className="font-bold">{p.restaurant}</h2><p className="text-sm">현재 {p.member_count} / {p.max_members}명 · {closed?'모집 마감':'모집 중'}</p><p className="text-xs text-gray-500">신청자를 수락하면 각자 메뉴를 정할 수 있어요. 2명 이상 모이면 주문을 준비해 주세요.</p></div>
+    {s.virtualReady&&!ended&&!closed&&<label className="baef-virtual-switch"><input type="checkbox" checked={!!s.virtualRooms.find(v=>v.post_id===p.id)?.auto_join} disabled={s.busy} onChange={e=>void s.act(e.target.checked?'virtual-enable':'virtual-disable',p.id)}/>가상 참가자 자동 신청<small>신청이 오면 수락해 주세요. 끄면 대기 중인 가상 신청이 취소돼요.</small></label>}
     {!pending.length && <p className="text-gray-500 text-sm text-center py-6">대기 중인 신청자가 없어요.</p>}
     {pending.map(m=><div key={m.id} className="bg-white rounded-2xl p-4 space-y-3">{renderApplicant?renderApplicant(m.user_id):<p className="font-bold">{s.nickname(m.user_id)}</p>}<div className="flex gap-2">{[false,true].map(accept=><button key={String(accept)} disabled={s.busy||closed} className={`flex-1 py-3 rounded-xl font-bold text-sm disabled:opacity-40 ${accept?'bg-brand text-white':'border border-gray-200'}`} onClick={()=>void s.act(accept?'accept':'reject',p.id,{user_id:m.user_id})}>{accept?'수락':'거절'}</button>)}</div></div>)}
     <div className="bg-white rounded-2xl p-4"><h2 className="font-bold text-sm mb-2">참가자</h2>{people.map(m=><p className="text-sm py-1" key={m.id}>{s.nickname(m.user_id)} {m.user_id===p.owner_id?'· 리더':''}</p>)}</div>
