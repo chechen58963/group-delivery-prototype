@@ -5,6 +5,11 @@
   "outputDirectory": "dist",
   "redirects": [
     {
+      "source": "/v2/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
       "source": "/v2/:path*",
       "destination": "/",
       "permanent": true
