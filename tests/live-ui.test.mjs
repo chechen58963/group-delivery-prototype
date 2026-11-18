@@ -45,7 +45,7 @@ function load(file) {
 const helpers = load('DeliveryLifecycle.tsx')
 mocks['./DeliveryLifecycle'] = { ...helpers, useDeliveryLifecycle: () => lifecycle }
 const { LiveExplore, LiveOrders, LiveStorePicker } = load('LiveDiscovery.tsx')
-const { OrderMenu, OrderPayment } = load('OrderScreens.tsx')
+const { OrderMenu, OrderPayment, OrderReceipt } = load('OrderScreens.tsx')
 const render = component => renderToStaticMarkup(React.createElement(component, { push() {}, pop() {} }))
 function reset() {
   const raw = { id: 'room-1', owner_id: 'leader', restaurant: '이디야커피 충대정문점', category: '카페', status: 'open', member_count: 1, max_members: 2, delivery_fee: 3000, min_order: 8000, meeting: '정문 벤치', deadline: '2026-12-01T09:00:00Z', pickup_lat: 36.3621, pickup_lng: 127.3444 }
@@ -206,4 +206,19 @@ test('leader payment gives one primary preparation action before enabling orderi
   html = render(OrderPayment)
   assert.match(html, /모든 참가자의 입금을 확인해 주세요/)
   assert.match(html, /disabled=""[^>]*>배달앱 주문 완료 기록/)
+})
+
+
+test('agreed nearby pickup shows my actual delivery fee before payment',()=>{
+ prepareOrder();lifecycle.state.nearby_agreed=true;lifecycle.state.nearby_requester='other'
+ let html=render(OrderMenu);assert.match(html,/이동하는 내 배달비/);assert.doesNotMatch(html,/균등 분담 시/)
+ lifecycle.state.nearby_requester='me';html=render(OrderMenu);assert.match(html,/내가 배달비 전액 부담/)
+ assert.match(html,/3,000원/);assert.doesNotMatch(html,/균등 분담 시/)
+})
+test('pickup acknowledgement explains grace before confirming and shows remaining time after',()=>{
+ prepareOrder();lifecycle.owner=false;lifecycle.state.phase='arrived';lifecycle.state.arrived_at=new Date().toISOString()
+ lifecycle.mine={};let html=render(OrderReceipt)
+ assert.match(html,/수령 여유 시간 10분/);assert.match(html,/수령 가능 안내 확인/)
+ lifecycle.mine.pickup_notice_seen_at=new Date().toISOString();html=render(OrderReceipt)
+ assert.match(html,/수령 여유 시간/);assert.match(html,/안내 확인/);assert.doesNotMatch(html,/>수령 가능 안내 확인</)
 })

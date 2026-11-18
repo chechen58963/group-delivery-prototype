@@ -16,7 +16,8 @@ import { matchPrompts } from './matchPrompts'
 import { foodPhotoSource } from './foodPhotos'
 import { OrderRouteSteps } from './OrderGuide'
 import { ButtonHint, SaveFeedback, relativeDateTime, useSaveFeedback } from './uiFeedback'
-import {originName} from './userFlow'
+import {originName,pickupPlaces} from './userFlow'
+import {validPublicPickup} from './publicPickup'
 import { pickupDay, pickupTimeFields } from './pickupTime'
 import { deliveryWindow, estimatedBill, initialDeliverySlot } from './discoveryHelpers'
 import './discovery-fixes.css'
@@ -102,6 +103,7 @@ function StoreOrderSheet({store,close,push,targetPostId}:{store:MenuStore;close:
   const items=menuChoices(store.menus,quantities)
   const quantity=items.reduce((v,m)=>v+m.quantity,0)
   const reason=s.active?'진행 중인 주문을 먼저 확인해 주세요.':!sum?'메뉴를 하나 이상 담아주세요.':menuOptionReason(store.store_name,store.menus,quantities,d.menuOptionsReady)
+  const locationReason=!targetPostId&&step===1&&!validPublicPickup(publicPoint)?'주변 목록과 지도에 표시할 공개 수령점을 선택해 주세요.':''
   const window=deliveryWindow(deliveryDay,deliveryClock)
   const selectedPost=targetPostId?s.rawPosts.find(p=>p.id===targetPostId):null
   const selectedState=targetPostId?o.states.find(v=>v.post_id===targetPostId):null
@@ -119,6 +121,7 @@ function StoreOrderSheet({store,close,push,targetPostId}:{store:MenuStore;close:
   const submit=async(postId?:string)=>{
     if(!s.session){s.setLoginOpen(true);return}
     if(reason||pending||s.busy)return
+    if(!postId&&!validPublicPickup(publicPoint)){setProblem('공개 장소를 선택하거나 지도에 수령점을 지정해 주세요.');setMapOpen(true);return}
     setPending(true);setProblem('')
     const target=Number(goal),cutoff=new Date(deadline),deliveryFee=Number(fee)
     if(postId){const room=s.rawPosts.find(p=>p.id===postId);if(!room||room.status!=='open'||new Date(room.deadline).getTime()<=Date.now()){setProblem('이 모집은 마감됐어요. 다른 모집을 선택해 주세요.');setPending(false);return}}
@@ -149,15 +152,16 @@ function StoreOrderSheet({store,close,push,targetPostId}:{store:MenuStore;close:
         <div className="baef-more-conditions"><div className="baef-order-form">
           <fieldset className="baef-slot-fields"><legend>모집 마감</legend><div className="baef-deadline-fields"><label>날짜<select aria-label="모집 마감 날짜" value={deadlineFields.day} onChange={e=>update('deadline',`${e.target.value}T${deadlineFields.clock}`)}>{deadlineFields.days.map(day=><option key={day.value} value={day.value}>{day.label}</option>)}</select></label><label>시간<input aria-label="모집 마감 시각" type="time" step="60" value={deadlineFields.clock} onChange={e=>update('deadline',`${deadlineFields.day}T${e.target.value}`)}/></label></div></fieldset><AmountField label="총 배달비" max={100000} kind="fee" value={fee} onChange={v=>update('fee',v)}/>
           <fieldset className="baef-slot-fields"><legend>주문 예정 시간</legend><div><label>날짜<select aria-label="모집 주문 예정 날짜" value={deliveryDay} onChange={e=>updateDelivery('deliveryDay',e.target.value)}>{deliveryDays.map(day=><option key={day.day} value={day.day}>{day.label}</option>)}</select></label><label>시간<input aria-label="모집 주문 예정 시각" type="time" step="60" value={deliveryClock} onChange={e=>updateDelivery('deliveryClock',e.target.value)}/></label></div></fieldset><label>수령 제안 장소<input value={meeting} maxLength={200} onChange={e=>update('meeting',e.target.value)}/></label><label>기타 전달사항<textarea value={note} maxLength={500} onChange={e=>update('note',e.target.value)}/></label>
-        </div><button className="baef-button secondary" onClick={()=>setMapOpen(v=>!v)}>공개 수령점을 지도에 표시</button>{mapOpen&&<><p className="baef-muted">여기에 찍은 위치는 모집 목록에 공개돼요. 집 주소 대신 함께 만날 공개 장소를 선택해 주세요.</p><Suspense fallback={<p>지도 불러오는 중…</p>}><MatchLocationPicker point={publicPoint} onChange={p=>update('publicPoint',p)}/></Suspense>{publicPoint&&<button className="baef-text-cancel" onClick={()=>update('publicPoint',null)}>공개 위치 제거</button>}</>}</div>
-        </div></details><p className="baef-muted">{meeting} · {window?relativeDateTime(window.start):'수령 시간 선택 필요'}<br/>배달비 총 {money(Number(fee)||0)} · 마감 {relativeDateTime(deadline)}</p>
+        </div></div>
+        </div></details><p className="baef-muted">{meeting} · {window?relativeDateTime(window.start):'주문 시간 선택 필요'}<br/>배달비 총 {money(Number(fee)||0)} · 마감 {relativeDateTime(deadline)}</p>
       </div></details>}
+      {!targetPostId&&step===1&&<section className="baef-public-pickup" aria-label="공개 수령점 선택"><h3>어디서 함께 받을까요?</h3><p>선택한 공개 장소가 주변 모집 목록과 지도에 표시돼요.</p><div className="baef-public-place-options">{pickupPlaces.map(place=><button key={place.id} aria-pressed={publicPoint?.lat===place.lat&&publicPoint?.lng===place.lng} onClick={()=>{setDraft(v=>({...v,meeting:place.name,publicPoint:{lat:place.lat,lng:place.lng}}));setProblem('')}}>{place.name}</button>)}</div><button className="baef-text-action" aria-expanded={mapOpen} onClick={()=>setMapOpen(v=>!v)}>{mapOpen?'지도 접기':'다른 공개 장소를 지도에서 지정'}</button>{mapOpen&&<><p className="baef-muted">모집에 공개할 위치예요. 함께 만날 공개 장소를 선택해 주세요.</p><Suspense fallback={<p>지도 불러오는 중…</p>}><MatchLocationPicker point={publicPoint} onChange={point=>{setDraft(v=>({...v,publicPoint:point,meeting:'지도에 지정한 공개 수령점'}));setProblem('')}}/></Suspense></>}{validPublicPickup(publicPoint)?<p className="baef-muted">수령점 지정 완료 · {meeting}</p>:<p className="baef-button-hint">공개 장소를 하나 선택해야 모집을 등록할 수 있어요.</p>}</section>}
       {!targetPostId&&step===1&&(newOpen||!groups.length)&&<section className="baef-recruit-preview" aria-label="등록할 모집 조건"><h3>이 조건으로 모집해요</h3><dl><dt>모집 인원</dt><dd>나 포함 {maxMembers}명</dd><dt>목표 주문금액</dt><dd>{money(Number(goal)||0)}</dd><dt>모집 마감</dt><dd>{relativeDateTime(deadline)}</dd><dt>주문 예정</dt><dd>{window?relativeDateTime(window.start):'시간 선택 필요'}</dd><dt>수령 제안 장소</dt><dd>{meeting.trim()||'장소 입력 필요'}</dd><dt>전체 배달비</dt><dd>{money(Number(fee)||0)}</dd></dl></section>}
       {sum>0&&(!!targetPostId||step===1)&&(!!targetPostId||newOpen||!groups.length)&&<section className="baef-estimate" aria-label="참가 전 예상 비용"><h3>내 예상 부담</h3><dl><dt>음식값</dt><dd>{money(sum)}</dd><dt>배달비 · {agreedFee!=null?'합의한 수령 방식':`${previewPeople}명 균등 분담`}</dt><dd>{money(bill.share)}</dd><dt className="baef-estimate-total">예상 합계</dt><dd className="baef-estimate-total">{money(bill.total)}</dd></dl><p className="baef-estimate-saving">혼자 배달비를 낼 때보다 약 {money(bill.saving)} 절약</p><p>{previewDistance!=null?`수령점까지 직선 약 ${previewDistance}m`:previewPoint?'출발 위치를 정하면 수령점까지 거리를 볼 수 있어요.':'수령점을 지도에 정하면 이동거리를 확인할 수 있어요.'}<br/>{selectedState?.nearby_agreed?'내 근처 수령 합의가 있어요. 참가 후 확정된 분담액을 확인해 주세요.':'모집 인원과 수령 방식이 확정되면 최종 금액을 안내해요.'}</p></section>}
       {problem&&<p className="baef-error" role="alert">{problem}</p>}{d.error&&<p className="baef-error" role="alert">{d.error}</p>}
     </div>
     <footer className="baef-sheet-footer">{quantity>0&&(billKnown?<div className="baef-footer-bill"><span>음식값 {money(sum)}</span><span>+ {agreedFee!=null?'합의한 배달비':`${previewPeople}명 균등 분담 시 배달비`} {money(bill.share)}</span></div>:<p className="baef-footer-bill">참가할 모집을 고르면 배달비를 확인할 수 있어요.</p>)}<div className="baef-sheet-total"><span>메뉴 {quantity}개 · {billKnown?'내 예상 합계':'음식값'}</span><b>{money(billKnown&&quantity>0?bill.total:sum)}</b></div>
-      <button className="baef-button" disabled={!!reason||pending||s.busy} aria-describedby={reason?'store-submit-reason':undefined} onClick={()=>{if(!targetPostId&&step===0){setNewOpen(true);setStep(1);return}if(targetPostId)void submit(targetPostId);else if(newOpen||!groups.length)void submit();else existing.current?.scrollIntoView({block:'nearest',behavior:'smooth'})}}>{pending?'저장 중…':!targetPostId&&step===0?'모집 조건 확인':targetPostId?'이 메뉴로 참가 신청':newOpen||!groups.length?s.session?'이 조건으로 모집 시작':'로그인하고 모집하기':'참가할 모집 선택'}</button><ButtonHint id="store-submit-reason" reason={reason}/>
+      <button className="baef-button" disabled={!!reason||!!locationReason||pending||s.busy} aria-describedby={reason||locationReason?'store-submit-reason':undefined} onClick={()=>{if(!targetPostId&&step===0){setNewOpen(true);setStep(1);return}if(targetPostId)void submit(targetPostId);else if(newOpen||!groups.length)void submit();else existing.current?.scrollIntoView({block:'nearest',behavior:'smooth'})}}>{pending?'저장 중…':!targetPostId&&step===0?'모집 조건 확인':targetPostId?'이 메뉴로 참가 신청':newOpen||!groups.length?s.session?'이 조건으로 모집 시작':'로그인하고 모집하기':'참가할 모집 선택'}</button><ButtonHint id="store-submit-reason" reason={reason||locationReason}/>
     </footer>
   </section></div>
 }

@@ -2,14 +2,22 @@ type Timing={phase:string;planned_order_at?:string|null;delivery_eta_start?:stri
 export function timeLabel(value:string|null|undefined){return value?new Date(value).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):''}
 export function plannedFromNote(note:string|undefined){try{const p=JSON.parse(note??'{}');return typeof p.starts_at==='string'&&Number.isFinite(Date.parse(p.starts_at))?p.starts_at:null}catch{return null}}
 export function readyAt(s:Timing|null|undefined){return s?.phase==='arrived'||s?.phase==='completed'?(s.pickup_mode==='contactless'?s.pickup_dropped_at:s.arrived_at)??null:null}
-export function timingSummary(s:Timing|null|undefined){
+export function etaExpired(s:Timing|null|undefined,now=Date.now()){
+  return !!s&&['ordered','delivering'].includes(s.phase)&&!!s.delivery_eta_end&&now>Date.parse(s.delivery_eta_end)
+}
+export function timingSummary(s:Timing|null|undefined,now=Date.now()){
   if(!s)return '주문 예정 시간 확인 중'
   const ready=readyAt(s)
   if(ready)return `수령 가능 · ${timeLabel(ready)} 안내`
   if(s.phase==='arrived')return '리더가 음식을 놓으면 수령할 수 있어요'
+  if(etaExpired(s,now))return '예상 시간이 지났어요 · 리더 확인 중'
   if(['ordered','delivering'].includes(s.phase))return s.delivery_eta_start&&s.delivery_eta_end?`도착 예상 ${timeLabel(s.delivery_eta_start)} ~ ${new Date(s.delivery_eta_end).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}`:'도착 예상 시간 확인 중'
   return s.planned_order_at?`주문 예정 ${timeLabel(s.planned_order_at)}`:'모집 후 함께 주문해요'
 }
+export function pickupGraceDeadline(s:Timing|null|undefined,seen:string|null|undefined){
+  const ready=readyAt(s)
+  return ready&&seen&&Number.isFinite(Date.parse(ready))&&Number.isFinite(Date.parse(seen))?Math.max(Date.parse(ready),Date.parse(seen))+600000:null
+}
 export function canReportLate(s:Timing|null|undefined,seen:string|null|undefined,now=Date.now()){
-  const ready=readyAt(s);return !!ready&&!!seen&&now>=Math.max(new Date(ready).getTime(),new Date(seen).getTime())+600000
+  const deadline=pickupGraceDeadline(s,seen);return deadline!==null&&now>=deadline
 }

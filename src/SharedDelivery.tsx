@@ -7,6 +7,7 @@ import { relativeDateTime } from './uiFeedback'
 import { CAMPUS_STORES, CATEGORY_PHOTOS } from './campus'
 import { makeTransaction, type Post, type Transaction, type FlowEvent } from './workflow'
 import { appendNotification, mergeChatMessages, readAccountHistory, restoreChatCursors, restoreNotifications, saveAccountHistory, type SharedNotification } from './sharedHistory'
+import {readVisibleChat,readChatDraft,saveChatDraft,clearSentDraft} from './sharedHistory'
 
 type Tester = { user_id: string; nickname: string; active: boolean; suspended_until?:string|null; is_virtual?:boolean }
 type VirtualRoom = {post_id:string;virtual_leader:boolean;auto_join:boolean}
@@ -90,6 +91,7 @@ function useSharedState() {
   }, [uid,numberFor,setNotifications])
   const readNotification=(id:number)=>setNotifications(list=>list.map(n=>n.id===id?{...n,read:true}:n))
   const readAllNotifications=()=>setNotifications(list=>list.map(n=>({...n,read:true})))
+  const readChatNotifications=useCallback((room:string,throughId:number)=>setNotifications(list=>readVisibleChat(list,room,throughId)),[setNotifications])
 
   useEffect(() => {
     if (!supabase) return
@@ -287,7 +289,7 @@ function useSharedState() {
     notice, setNotice, allowed, me, nickname,isVirtual,virtualRooms,virtualReady, posts, tx,activeTx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
-    notifications:notifications.map(n=>({...n,postId:numberFor(n.sharedPostId)})),setNotifications,addNotification,readNotification,readAllNotifications,
+    notifications:notifications.map(n=>({...n,postId:numberFor(n.sharedPostId)})),setNotifications,addNotification,readNotification,readAllNotifications,readChatNotifications,
     chatReadable,chatEnded,chatStatus,olderAvailable,olderBusy,loadOlderMessages,
     login: async (email: string, password: string) => {
       if (!supabase) { setError('로그인 연결 설정이 필요해요.'); return }
@@ -360,11 +362,24 @@ export function SharedApplicants({ pop, push, renderApplicant }: { pop: () => vo
 
 export function SharedChat({ pop, push, orderPanel, workflowControls }: { pop: () => void; push: (s: 'applicants') => void; orderPanel?: ReactNode;workflowControls?:ReactNode }) {
   const s=useSharedDelivery(), tx=s.tx
-  const [draft,setDraft]=useState(''), [panel,setPanel]=useState(false), [unseen,setUnseen]=useState(false)
+  const uid=s.session?.user.id,room=tx?.post.sharedId,draftOwner=`${uid??''}:${room??''}`
+  const [draftState,setDraftState]=useState(()=>({owner:draftOwner,text:readChatDraft(uid,room)})), [panel,setPanel]=useState(false), [unseen,setUnseen]=useState(false)
+  const draft=draftState.owner===draftOwner?draftState.text:readChatDraft(uid,room)
+  const draftRef=useRef({owner:draftOwner,text:draft});draftRef.current={owner:draftOwner,text:draft}
+  const setDraft=(text:string)=>{saveChatDraft(uid,room,text);setDraftState({owner:draftOwner,text})}
   const list=useRef<HTMLDivElement>(null), follow=useRef(true)
   const anchor=useRef<{room:string|undefined;height:number;top:number}|null>(null)
-  const room=tx?.post.sharedId,lastMessage=tx?.messages[tx.messages.length-1]?.id,firstMessage=tx?.messages[0]?.id
-  useEffect(()=>{setDraft('');setPanel(false);setUnseen(false);follow.current=true;anchor.current=null},[room])
+  const lastMessage=tx?.messages[tx.messages.length-1]?.id,firstMessage=tx?.messages[0]?.id
+  useEffect(()=>{setPanel(false);setUnseen(false);follow.current=true;anchor.current=null},[draftOwner])
+  const markVisible=()=>{
+    const el=list.current
+    if(room&&lastMessage!=null&&el&&!document.hidden&&document.hasFocus()&&el.scrollHeight-el.scrollTop-el.clientHeight<80)s.readChatNotifications(room,lastMessage)
+  }
+  useEffect(()=>{
+    const update=()=>requestAnimationFrame(markVisible)
+    update();window.addEventListener('focus',update);document.addEventListener('visibilitychange',update)
+    return()=>{window.removeEventListener('focus',update);document.removeEventListener('visibilitychange',update)}
+  },[draftOwner,lastMessage,s.readChatNotifications])
   useLayoutEffect(()=>{
     const saved=anchor.current,element=list.current
     if(!saved||!element||s.olderBusy||saved.room!==room)return
@@ -372,7 +387,7 @@ export function SharedChat({ pop, push, orderPanel, workflowControls }: { pop: (
   },[firstMessage,s.olderBusy,room])
   useEffect(()=>{
     if(lastMessage==null)return
-    if(follow.current&&!anchor.current)requestAnimationFrame(()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight})
+    if(follow.current&&!anchor.current)requestAnimationFrame(()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight;markVisible()})
     else setUnseen(true)
   },[room,lastMessage])
   const older=async()=>{const el=list.current;if(!el||s.olderBusy)return;anchor.current={room,height:el.scrollHeight,top:el.scrollTop};follow.current=false;const ok=await s.loadOlderMessages();if(!ok)anchor.current=null}
@@ -382,13 +397,13 @@ export function SharedChat({ pop, push, orderPanel, workflowControls }: { pop: (
       <div className="chat-tools-row">{!s.chatEnded&&workflowControls}<button className="chat-tool chat-info-toggle" onClick={()=>setPanel(!panel)} aria-expanded={panel}>모임 정보 {panel?'접기':'보기'}</button></div>
     </header>
     {panel&&<div className="chat-panel p-4 overflow-y-auto max-h-[45%] shrink-0 space-y-3 text-xs border-b border-gray-100">{orderPanel??<><p><b>수령 제안 장소</b> · {tx.meeting}</p><p><b>참가자</b> · {tx.people.map(p=>p.name).join(', ')}</p><details><summary className="cursor-pointer font-bold">음식점 메뉴</summary>{tx.post.menus?.map(m=><p className="py-1" key={m.id}>{m.name} · {m.price.toLocaleString()}원</p>)}</details></>}</div>}
-    <div ref={list} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4" onScroll={()=>{const el=list.current;if(el){follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<80;if(follow.current)setUnseen(false)}}}>
+    <div ref={list} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-4" onScroll={()=>{const el=list.current;if(el){follow.current=el.scrollHeight-el.scrollTop-el.clientHeight<80;if(follow.current){setUnseen(false);markVisible()}}}}>
       {s.olderAvailable&&<button className="chat-tool block mx-auto text-xs px-4 py-2" disabled={s.olderBusy} onClick={()=>void older()}>{s.olderBusy?'이전 대화 불러오는 중…':'이전 대화 더 보기'}</button>}
       {!tx.messages.length&&<p className="chat-muted text-center text-sm py-8">{s.chatEnded?'남아 있는 대화가 없어요.':'메뉴와 만날 시간을 이야기해 보세요.'}</p>}
       {tx.messages.map(m=><div key={m.id} className={`flex flex-col ${m.isMe?'items-end':'items-start'}`}><span className="chat-muted text-[10px] mb-1">{m.sender}</span><p className={`chat-bubble max-w-[85%] px-3 py-2.5 rounded-2xl text-sm whitespace-pre-wrap break-words ${m.isMe?'chat-bubble-mine rounded-tr-sm':'rounded-tl-sm'}`} style={{overflowWrap:'anywhere'}}>{m.content}</p><time className="chat-muted text-[10px] mt-1">{m.time}</time></div>)}
     </div>
-    {unseen&&<button className="chat-new-message self-center rounded-full py-2 px-4 text-xs mb-2" onClick={()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight;follow.current=true;setUnseen(false)}}>새 메시지 ↓</button>}
-    {s.chatEnded?<p className="chat-muted text-center text-xs py-4 border-t">{s.chatStatus} · 지난 대화는 계속 확인할 수 있어요.</p>:<form className="chat-composer flex items-end gap-2 px-3 py-3 shrink-0" onSubmit={async e=>{e.preventDefault();if(!draft.trim()||s.busy||s.chatEnded)return;const p=tx.post.sharedId!;if(await s.act('message',p,{body:draft.trim()})){setDraft('');follow.current=true}}}>
+    {unseen&&<button className="chat-new-message self-center rounded-full py-2 px-4 text-xs mb-2" onClick={()=>{if(list.current)list.current.scrollTop=list.current.scrollHeight;follow.current=true;setUnseen(false);markVisible()}}>새 메시지 ↓</button>}
+    {s.chatEnded?<p className="chat-muted text-center text-xs py-4 border-t">{s.chatStatus} · 지난 대화는 계속 확인할 수 있어요.</p>:<form className="chat-composer flex items-end gap-2 px-3 py-3 shrink-0" onSubmit={async e=>{e.preventDefault();if(!draft.trim()||s.busy||s.chatEnded)return;const p=tx.post.sharedId!,sender=uid!,submitted=draft,owner=draftOwner;if(await s.act('message',p,{body:submitted.trim()})){const cleared=clearSentDraft(sender,p,submitted);if(cleared&&draftRef.current.owner===owner&&draftRef.current.text===submitted)setDraftState({owner,text:''});if(draftRef.current.owner===owner)follow.current=true}}}>
       <textarea aria-label="메시지 입력" maxLength={2000} rows={2} value={draft} onChange={e=>setDraft(e.target.value)} placeholder="메시지를 입력하세요" className="chat-input resize-none rounded-2xl px-3 py-3 flex-1 min-w-0 text-base outline-none"/><button disabled={s.busy||!draft.trim()} className="chat-send rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-40">전송</button>
     </form>}
   </div>

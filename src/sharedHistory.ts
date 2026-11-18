@@ -24,6 +24,28 @@ export function restoreChatCursors(uid:string,storage?:StorageLike):Record<strin
 export function appendNotification(list:SharedNotification[],item:SharedNotification){
   return item.eventKey&&list.some(n=>n.eventKey===item.eventKey)?list:[item,...list].slice(0,100)
 }
+export function readVisibleChat(list:SharedNotification[],room:string,throughId:number){
+  let changed=false
+  const next=list.map(n=>{
+    const messageId=n.eventKey?.match(/:message:(\d+)$/)?.[1]
+    if(!n.read&&n.target==='chat'&&n.sharedPostId===room&&messageId&&Number(messageId)<=throughId){changed=true;return {...n,read:true}}
+    return n
+  })
+  return changed?next:list
+}
+const draftKey=(uid:string,room:string)=>`baef-chat-draft-v1:${uid}:${room}`
+export function readChatDraft(uid:string|undefined,room:string|undefined,storage?:StorageLike){
+  if(!uid||!room)return ''
+  try{return (storage??sessionStorage).getItem(draftKey(uid,room))?.slice(0,2000)??''}catch{return ''}
+}
+export function saveChatDraft(uid:string|undefined,room:string|undefined,text:string,storage?:StorageLike){
+  if(!uid||!room)return
+  try{(storage??sessionStorage).setItem(draftKey(uid,room),text.slice(0,2000))}catch{/* Keep typing when browser storage is unavailable. */}
+}
+export function clearSentDraft(uid:string,room:string,submitted:string,storage?:StorageLike){
+  if(readChatDraft(uid,room,storage)!==submitted)return false
+  saveChatDraft(uid,room,'',storage);return true
+}
 export function mergeChatMessages<T extends {id:number}>(before:T[],incoming:T[]):T[]{
   const merged=new Map(before.map(message=>[message.id,message]))
   for(const message of incoming)merged.set(message.id,message)

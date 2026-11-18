@@ -1,3 +1,4 @@
+import {WalkingRecordingStatus} from './WalkingRewards'
 import CancelOrderControl from './CancelOrderControl'
 import {timingSummary,plannedFromNote,timeLabel} from './orderTiming'
 import { useEffect, useRef, useState } from 'react'
@@ -105,6 +106,7 @@ export default function BaefShell(){
     {s.error&&!s.loginOpen&&<div className="baef-banner error" role="alert"><span>{s.error}</span><button aria-label="오류 안내 닫기" onClick={()=>s.setError('')}>×</button></div>}
     {(s.notice||d.toast)&&<div className="baef-toast" role="status"><Icon name="check" size={19}/><span>{d.toast||s.notice}</span><button aria-label="안내 닫기" onClick={()=>{d.setToast('');s.setNotice('')}}><Icon name="close" size={17}/></button></div>}
     {attention&&!alerts&&!s.loginOpen&&<aside className="baef-action-alert" aria-label="확인할 주문 알림"><Icon name="bell" size={21}/><button onClick={()=>{s.readNotification(attention.id);s.selectPost(attention.sharedPostId?s.numberFor(attention.sharedPostId):attention.postId);push(attention.target as Screen)}}><b>{attention.restaurant}</b><small>{attention.text}</small><span className="baef-alert-link">내용 확인하기 →</span></button><button aria-label="이 알림 읽음 처리" onClick={()=>{s.readNotification(attention.id);setDismissed(attention.id)}}><Icon name="close" size={16}/></button></aside>}
+    <WalkingRecordingStatus/>
     <main id="baef-content" className={`baef-screen bv-content live-content ${showNav?'has-bottom-nav':''}`}>
       {orderGate?<div className="baef-empty">{s.initializing||waitingForOrder||orderAccessBlocked?<p role="status">모임을 불러오는 중이에요.</p>:<><Icon name="bag" size={34}/><h1>로그인하고 모임을 확인해 주세요</h1><p>참가한 모임의 주문 진행과 대화를 이어볼 수 있어요.</p><button className="baef-button" onClick={()=>s.setLoginOpen(true)}>로그인</button><button className="baef-button secondary" onClick={()=>push('main')}>모집 둘러보기</button></>}</div>:<>
       {['menu','payment','delivery','receipt','complete','rating'].includes(screen)&&<OrderProgress push={push}/>}

@@ -3,6 +3,7 @@ import { orderChangeNotice } from './orderChangeNotice'
 import { supabase } from './supabase'
 import { useSharedDelivery } from './SharedDelivery'
 import { readAccountHistory, saveAccountHistory } from './sharedHistory'
+import {orderActionRequest} from './orderActionRequest'
 
 export type OrderPhase='menu'|'payment'|'ordered'|'delivering'|'arrived'|'completed'|'cancelled'
 export type OrderState={planned_order_at?:string|null;delivery_eta_start?:string|null;delivery_eta_end?:string|null;post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string;pickup_mode?:'meet'|'contactless';pickup_proposer?:string|null;pickup_agreed_by?:string[];pickup_note?:string;pickup_dropped_at?:string|null}
@@ -93,7 +94,8 @@ function useLifecycleState(){
     if(!available){setError('공유 저장소 업데이트 후 이용할 수 있어요.');return false}
     pending.current=true;setBusy(true);setError('')
     try{
-      const r=action.startsWith('pickup-')?await supabase.rpc('gd_pickup_action',{p_action:action.slice(7),p_post:postId,p_data:data}):action==='room-time'?await supabase.rpc('gd_update_room_time_checked',{p_post:postId,p_start:data.start,p_end:data.end,p_expected:data.expected??null}):await supabase.rpc('gd_order_action',{p_action:action,p_post:postId,p_data:data});if(r.error)throw r.error
+      const request=orderActionRequest(action,postId,data)
+      const r=await supabase.rpc(request.name,request.args);if(r.error)throw r.error
       if(currentUid.current!==uid)return false
       revision.current++
       const [updated,updatedPeople]=await Promise.all([supabase.from('gd_order_states').select('*').eq('post_id',postId).maybeSingle(),supabase.from('gd_order_people').select('*').eq('post_id',postId)])

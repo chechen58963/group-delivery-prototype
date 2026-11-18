@@ -2,6 +2,9 @@
 import { PGlite } from '../.tmp-db-check/node_modules/@electric-sql/pglite/dist/index.js'
 import { readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
+import ts from 'typescript'
+const routing={exports:{}}
+new Function('module','exports',ts.transpileModule(readFileSync(new URL('../src/orderActionRequest.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(routing,routing.exports)
 
 const db=new PGlite()
 await db.exec(`create role anon; create role authenticated; create schema auth;
@@ -140,7 +143,7 @@ await auth(other);await assert.rejects(db.query("select gd_order_action('deliver
 await auth(uid);await sql("select gd_order_action('arrive',$1)",[timed])
 await admin();await db.query("update gd_order_states set arrived_at=now()-interval '20 minutes',meeting_time=now()+interval '1 day' where post_id=$1",[timed]);await auth(uid)
 await assert.rejects(db.query("select gd_order_action('late-report',$1,$2::jsonb)",[timed,JSON.stringify({user_id:other})]),/안내를 확인/)
-await auth(other);await sql("select gd_order_action('pickup-notice-seen',$1)",[timed]);await auth(uid)
+await auth(other);const acknowledgement=routing.exports.orderActionRequest('pickup-notice-seen',timed);assert.equal(acknowledgement.name,'gd_order_action');await sql(`select ${acknowledgement.name}($1,$2,$3::jsonb)`,[acknowledgement.args.p_action,acknowledgement.args.p_post,JSON.stringify(acknowledgement.args.p_data)]);await auth(uid)
 await assert.rejects(db.query("select gd_order_action('late-report',$1,$2::jsonb)",[timed,JSON.stringify({user_id:other})]),/10분/)
 await admin();await db.query("update gd_order_people set pickup_notice_seen_at=now()-interval '11 minutes' where post_id=$1 and user_id=$2",[timed,other]);await auth(uid)
 await sql("select gd_order_action('late-report',$1,$2::jsonb)",[timed,JSON.stringify({user_id:other})])
