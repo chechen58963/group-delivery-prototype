@@ -19,6 +19,7 @@ const imports={
  './SharedDelivery':{useSharedDelivery:()=>({session:{user:{id:'me'}},rawPosts:[],isVirtual:id=>virtualPeer&&id==='other'})},
  './DeliveryLifecycle':{useDeliveryLifecycle:()=>lifecycle},
  './useGpsWalk':{},
+ './storeNames':compile('storeNames.ts',{}),
  './walkRewards':compile('walkRewards.ts',{}),
  './uiFeedback':{relativeDateTime:v=>v},
 }

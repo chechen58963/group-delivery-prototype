@@ -1,3 +1,4 @@
+import {displayStoreName} from './storeNames'
 import CancelOrderControl from './CancelOrderControl'
 import OrderTimingPanel from './OrderTimingPanel'
 import {timingSummary,readyAt,canReportLate,pickupGraceDeadline} from './orderTiming'
@@ -36,7 +37,7 @@ function ActionButton({children,onClick,secondary=false,disabled=false,disabledR
 }
 function Page({title,pop,children,footer}:{title:string;pop:()=>void;children:ReactNode;footer?:ReactNode}){
   const o=useDeliveryLifecycle()
-  return <div className="live-workflow-route"><div className="baef-scroll"><div className="baef-page"><button className="baef-back" onClick={pop}><SmallIcon name="back"/>뒤로</button><h1 className="baef-page-title">{title}</h1>{o.post&&<p className="baef-muted">{o.post.restaurant}</p>}{o.error&&<p role="alert" className="baef-error">{o.error}</p>}{children}</div></div>{footer&&<footer className="live-workflow-footer">{footer}</footer>}</div>
+  return <div className="live-workflow-route"><div className="baef-scroll"><div className="baef-page"><button className="baef-back" onClick={pop}><SmallIcon name="back"/>뒤로</button><h1 className="baef-page-title">{title}</h1>{o.post&&<p className="baef-muted">{displayStoreName(o.post.restaurant)}</p>}{o.error&&<p role="alert" className="baef-error">{o.error}</p>}{children}</div></div>{footer&&<footer className="live-workflow-footer">{footer}</footer>}</div>
 }
 export function OrderProgress({push,currentOnly=false,onReview}:{push:Navigate;currentOnly?:boolean;onReview?:Navigate}){
   const o=useDeliveryLifecycle();if(!o.state)return null
@@ -209,6 +210,6 @@ export function OrderProfileExtras({push}:{push:Navigate}){
   if(!s.session)return null
   return <><WalkingRewardWallet/><section className="baef-profile-section"><h2>내 평판과 이용 기록</h2><p>{o.myReputation?.rating!=null?`★ ${o.myReputation.rating}`:'아직 별점 없음'} · 공동배달 {o.myReputation?.trades??0}회 · 후기 {o.myReputation?.review_count??0}개</p>{s.me?.suspended_until&&new Date(s.me.suspended_until).getTime()>Date.now()&&<p className="baef-error">{new Date(s.me.suspended_until).toLocaleString('ko-KR')}까지 새 모집 참여가 제한돼요.</p>}<p className="baef-muted">인정한 수령 지각 {o.people.filter(p=>p.user_id===o.uid&&p.late_ack).length}회 · 2회부터 3일 제한</p></section>
     <InfoDetails title="우수 배프 혜택" summary={o.couponEligible?"쿠폰 사용 가능":"쿠폰 조건 보기"}><p>{o.couponEligible?'배달비 쿠폰 사용 가능':'별점 4.8 이상 · 완료 거래 5회부터 쿠폰을 받을 수 있어요.'}</p><p className="baef-muted">배프가 배달비를 최대 1,000원 지원해요. 계정당 1회, 일반 모임에서 송금 전에 사용할 수 있어요.</p></InfoDetails>
-    <InfoDetails title="주문·환불 이력" summary={`${o.states.length}건`}>{o.states.map(v=>{const post=s.rawPosts.find(p=>p.id===v.post_id);if(!post)return null;return <button key={v.post_id} className="baef-history-row" onClick={()=>{s.selectPost(s.numberFor(v.post_id));push(v.phase==='cancelled'?'payment':v.phase==='completed'?'complete':'detail')}}><b>{post.restaurant}</b><span>{phaseLabel[v.phase]} ›</span></button>})}{!o.states.length&&<p className="baef-muted">참여한 주문이 여기에 쌓여요.</p>}</InfoDetails>
+    <InfoDetails title="주문·환불 이력" summary={`${o.states.length}건`}>{o.states.map(v=>{const post=s.rawPosts.find(p=>p.id===v.post_id);if(!post)return null;return <button key={v.post_id} className="baef-history-row" onClick={()=>{s.selectPost(s.numberFor(v.post_id));push(v.phase==='cancelled'?'payment':v.phase==='completed'?'complete':'detail')}}><b>{displayStoreName(post.restaurant)}</b><span>{phaseLabel[v.phase]} ›</span></button>})}{!o.states.length&&<p className="baef-muted">참여한 주문이 여기에 쌓여요.</p>}</InfoDetails>
     <InfoDetails title="신고 처리 내역" summary={o.reports.some(r=>r.status==='pending')?'검토 중인 신고 있음':`${o.reports.length}건`}>{o.reports.map(r=><div className="baef-review" key={r.id}><b>{r.reporter_id===o.uid?'내가 접수한 신고':'나에 대한 신고'} · {r.reason}</b><p>{r.status==='pending'?'검토 대기':r.status==='confirmed'?'확인 후 처리':'종결'}</p>{r.resolution&&<p>{r.resolution}</p>}</div>)}{!o.reports.length&&<p className="baef-muted">접수된 신고가 없어요. 상대 프로필에서 신고할 수 있어요.</p>}</InfoDetails>{o.error&&<p className="baef-error" role="alert">{o.error}</p>}</>
 }

@@ -71,7 +71,7 @@
 .baef-live .live-range button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--bv-line); color: var(--bv-muted); border-radius: 20px; min-height: 36px; padding: 7px 12px; font-size: 12px; }
 .baef-live .live-range button[aria-pressed=true] { background: var(--bv-peach); color: var(--bv-accent); border-color: transparent; }
 .baef-live .bv-room-photo { background: var(--bv-soft); }
-.baef-live .bv-room-store .baef-store-brand { width: 28px; height: 28px; border-radius: 6px; }
+.baef-live .bv-room-store .baef-store-brand { width: 112px; height: 44px; padding: 6px; border-radius: 8px; }
 .baef-live .bv-room-store { padding-right: 14px; }
 .baef-live .bv-room-route { align-items: center; justify-content: flex-start; gap: 5px; }
 .baef-live .live-room-count { margin-left: auto; white-space: nowrap; }
@@ -90,7 +90,7 @@
 .baef-live .live-store-preview { border-top: 1px solid var(--bv-line); margin-top: 34px; padding-top: 30px; }
 .baef-live .live-brand-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 22px 16px; }
 .baef-live .live-brand-grid > button { text-align: left; border: 1px solid var(--bv-line); border-radius: 13px; padding: 18px; min-width: 0; }
-.baef-live .live-brand-grid .baef-store-brand { width: 60px; height: 54px; margin-bottom: 13px; }
+.baef-live .live-brand-grid .baef-store-brand { width: 116px; max-width: 100%; height: 52px; margin-bottom: 13px; }
 .baef-live .live-brand-grid b { display: block; font-size: 13px; overflow-wrap: anywhere; }
 .baef-live .live-brand-grid small { font-size: 12px; color: var(--bv-muted); }
 .baef-live .bv-preferences-link { max-width: none; margin: 26px 0 0; }
@@ -158,7 +158,7 @@
 .baef-live .live-detail-hero { display: flex; gap: 28px; align-items: center; margin: 24px 0; }
 .baef-live .live-detail-hero > img { width: 190px; height: 210px; object-fit: contain; background: var(--bv-soft); border-radius: 18px; }
 .baef-live .live-detail-hero > div { flex: 1; min-width: 0; }
-.baef-live .live-detail-hero .baef-store-brand { width: 55px; height: 42px; margin-bottom: 10px; }
+.baef-live .live-detail-hero .baef-store-brand { width: 112px; height: 48px; margin-bottom: 10px; }
 .baef-live .baef-detail-title { font-size: 30px; line-height: 1.45; margin: 8px 0 16px; }
 .baef-live .live-leader-link { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; }
 .baef-live .live-leader-link > span:nth-child(2) { font-size: 14px; flex: 1; }
@@ -214,7 +214,7 @@
 .baef-live .live-interest-stores h3 { font-size: 16px; margin-bottom: 12px; }
 .baef-live .live-interest-stores label { display: flex; gap: 10px; align-items: center; padding: 12px 0; font-size: 14px; }
 .baef-live .live-interest-stores input { width: 18px; height: 18px; accent-color: var(--bv-primary); }
-.baef-live .live-interest-stores .baef-store-brand { width: 36px; height: 30px; }
+.baef-live .live-interest-stores .baef-store-brand { width: 92px; height: 40px; }
 .baef-live .live-interest-current { font-size: 13px; border-top: 1px solid var(--bv-line); margin-top: 20px; padding-top: 20px; }
 .baef-live .bv-dialog { background: var(--bv-bg); color: var(--bv-ink); }
 .baef-live .bv-dialog footer .baef-button { margin-top: 0; }
@@ -222,7 +222,7 @@
 .baef-live .live-store-picker .bv-screen-heading { margin-bottom: 12px; }
 .baef-live .live-store-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 .baef-live .live-store-grid > button { display: flex; align-items: center; gap: 18px; border: 1px solid var(--bv-line); border-radius: 16px; padding: 22px; min-width: 0; text-align: left; }
-.baef-live .live-store-grid .baef-store-brand { width: 68px; height: 68px; flex-shrink: 0; }
+.baef-live .live-store-grid .baef-store-brand { width: 112px; height: 56px; flex-shrink: 0; }
 .baef-live .live-store-grid > button > span:not(.baef-store-brand) { flex: 1; min-width: 0; }
 .baef-live .live-store-grid small { font-size: 12px; color: var(--bv-accent); }
 .baef-live .live-store-grid h2 { font-size: 17px; line-height: 1.5; margin: 3px 0 8px; }
@@ -334,7 +334,7 @@
   .baef-live .baef-info-details > summary { font-size: 15px; padding: 18px 0; }
   .baef-live .live-detail-hero { gap: 17px; margin: 20px 0; }
   .baef-live .live-detail-hero > img { width: 100px; height: 150px; border-radius: 13px; }
-  .baef-live .live-detail-hero .baef-store-brand { width: 44px; height: 32px; }
+  .baef-live .live-detail-hero .baef-store-brand { width: 100px; height: 44px; }
   .baef-live .baef-detail-title { font-size: 24px; }
   .baef-live .live-leader-link > span:nth-child(2) { font-size: 13px; }
   .baef-live .live-leader-link small { font-size: 11px; }
@@ -355,7 +355,7 @@
   .baef-live .chat-panel { padding: 14px 20px; }
   .baef-live .live-store-grid { gap: 0; }
   .baef-live .live-store-grid > button { padding: 22px 0; border: 0; border-bottom: 1px solid var(--bv-line); border-radius: 0; gap: 16px; }
-  .baef-live .live-store-grid .baef-store-brand { width: 64px; height: 70px; }
+  .baef-live .live-store-grid .baef-store-brand { width: 104px; height: 52px; }
   .baef-live .live-store-grid h2 { font-size: 16px; }
   .baef-live .live-order-history > article > button { padding: 18px 14px; gap: 14px; }
   .baef-live .live-order-history > article > button > img { width: 65px; height: 82px; }
@@ -409,7 +409,7 @@
 .baef-match-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:14px;margin:15px 0}
 .baef-match-card{border:1px solid var(--bv-line);border-radius:12px;padding:17px;min-width:0}
 .baef-match-store{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:14px}
-.baef-match-store .baef-store-brand{width:38px;height:32px;flex-shrink:0}
+.baef-match-store .baef-store-brand{width:100px;height:44px;flex-shrink:0}
 .baef-match-store>span{width:100%;font-size:12px;color:var(--bv-green);margin-top:2px}
 .baef-match-card dl{display:grid;grid-template-columns:1fr;gap:4px;margin:16px 0;font-size:13px}
 .baef-match-card dt{color:var(--bv-muted);font-size:11px;margin-top:7px}

@@ -20,7 +20,7 @@ function compile(name,imports={}){
 }
 const history=compile('sharedHistory.ts')
 const {SharedChat}=compile('SharedDelivery.tsx',{
- react:hookReact,'./CancelOrderControl':{default:()=>null},'./supabase':{},'./authErrors':{},'./uiFeedback':{},'./campus':{},'./workflow':{},'./sharedHistory':history,
+ react:hookReact,'./CancelOrderControl':{default:()=>null},'./supabase':{},'./authErrors':{},'./uiFeedback':{},'./campus':{},'./workflow':{},'./sharedHistory':history,'./storeNames':compile('storeNames.ts'),
 })
 function find(tree,predicate){
  if(!tree||typeof tree!=='object')return null

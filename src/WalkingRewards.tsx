@@ -1,3 +1,4 @@
+import {displayStoreName} from './storeNames'
 import { lazy, Suspense, createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 import { useSharedDelivery } from './SharedDelivery'
@@ -106,6 +107,6 @@ export function WalkingRewardWallet(){
     {w.policyReady&&<><progress className="baef-walk-progress" max={WALK_DAILY_LIMIT} value={Math.min(WALK_DAILY_LIMIT,w.wallet?.today_earned??0)} aria-label="오늘 적립한 포인트"/><p className="baef-muted">오늘 {w.wallet?.today_earned??0} / {WALK_DAILY_LIMIT}P 적립 · 거래 완료 20P + 이동 5m당 1P</p></>}
     {!w.policyReady&&w.ready&&<p className="baef-muted">상점에서 사용 가능한 포인트를 확인해 주세요.</p>}
 
-    <details className="baef-order-details"><summary>누적·적립 내역{w.ready?` ${w.rewards.length}건`:''}</summary>{w.rewards.map(r=><div className="baef-walk-history" key={r.post_id}><span><b>{s.rawPosts.find(p=>p.id===r.post_id)?.restaurant??'완료한 모임'}</b><small>{relativeDateTime(r.awarded_at)} · +{walkDistance(r.meters)}</small>{(r.leader_bonus??0)>0&&<small className="baef-leader-breakdown">완료·이동 {r.points-(r.leader_bonus??0)}P + 리더 추가 {r.leader_bonus}P</small>}</span><strong>{r.points>0?`+${r.points}P`:'거리 누적'}</strong></div>)}{w.ready&&!w.rewards.length&&<p className="baef-muted">모임을 완료하면 적립 내역이 여기에 쌓여요.</p>}</details><RewardRetry error={w.error}/>
+    <details className="baef-order-details"><summary>누적·적립 내역{w.ready?` ${w.rewards.length}건`:''}</summary>{w.rewards.map(r=><div className="baef-walk-history" key={r.post_id}><span><b>{displayStoreName(s.rawPosts.find(p=>p.id===r.post_id)?.restaurant??'완료한 모임')}</b><small>{relativeDateTime(r.awarded_at)} · +{walkDistance(r.meters)}</small>{(r.leader_bonus??0)>0&&<small className="baef-leader-breakdown">완료·이동 {r.points-(r.leader_bonus??0)}P + 리더 추가 {r.leader_bonus}P</small>}</span><strong>{r.points>0?`+${r.points}P`:'거리 누적'}</strong></div>)}{w.ready&&!w.rewards.length&&<p className="baef-muted">모임을 완료하면 적립 내역이 여기에 쌓여요.</p>}</details><RewardRetry error={w.error}/>
   </section>
 }

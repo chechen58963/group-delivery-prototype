@@ -60,7 +60,7 @@ function reset() {
 test('connected discovery renders actual fees, slots and store data without generated sample rooms', () => {
   reset()
   const html = render(LiveExplore)
-  assert.match(html, /이디야커피 충대정문점 모집 상세/)
+  assert.match(html, /이디야커피 모집 상세/)
   assert.match(html, /1,500원/)
   assert.match(html, /1 \/ 2명/)
   assert.doesNotMatch(html, /아아 한 잔, 같이 시킬 분|민지|1,280 P/)
@@ -87,9 +87,9 @@ test('nearby discovery filters actual coordinates, while all-range discovery kee
   reset()
   shared.rawPosts[0].pickup_lat += .02
   discovery.browseRange = 'near'
-  assert.doesNotMatch(render(LiveExplore), /이디야커피 충대정문점 모집 상세/)
+  assert.doesNotMatch(render(LiveExplore), /이디야커피 모집 상세/)
   discovery.browseRange = 'all'
-  assert.match(render(LiveExplore), /이디야커피 충대정문점 모집 상세/)
+  assert.match(render(LiveExplore), /이디야커피 모집 상세/)
 })
 test('search includes catalogue menu names and category filters apply to real rooms', () => {
   reset()
@@ -108,7 +108,7 @@ test('logged-out discovery previews public rooms and explains who places the ord
   shared.session = null
   assert.match(render(LiveExplore), /리더가 배달앱에서 주문/)
   assert.match(render(LiveExplore), /모집 상세/)
-  assert.match(render(LiveStorePicker), /이디야커피 충대정문점/)
+  assert.match(render(LiveStorePicker), /이디야커피/)
 })
 test('order history is restricted to memberships of the current account', () => {
   reset()
@@ -256,4 +256,12 @@ test('preference editor exposes the three flexibility levels and a time-limited 
  assert.match(html,/꼭 이 가게·메뉴/);assert.match(html,/다른 가게도 괜찮아요/);assert.match(html,/비슷한 메뉴도 괜찮아요/)
  assert.match(html,/15분 동안 유효/);assert.match(html,/지금 주문할 조합 찾기/)
  assert.match(html,/카페 아메리카노/)
+})
+
+test('store labels show only franchise names while preference values retain catalogue keys',()=>{
+ reset();const html=render(LiveStorePicker)
+ assert.match(html,/>이디야커피</);assert.doesNotMatch(html,/충대정문점/)
+ const editor=render(OrderWishEditor)
+ assert.match(editor,/<option[^>]*value="이디야커피 충대정문점"[^>]*>이디야커피<\/option>/)
+ assert.equal(shared.rawPosts[0].restaurant,'이디야커피 충대정문점')
 })
