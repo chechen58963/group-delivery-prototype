@@ -1,3 +1,4 @@
+import {platformCheckout} from './platformCheckout'
 import {displayStoreName} from './storeNames'
 import OrderSuggestions from './OrderSuggestionsPanel'
 import OrderWishEditor from './OrderWishEditor'
@@ -84,7 +85,7 @@ export function LiveExplore({ push, compact = false }: { push: Navigate; compact
   const pins: MapPin[] = groups.flatMap(p => { const point = pointFor(p.sharedId); return point ? [{ id: String(p.id), point: { x: 0, y: 0 }, coordinates: point, label: displayStoreName(p.restaurant), symbol: '모집', kind: 'post' as const }] : [] })
   if (d.matchLocation) pins.push({ id: 'me', point: { x: 0, y: 0 }, coordinates: d.matchLocation, label: '내 출발 위치', symbol: '나', kind: 'me' })
   const activeTx = s.activeTx, phase = o.states.find(v => v.post_id === activeTx?.post.sharedId)?.phase
-  const next = activeTx ? orderNextStep({ role: activeTx.role, application: activeTx.application, phase, count: activeTx.people.length, virtualLeader:s.isVirtual?.(s.rawPosts.find(p=>p.id===activeTx.post.sharedId)?.owner_id??'') }) : null
+  const next = activeTx ? orderNextStep({ role: activeTx.role, application: activeTx.application, phase, platform:platformCheckout(o.states.find(v=>v.post_id===activeTx.post.sharedId),o.people.filter(v=>v.post_id===activeTx.post.sharedId)),count: activeTx.people.length, virtualLeader:s.isVirtual?.(s.rawPosts.find(p=>p.id===activeTx.post.sharedId)?.owner_id??'') }) : null
   const loading = s.initializing || !!s.session && !s.ready
   return <div ref={scroll} className="baef-scroll live-explore-scroll" onScroll={e => d.saveListScroll(e.currentTarget.scrollTop)}><div className={`bv-page bv-browse live-explore ${compact ? 'compact' : ''}`}>
     <div className="live-location"><LocationChoice /></div>

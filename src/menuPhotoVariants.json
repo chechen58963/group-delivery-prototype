@@ -31,6 +31,9 @@
     },
     "딸기 요거트 플랫치노": {
       "ICE": "/images/menus/ediya-11.webp"
+    },
+    "아이스티 복숭아": {
+      "ICE": "/images/menus/additional-7.jpg"
     }
   },
   "메가": {
@@ -119,6 +122,9 @@
     },
     "원조커피 (ICED)": {
       "ICE": "/images/menus/paik-8.webp"
+    },
+    "완전초코 (ICED)": {
+      "ICE": "/images/menus/additional-5.png"
     }
   },
   "롯데리아": {},
@@ -131,6 +137,9 @@
     },
     "카페라떼": {
       "ICE": "/images/menus/venti-8.webp"
+    },
+    "레몬에이드": {
+      "ICE": "/images/menus/additional-11.png"
     }
   }
 }

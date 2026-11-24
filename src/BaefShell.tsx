@@ -1,3 +1,4 @@
+import {platformCheckout} from './platformCheckout'
 import {displayStoreName} from './storeNames'
 import ActionFeedback from './ActionFeedback'
 import {WalkingRecordingStatus} from './WalkingRewards'
@@ -149,7 +150,7 @@ function GroupDetail({pop,push}:{pop:()=>void;push:(s:Screen)=>void}){
   const open=p.status==='open'&&new Date(p.deadline).getTime()>Date.now()
   const ownSelection=d.catalog.find(c=>c.store_name===p.restaurant)
   const state=order.states.find(v=>v.post_id===p.id)
-  const next=mine?.active?orderNextStep({role:owner?'leader':'participant',application:mine.status,phase:state?.phase,count:people.length,virtualLeader:s.isVirtual?.(p.owner_id)||p.public_virtual_leader}):null
+  const next=mine?.active?orderNextStep({role:owner?'leader':'participant',application:mine.status,phase:state?.phase,platform:platformCheckout(state,order.people.filter(v=>v.post_id===p.id)),count:people.length,virtualLeader:s.isVirtual?.(p.owner_id)||p.public_virtual_leader}):null
   // The menu sheet is loaded through the same component used by discovery.
   return <div className="baef-scroll"><div className="baef-page"><button className="baef-back" onClick={pop}><SmallIcon name="back"/>뒤로</button><CancelOrderControl postId={p.id} onCancelled={()=>push('orders')}/><div className="baef-group-head"><span className="baef-tag">{ended?'종료':open?'모집 중':'모집 마감'}</span><span>{p.member_count}/{p.max_members}명</span></div><div className="live-detail-hero">{liveStorePhoto(p.restaurant)&&<img src={liveStorePhoto(p.restaurant)!} alt={`${displayStoreName(p.restaurant)} 메뉴`}/>}<div><StoreBrand name={p.restaurant}/><span className="bv-eyebrow">{p.category} · 함께 주문</span><h1 className="baef-detail-title">{displayStoreName(p.restaurant)}</h1><button className="live-leader-link" onClick={()=>s.session?setProfile(true):s.setLoginOpen(true)}><span className="bv-avatar small">{s.nickname(p.owner_id).slice(0,1)}</span><span>{s.nickname(p.owner_id)} · 리더<small>{order.reputation(p.owner_id)?.rating!=null?`★ ${order.reputation(p.owner_id)!.rating}`:'아직 별점 없음'} · 거래 {order.reputation(p.owner_id)?.trades??0}회</small></span><Icon name="chevron" size={17}/></button></div></div>
     {!mine?.active&&<div className="live-detail-benefit"><Icon name="leaf" size={24}/><span><b>함께 주문하면 배달비 약 {money(p.delivery_fee-Math.ceil(p.delivery_fee/Math.max(2,Math.min(p.max_members,p.member_count+1))))} 절약</b><small>혼자 부담 {money(p.delivery_fee)} → 함께 부담 약 {money(Math.ceil(p.delivery_fee/Math.max(2,Math.min(p.max_members,p.member_count+1))))}</small></span></div>}

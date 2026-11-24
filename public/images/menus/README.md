@@ -1,12 +1,12 @@
 # Menu photographs
 
-Retrieved on 2026-11-11 from official brand menu pages. `SOURCES.json` records the app menu name, matched official title and original image URL for each local image.
+Initial official brand photos retrieved on 2026-11-11; missing menu photographs completed on 2026-11-24 using brand and product-specific merchant or publication pages. `SOURCES.json` records the app menu name, matched official title and original image URL for each local image.
 
-`TEMPERATURE-SOURCES.json` records 13 additional photographs matched to the selected HOT or ICE option. `src/menuPhotoVariants.json` maps those variants to the menu picker. When a photograph of the selected temperature is unavailable, that selection does not show a photograph of the other temperature.
+`TEMPERATURE-SOURCES.json` records 13 additional photographs matched to the selected HOT or ICE option. `src/menuPhotoVariants.json` maps those variants to the menu picker. For menus whose brand publishes one shared product photo for HOT/ICE or sugar options, `src/menuPhotoRepresentatives.json` explicitly allows that photograph with a visible representative-photo caption. Other missing variants are not substituted.
 
-The downloaded originals are resized proportionally to a maximum of 640px and encoded as WebP for loading speed. Artwork is not generated, combined or replaced with another brand's product. These photographs identify the listed products; ownership remains with the respective rights holders. Source publication does not itself grant a general reuse license.
+Initial photographs were resized proportionally to a maximum of 640px and encoded as WebP. The 2026-11-24 additions are downloaded originals without edits. Artwork is not generated, combined or replaced with another brand's product. These photographs identify the listed products; ownership remains with the respective rights holders. Source publication does not itself grant a general reuse license.
 
-Menu names, IDs, quantities, prices and order data are unchanged. A photograph is shown only when its brand and menu name match the local manifest. Items without an exact image retain their name and price, without a placeholder or unrelated food photograph. Hot-only entries are not filled with pictures showing ice, and set entries use the official set image rather than a burger-only image.
+Menu names, IDs, quantities, prices and order data are unchanged. A photograph is shown only when its brand and menu name match the local manifest. Items without an exact image retain their name and price, without a placeholder or unrelated food photograph. Shared HOT/ICE product photographs are labelled as representative photos, and set entries keep their correct set images.
 
 Official sources:
 
@@ -18,3 +18,5 @@ Official sources:
 - Paik's Coffee: https://paikdabang.com/menu/menu_coffee/ and https://paikdabang.com/menu/menu_dessert/
 - Lotteria: https://www.lotteeatz.com/brand/ria and linked product detail pages
 - The Venti: https://www.theventi.co.kr/new2022/menu/all.html
+
+The current Venti catalogue item formerly labelled 허니레몬에이드 is corrected to the official 레몬에이드. Historical basket snapshots are not renamed. SOURCES.json records original source URLs for the additional Ediya, Paik, and Mom's Touch photographs.

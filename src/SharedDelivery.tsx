@@ -91,6 +91,7 @@ function useSharedState() {
     setNotifications(list=>appendNotification(list,item))
   }, [uid,numberFor,setNotifications])
   const readNotification=(id:number)=>setNotifications(list=>list.map(n=>n.id===id?{...n,read:true}:n))
+  const deleteNotifications=(ids:number[])=>setNotifications(list=>list.filter(n=>!ids.includes(n.id)))
   const readAllNotifications=()=>setNotifications(list=>list.map(n=>({...n,read:true})))
   const readChatNotifications=useCallback((room:string,throughId:number)=>setNotifications(list=>readVisibleChat(list,room,throughId)),[setNotifications])
 
@@ -290,7 +291,7 @@ function useSharedState() {
     notice, setNotice, allowed, me, nickname,isVirtual,virtualRooms,virtualReady, posts, tx,activeTx, selectedId, selectPost: setSelectedId,
     selectedRaw: selected, active: !!activeMember, members, rawPosts, act,
     pending: members.filter(m => m.post_id === txSource?.id && m.status === 'pending' && m.active),
-    notifications:notifications.map(n=>({...n,postId:numberFor(n.sharedPostId)})),setNotifications,addNotification,readNotification,readAllNotifications,readChatNotifications,
+    notifications:notifications.map(n=>({...n,postId:numberFor(n.sharedPostId)})),setNotifications,addNotification,readNotification,readAllNotifications,deleteNotifications,readChatNotifications,
     chatReadable,chatEnded,chatStatus,olderAvailable,olderBusy,loadOlderMessages,
     login: async (email: string, password: string) => {
       if (!supabase) { setError('로그인 연결 설정이 필요해요.'); return }

@@ -6,14 +6,14 @@ import { readAccountHistory, saveAccountHistory } from './sharedHistory'
 import {orderActionRequest} from './orderActionRequest'
 
 export type OrderPhase='menu'|'payment'|'ordered'|'delivering'|'arrived'|'completed'|'cancelled'
-export type OrderState={planned_order_at?:string|null;delivery_eta_start?:string|null;delivery_eta_end?:string|null;post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string;pickup_mode?:'meet'|'contactless';pickup_proposer?:string|null;pickup_agreed_by?:string[];pickup_note?:string;pickup_dropped_at?:string|null}
-export type OrderPerson={pickup_notice_seen_at?:string|null;post_id:string;user_id:string;food_total:number;fee:number;coupon_discount:number;claimed_amount:number;confirmed_amount:number;refunded_amount:number;refund_due:number;refund_sent:boolean;transfer_review_pending?:boolean;received_at:string|null;late_reported:boolean;late_ack:boolean;latitude:number|null;longitude:number|null}
+export type OrderState={checkout_mode?:'leader_transfer'|'platform';platform_submitted_at?:string|null;platform_accepted_at?:string|null;planned_order_at?:string|null;delivery_eta_start?:string|null;delivery_eta_end?:string|null;post_id:string;phase:OrderPhase;meeting:string;meeting_time:string|null;meeting_lat:number|null;meeting_lng:number|null;bank:string;account:string;holder:string;leader_ready:boolean;coupon_funding?:'platform'|'leader';nearby_requester:string|null;nearby_address:string|null;nearby_agreed:boolean;arrived_at:string|null;updated_at:string;pickup_mode?:'meet'|'contactless';pickup_proposer?:string|null;pickup_agreed_by?:string[];pickup_note?:string;pickup_dropped_at?:string|null}
+export type OrderPerson={platform_paid_at?:string|null;platform_payment_method?:string|null;platform_refunded_at?:string|null;pickup_notice_seen_at?:string|null;post_id:string;user_id:string;food_total:number;fee:number;coupon_discount:number;claimed_amount:number;confirmed_amount:number;refunded_amount:number;refund_due:number;refund_sent:boolean;transfer_review_pending?:boolean;received_at:string|null;late_reported:boolean;late_ack:boolean;latitude:number|null;longitude:number|null}
 type PersonNoticeSnapshot=Pick<OrderPerson,'post_id'|'user_id'|'claimed_amount'|'confirmed_amount'|'received_at'>
 const personNoticeSnapshot=(p:PersonNoticeSnapshot):PersonNoticeSnapshot=>({post_id:p.post_id,user_id:p.user_id,claimed_amount:p.claimed_amount,confirmed_amount:p.confirmed_amount,received_at:p.received_at})
 export type Reputation={user_id:string;rating:number|null;review_count:number;trades:number}
 export type OrderReview={id:string;post_id:string;reviewer_id:string;subject_id:string;stars:number;comment:string;created_at:string}
 export type OrderReport={id:string;post_id:string;reporter_id:string;subject_id:string;reason:string;detail:string;status:'pending'|'confirmed'|'dismissed';resolution:string|null}
-export const phaseLabel:Record<OrderPhase,string>={menu:'메뉴 결정',payment:'송금 확인',ordered:'주문 완료',delivering:'배달 중',arrived:'수령 확인',completed:'거래 완료',cancelled:'취소·환불'}
+export const phaseLabel:Record<OrderPhase,string>={menu:'메뉴 결정',payment:'결제 대기',ordered:'주문 완료',delivering:'배달 중',arrived:'수령 확인',completed:'거래 완료',cancelled:'취소·환불'}
 export const orderDue=(p:OrderPerson)=>p.food_total+p.fee-p.coupon_discount
 export const remainingTransfer=(p:OrderPerson)=>Math.max(0,orderDue(p)-p.confirmed_amount+p.refunded_amount)
 export const distanceM=(a:{lat:number;lng:number},b:{lat:number;lng:number})=>{
@@ -52,9 +52,10 @@ function useLifecycleState(){
           const post=postsRef.current.find(p=>p.id===value.post_id);if(!post)continue
           const before=seenStates.current.get(value.post_id),text=orderChangeNotice(before,value,uid)
           if(text)s.addNotification(post,text,text.includes('도착 예상')?'delivery':'menu',`meeting:${value.updated_at}:${text}`)
+          if(before&&value.checkout_mode==='platform'&&!before.platform_accepted_at&&value.platform_accepted_at)s.addNotification(post,'가게에서 주문을 접수했어요. 음식 준비를 시작해요.','delivery',`accepted:${value.platform_accepted_at}`)
           if(before&&before.phase!==value.phase){
             const target=value.phase==='completed'?'complete':value.phase==='cancelled'||value.phase==='payment'?'payment':value.phase==='arrived'?'receipt':value.phase==='ordered'||value.phase==='delivering'?'delivery':'menu'
-            s.addNotification(post,value.phase==='arrived'?(value.pickup_mode==='contactless'?'음식이 도착했어요. 리더의 음식 놓기 안내를 기다려 주세요.':'음식이 도착해 수령할 수 있어요. 장소를 확인해 주세요.'):`주문 상태가 ‘${phaseLabel[value.phase]}’로 바뀌었어요.`,target,`phase:${value.updated_at}:${value.phase}`)
+            s.addNotification(post,value.phase==='arrived'?(value.pickup_mode==='contactless'?'음식이 도착했어요. 리더의 음식 놓기 안내를 기다려 주세요.':'음식이 도착해 수령할 수 있어요. 장소를 확인해 주세요.'):value.checkout_mode==='platform'&&value.phase==='ordered'?'모두 결제를 마쳤어요. 가게에 주문을 전달하고 있어요.':`주문 상태가 ‘${phaseLabel[value.phase]}’로 바뀌었어요.`,target,`phase:${value.updated_at}:${value.phase}`)
           }
           seenStates.current.set(value.post_id,value)
         }
@@ -63,8 +64,8 @@ function useLifecycleState(){
         if(seenPeople.current)for(const person of nextPeople){
           const before=seenPeople.current.find(p=>p.post_id===person.post_id&&p.user_id===person.user_id),post=postsRef.current.find(p=>p.id===person.post_id)
           if(!before||!post)continue
-          if(person.user_id===uid&&person.confirmed_amount>before.confirmed_amount)s.addNotification(post,'리더가 내 입금을 확인했어요. 주문 진행을 확인해 주세요.','payment',`confirmed:${uid}:${person.confirmed_amount}:${Date.now()}`)
-          if(post.owner_id===uid&&person.user_id!==uid&&person.claimed_amount>before.claimed_amount)s.addNotification(post,`${s.nickname(person.user_id)}님이 송금을 표시했어요. 계좌의 입금을 확인해 주세요.`,'payment',`claimed:${person.user_id}:${person.claimed_amount}:${Date.now()}`)
+          if(person.user_id===uid&&person.confirmed_amount>before.confirmed_amount)s.addNotification(post,next.find(v=>v.post_id===post.id)?.checkout_mode==='platform'?'내 결제가 완료됐어요. 모두 결제하면 가게에 주문을 전달해요.':'리더가 내 입금을 확인했어요. 주문 진행을 확인해 주세요.','payment',`confirmed:${uid}:${person.confirmed_amount}:${Date.now()}`)
+          if(post.owner_id===uid&&person.user_id!==uid&&person.claimed_amount>before.claimed_amount)s.addNotification(post,next.find(v=>v.post_id===post.id)?.checkout_mode==='platform'?`${s.nickname(person.user_id)}님이 결제를 마쳤어요.`:`${s.nickname(person.user_id)}님이 송금을 표시했어요. 계좌의 입금을 확인해 주세요.`,'payment',`claimed:${person.user_id}:${person.claimed_amount}:${Date.now()}`)
           if(person.user_id!==uid&&!before.received_at&&person.received_at)s.addNotification(post,`${s.nickname(person.user_id)}님이 음식 수령을 확인했어요.`,'receipt',`received:${person.user_id}:${person.received_at}`)
         }
         seenPeople.current=nextPeople.map(personNoticeSnapshot);saveAccountHistory(uid,'order-people',seenPeople.current.slice(-1000))
@@ -112,7 +113,7 @@ function useLifecycleState(){
       }
       window.dispatchEvent(new Event('shared-delivery-refresh'));window.dispatchEvent(new Event('menu-discovery-refresh'))
       return true
-    }catch(e){if(currentUid.current===uid)setError(action.startsWith('pickup-')&&(e as {code?:string}).code==='PGRST202'?'수령 방식 설정을 불러오지 못했어요. 잠시 후 새로고침해 주세요.':action==='room-time'&&(e as {code?:string}).code==='PGRST202'?'방 시간 변경을 사용하려면 DB 업데이트가 필요해요.':(e as {code?:string}).code==='23505'?'이미 저장한 평가 또는 신고예요.':(e as {message?:string}).message??'저장하지 못했어요.');return false}finally{pending.current=false;setBusy(false)}
+    }catch(e){if(currentUid.current===uid)setError(action.startsWith('platform-')&&(e as {code?:string}).code==='PGRST202'?'앱 내 결제를 이용하려면 주문 전달 업데이트가 필요해요.':action.startsWith('pickup-')&&(e as {code?:string}).code==='PGRST202'?'수령 방식 설정을 불러오지 못했어요. 잠시 후 새로고침해 주세요.':action==='room-time'&&(e as {code?:string}).code==='PGRST202'?'방 시간 변경을 사용하려면 DB 업데이트가 필요해요.':(e as {code?:string}).code==='23505'?'이미 저장한 평가 또는 신고예요.':(e as {message?:string}).message??'저장하지 못했어요.');return false}finally{pending.current=false;setBusy(false)}
   }
   const reputation=(id:string)=>reputations.find(v=>v.user_id===id)
   const myReputation=uid?reputation(uid):undefined

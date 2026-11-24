@@ -1,0 +1,34 @@
+.platform-payment-roster { margin: 28px 0; }
+.platform-payment-roster progress { display: block; width: 100%; height: 5px; margin: 14px 0 8px; accent-color: var(--baef-accent); border: 0; border-radius: 5px; overflow: hidden; }
+.platform-payment-roster progress::-webkit-progress-bar { background: var(--baef-line); }
+.platform-payment-roster progress::-webkit-progress-value { background: var(--baef-accent); }
+.platform-person { display: flex; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--baef-line); font-size: 14px; }
+.platform-person > span:last-child { text-align: right; }
+.platform-person small { display: block; color: var(--baef-muted); margin-top: 5px; font-size: 12px; }
+.platform-paid-label, .platform-person .platform-paid-label { color: var(--baef-accent); }
+.platform-paid-label, .platform-waiting { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.platform-waiting { min-height: 48px; font-size: 13px; line-height: 1.6; color: var(--baef-accent); }
+.platform-bill { margin-top: 20px; padding: 0; border: 0; }
+.platform-order-note { display: flex; align-items: center; gap: 14px; padding: 18px; background: var(--baef-field); border-radius: 12px; margin: 24px 0 16px; }
+.platform-order-note p { margin: 0; font-size: 13px; line-height: 1.8; }
+.platform-refund { display: flex; align-items: flex-start; gap: 10px; padding: 18px 0; border-bottom: 1px solid var(--baef-line); font-size: 13px; }
+.platform-refund p { color: var(--baef-muted); margin: 6px 0 0; }
+.platform-checkout-store { color: var(--baef-muted); margin: 0 0 8px; font-size: 14px; }
+.platform-checkout-total { display: block; margin-bottom: 28px; font-size: 32px; letter-spacing: -1px; }
+.platform-methods { border: 0; padding: 0; margin: 0 0 20px; min-width: 0; }
+.platform-methods legend { margin-bottom: 12px; font-weight: 600; }
+.platform-methods label { display: flex; align-items: center; gap: 12px; padding: 16px; margin-bottom: 10px; border: 1px solid var(--baef-line); border-radius: 10px; cursor: pointer; font-size: 14px; }
+.platform-methods label[data-selected=true] { border-color: var(--baef-accent); }
+.platform-methods input { width: 18px; height: 18px; accent-color: var(--baef-accent); flex-shrink: 0; }
+.platform-methods small { display: block; font-size: 12px; color: var(--baef-muted); margin-top: 5px; }
+.platform-merchant-card { margin: 24px 0; padding: 22px 18px; border: 1px solid var(--baef-line); border-radius: 14px; }
+.platform-merchant-card > small { color: var(--baef-muted); font-size: 11px; }
+.platform-merchant-card h2 { font-size: 20px; line-height: 1.6; margin: 10px 0 20px; }
+.platform-merchant-steps { display: flex; padding: 0; margin: 20px 0; list-style: none; gap: 6px; }
+.platform-merchant-steps li { flex: 1; font-size: 11px; color: var(--baef-muted); text-align: center; }
+.platform-merchant-steps li i { display: block; height: 4px; background: var(--baef-line); border-radius: 4px; margin-bottom: 10px; }
+.platform-merchant-steps li[data-done=true] { color: var(--baef-accent); }
+.platform-merchant-steps li[data-done=true] i { background: var(--baef-accent); }
+.platform-merchant-card details { border-top: 1px solid var(--baef-line); margin-top: 20px; padding-top: 16px; font-size: 13px; }
+.platform-merchant-card summary { cursor: pointer; font-weight: 600; }
+.platform-merchant-card .platform-receipt-line { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; line-height: 1.7; margin: 14px 0; }

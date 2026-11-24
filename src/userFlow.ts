@@ -1,4 +1,4 @@
-export const orderJourney = ['메뉴 선택', '리더 수락', '각자 송금', '리더가 배달앱에서 주문', '함께 수령']
+export const orderJourney = ['메뉴 선택', '리더 수락', '각자 결제', '배프가 가게에 주문 전달', '함께 수령']
 export function previewMembers(current:number, maximum:number, alreadyJoined=false) {
   return Math.max(2,Math.min(maximum,current+(alreadyJoined?0:1)))
 }
@@ -25,7 +25,7 @@ export function pickupCandidates(points:{lat:number;lng:number}[]) {
     .sort((a,b)=>Math.max(...a.distances)-Math.max(...b.distances))
 }
 
-type AttentionContext={uid?:string;post?:{owner_id:string;status:string};members:{user_id:string;status:string;active:boolean}[];state?:{phase:string;nearby_requester?:string|null;nearby_agreed?:boolean;pickup_mode?:string;pickup_agreed_by?:string[]};people:{user_id:string;claimed_amount:number;confirmed_amount:number;received_at?:string|null}[]}
+type AttentionContext={uid?:string;post?:{owner_id:string;status:string};members:{user_id:string;status:string;active:boolean}[];state?:{phase:string;checkout_mode?:string;nearby_requester?:string|null;nearby_agreed?:boolean;pickup_mode?:string;pickup_agreed_by?:string[]};people:{user_id:string;claimed_amount:number;confirmed_amount:number;received_at?:string|null}[]}
 export function needsAttention(target:string,text:string,c:AttentionContext) {
   if(!c.uid||!c.post||['cancelled','completed'].includes(c.post.status))return false
   const own=c.members.find(m=>m.user_id===c.uid)
@@ -37,7 +37,7 @@ export function needsAttention(target:string,text:string,c:AttentionContext) {
     if(text.includes('비대면'))return c.state.pickup_mode==='contactless'&&!c.state.pickup_agreed_by?.includes(c.uid)
     return false
   }
-  if(target==='payment')return c.post.owner_id===c.uid&&c.state?.phase==='payment'&&c.people.some(p=>p.user_id!==c.uid&&p.claimed_amount>p.confirmed_amount)
+  if(target==='payment')return c.state?.checkout_mode!=='platform'&&c.post.owner_id===c.uid&&c.state?.phase==='payment'&&c.people.some(p=>p.user_id!==c.uid&&p.claimed_amount>p.confirmed_amount)
   if(target==='receipt')return c.state?.phase==='arrived'&&!c.people.find(p=>p.user_id===c.uid)?.received_at
   return false
 }

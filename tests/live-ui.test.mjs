@@ -14,9 +14,10 @@ const src = path.resolve('src')
 let shared, discovery, lifecycle
 const placeholder = name => () => React.createElement('div', { 'data-feature': name }, name)
 const mocks = {
+  './foodPhotos': { foodPhotoSource: () => '/images/coffee.jpg' },
   './supabase': { supabase: {} },
   './SharedDelivery': { useSharedDelivery: () => shared },
-  './MenuDiscoveryContext': { useMenuDiscovery: () => discovery, FOOD_CHOICES: [{ id: 'coffee', name: '커피' }, { id: 'burger', name: '햄버거' }, { id: 'sandwich', name: '샌드위치' }], money: n => n.toLocaleString('ko-KR') + '원', formatWindow: () => '오늘 18:00' },
+  './MenuDiscoveryContext': { useMenuDiscovery: () => discovery, FOOD_CHOICES: [{ id: 'coffee', name: '커피' }, { id: 'burger', name: '햄버거' }, { id: 'sandwich', name: '샌드위치' }], areaName: () => '충남대 정문', money: n => n.toLocaleString('ko-KR') + '원', formatWindow: () => '오늘 18:00' },
   './MenuDiscovery': { LocationChoice: placeholder('위치 설정'), StoreSheet: placeholder('메뉴 선택'), BasketEditor: placeholder('메뉴 편집'), SmallIcon: placeholder('아이콘') },
   './WalkingRewards': { WalkingRewardDetails: placeholder('이동 포인트'), WalkingRewardWallet: placeholder('포인트 지갑'), WalkingRewardReceipt: placeholder('수령 포인트') },
   './AppPreferences': { usePreferences: () => ({ currentLocation: {} }) },
@@ -49,6 +50,7 @@ const { OrderMenu, OrderPayment, OrderReceipt } = load('OrderScreens.tsx')
 const {default:OrderSuggestionsPanel}=load('OrderSuggestionsPanel.tsx')
 const {suggestionDraft}=load('orderSuggestions.ts')
 const {default:OrderWishEditor}=load('OrderWishEditor.tsx')
+const {MenuAlerts}=load('MenuDiscovery.tsx')
 const render = component => renderToStaticMarkup(React.createElement(component, { push() {}, pop() {} }))
 function reset() {
   const raw = { id: 'room-1', owner_id: 'leader', restaurant: '이디야커피 충대정문점', category: '카페', status: 'open', member_count: 1, max_members: 2, delivery_fee: 3000, min_order: 8000, meeting: '정문 벤치', deadline: '2026-12-01T09:00:00Z', pickup_lat: 36.3621, pickup_lng: 127.3444 }
@@ -78,8 +80,8 @@ test('a virtual leader offers order progression without asking the real particip
   lifecycle.mine={food_total:3200,fee:1500,coupon_discount:0}
   lifecycle.members=[{user_id:'me'}]
   const html=render(OrderPayment)
-  assert.match(html,/가상 리더의 주문/)
-  assert.match(html,/주문 진행/)
+  assert.match(html,/내 주문 결제/)
+  assert.match(html,/내 금액 결제로 이동/)
   assert.match(html,/4,700원/)
   assert.doesNotMatch(html,/송금했어요|계좌번호|남은 송금액/)
 })
@@ -106,7 +108,7 @@ test('full rooms are not advertised as available to join', () => {
 test('logged-out discovery previews public rooms and explains who places the order', () => {
   reset()
   shared.session = null
-  assert.match(render(LiveExplore), /리더가 배달앱에서 주문/)
+  assert.match(render(LiveExplore), /배프가 가게에 주문 전달/)
   assert.match(render(LiveExplore), /모집 상세/)
   assert.match(render(LiveStorePicker), /이디야커피/)
 })
@@ -126,23 +128,23 @@ function prepareOrder() {
 test('leader order preparation keeps a single next action and leaves settings behind explicit tools', () => {
   prepareOrder()
   const html = render(OrderMenu)
-  assert.match(html, /주문 확정하고 송금으로/)
+  assert.match(html, /주문 확정하고 결제로/)
   assert.match(html, /live-workflow-footer/)
   assert.match(html, /4,200원/)
   assert.match(html, /정문 벤치/)
   assert.doesNotMatch(html, /name="account"|name="bank"|name="holder"/)
 })
-test('order finalization stays disabled until menu, goal, meeting and account checks pass', () => {
+test('platform finalization needs menus, goal and a pickup place but no leader bank account', () => {
   prepareOrder()
   lifecycle.state.account = ''
   let html = render(OrderMenu)
-  assert.match(html, /송금받을 리더 계좌를 저장해 주세요/)
-  assert.match(html, /disabled=""[^>]*>주문 확정하고 송금으로/)
+  assert.doesNotMatch(html, /송금받을 리더 계좌를 저장해 주세요/)
+  assert.doesNotMatch(html, /disabled=""[^>]*>주문 확정하고 결제로/)
   lifecycle.state.account = '1234567890'
   lifecycle.post.min_order = 20000
   html = render(OrderMenu)
   assert.match(html, /11,600원/)
-  assert.match(html, /disabled=""[^>]*>주문 확정하고 송금으로/)
+  assert.match(html, /disabled=""[^>]*>주문 확정하고 결제로/)
 })
 
 test('leader cancellation is visible before ordering and hidden after an order is placed',()=>{
@@ -156,8 +158,8 @@ test('leader cancellation is visible before ordering and hidden after an order i
 test('a pickup place without an agreed arrival time can be finalized',()=>{
   prepareOrder();lifecycle.state.meeting_time=null
   const html=render(OrderMenu)
-  assert.match(html,/>주문 확정하고 송금으로</)
-  assert.doesNotMatch(html,/disabled=""[^>]*>주문 확정하고 송금으로/)
+  assert.match(html,/>주문 확정하고 결제로</)
+  assert.doesNotMatch(html,/disabled=""[^>]*>주문 확정하고 결제로/)
   assert.doesNotMatch(html,/수령 장소와 시간을 저장/)
 })
 test('participant preparation cannot confirm the leader order and exposes pending pickup proposals', () => {
@@ -166,7 +168,7 @@ test('participant preparation cannot confirm the leader order and exposes pendin
   lifecycle.state.nearby_requester = 'other'
   lifecycle.state.nearby_agreed = false
   const html = render(OrderMenu)
-  assert.doesNotMatch(html, /주문 확정하고 송금으로/)
+  assert.doesNotMatch(html, /주문 확정하고 결제로/)
   assert.match(html, /리더가 주문을 확정하면/)
   assert.match(html, /내 근처 수령 제안이 왔어요/)
 })
@@ -264,4 +266,49 @@ test('store labels show only franchise names while preference values retain cata
  const editor=render(OrderWishEditor)
  assert.match(editor,/<option[^>]*value="이디야커피 충대정문점"[^>]*>이디야커피<\/option>/)
  assert.equal(shared.rawPosts[0].restaurant,'이디야커피 충대정문점')
+})
+
+
+test('platform checkout shows each member including the leader and never asks for a real transfer',()=>{
+  preparePayment();lifecycle.state.checkout_mode='platform'
+  let html=render(OrderPayment)
+  assert.match(html,/5,700원 결제하기/)
+  assert.match(html,/0 \/ 2명 완료/)
+  assert.match(html,/가게에 전달해요/)
+  assert.doesNotMatch(html,/송금했어요|계좌번호|리더 입금 확인|입금 확인과 주문/)
+  lifecycle.owner=true;lifecycle.post.owner_id='me'
+  html=render(OrderPayment)
+  assert.match(html,/5,700원 결제하기/)
+  assert.doesNotMatch(html,/내 결제 준비 완료|배달앱 주문/)
+})
+
+test('a paid platform participant waits without another pay button',()=>{
+  preparePayment();lifecycle.state.checkout_mode='platform'
+  lifecycle.mine.platform_paid_at='2026-11-24T06:00:00Z';lifecycle.mine.confirmed_amount=5700
+  const html=render(OrderPayment)
+  assert.match(html,/1 \/ 2명 완료/)
+  assert.match(html,/내 결제 완료 · 다른 배프의 결제를 기다려요/)
+  assert.doesNotMatch(html,/>5,700원 결제하기</)
+})
+
+test('a withdrawn platform participant sees their refund without payment or manual bank controls',()=>{
+  preparePayment();lifecycle.state.checkout_mode='platform'
+  lifecycle.members=lifecycle.members.filter(m=>m.user_id!=='me')
+  lifecycle.mine.refunded_amount=5700;lifecycle.mine.platform_refunded_at='2026-11-24T06:00:00Z'
+  const html=render(OrderPayment)
+  assert.match(html,/5,700원 환불 완료/)
+  assert.doesNotMatch(html,/결제하기|송금했어요|환불을 보냈어요|계좌번호/)
+})
+
+test('notification center offers separate delete controls for both saved menu alerts and order notifications',()=>{
+  reset()
+  discovery.alerts=[{id:'note-1',kind:'group_invite',payload:{stores:['이디야커피 충대정문점'],area:'cnu-main'},created_at:'2026-11-24T06:00:00Z',read_at:null}]
+  discovery.matches=[]
+  shared.notifications=[{id:1,restaurant:'이디야커피 충대정문점',text:'음식이 도착했어요.',time:Date.now(),read:false,target:'receipt'}]
+  const html=renderToStaticMarkup(React.createElement(MenuAlerts,{close(){},push(){}}))
+  assert.match(html,/전체 삭제/)
+  assert.match(html,/모두 읽음/)
+  assert.equal((html.match(/aria-label="이 알림 삭제"/g)||[]).length,2)
+  assert.match(html,/읽지 않은 알림 2개/)
+  assert.match(html,/baef-alert-row/)
 })

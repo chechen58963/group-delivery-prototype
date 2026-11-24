@@ -637,5 +637,104 @@
     "src": "/images/menus/venti-8.webp",
     "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_0T7iGUDW_20260612155751.png",
     "source_snapshot": "venti-2.html"
+  },
+  {
+    "brand": "더벤티",
+    "menu": "바닐라딥라떼 (HOT)",
+    "matched_title": "바닐라딥라떼 (라지/점보)",
+    "src": "/images/menus/additional-1.png",
+    "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_xJvyidWn_20260612154335.png",
+    "source_snapshot": "venti-2.html",
+    "representative": true
+  },
+  {
+    "brand": "더벤티",
+    "menu": "디카페인 코코넛라떼 (HOT)",
+    "matched_title": "디카페인 코코넛라떼 (라지/점보)",
+    "src": "/images/menus/additional-2.png",
+    "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_aQv6iVBx_20260612161047.png",
+    "source_snapshot": "venti-3.html",
+    "representative": true
+  },
+  {
+    "brand": "더벤티",
+    "menu": "더쌍화라떼 (HOT)",
+    "matched_title": "더쌍화라떼",
+    "src": "/images/menus/additional-3.png",
+    "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_9R38GdCP_20260612163416.png",
+    "source_snapshot": "venti-7.html",
+    "representative": true
+  },
+  {
+    "brand": "더벤티",
+    "menu": "저당 말차라떼 (HOT)",
+    "matched_title": "말차라떼 (라지/점보)",
+    "src": "/images/menus/additional-4.png",
+    "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_lPRfsC4b_20260612163515.png",
+    "source_snapshot": "venti-7.html",
+    "representative": true
+  },
+  {
+    "brand": "빽다방",
+    "menu": "완전초코 (ICED)",
+    "matched_title": "초코라떼(ICED)",
+    "src": "/images/menus/additional-5.png",
+    "original": "https://paikdabang.com/wp-content/uploads/2018/06/ICED-완전초코-450x588.png",
+    "source_snapshot": "paik-drink.html",
+    "representative": false
+  },
+  {
+    "brand": "이디야",
+    "menu": "녹차 라떼",
+    "matched_title": "Green Tea / Matcha Latte",
+    "src": "/images/menus/additional-6.jpg",
+    "original": "https://d3af5evjz6cdzs.cloudfront.net/images/uploads/800x0/_2a42538fefd5703704be7e444ee1f59e1766371119.jpg",
+    "source_snapshot": "https://www.shuttledelivery.co.kr/en/restaurant/menu/1969/ediya-coffee-pyeongtaek-songtan",
+    "representative": false
+  },
+  {
+    "brand": "이디야",
+    "menu": "아이스티 복숭아",
+    "matched_title": "Peach Tea (Iced only)",
+    "src": "/images/menus/additional-7.jpg",
+    "original": "https://d3af5evjz6cdzs.cloudfront.net/images/uploads/800x0/ex-_0fb7780b817072c9c18b4fa0c9725e3f1623653087.jpg",
+    "source_snapshot": "https://www.shuttledelivery.co.kr/en/restaurant/menu/1969/ediya-coffee-pyeongtaek-songtan",
+    "representative": false
+  },
+  {
+    "brand": "빽다방",
+    "menu": "옥수크림",
+    "matched_title": "옥수크림",
+    "src": "/images/menus/additional-8.jpg",
+    "original": "https://img.danawa.com/prod_img/500000/630/936/img/7936630_1.jpg",
+    "source_snapshot": "https://prod.danawa.com/info/?pcode=7936630",
+    "representative": false
+  },
+  {
+    "brand": "맘스터치",
+    "menu": "간장마늘싸이버거",
+    "matched_title": "Soy Garlic Thigh Burger",
+    "src": "/images/menus/additional-9.webp",
+    "original": "https://momstouch.mn/_astro/soy-garlic-thigh-burger.Du9Ce0Be.webp",
+    "source_snapshot": "https://momstouch.mn/en/menu",
+    "representative": false
+  },
+  {
+    "brand": "맘스터치",
+    "menu": "인크레더블버거",
+    "matched_title": "인크레더블버거",
+    "src": "/images/menus/additional-10.jpg",
+    "original": "https://img.insight.co.kr/static/2018/11/14/700/vd6futv36is139ki951b.jpg",
+    "source_snapshot": "https://www.insight.co.kr/news/191016",
+    "representative": false
+  },
+  {
+    "brand": "더벤티",
+    "menu": "레몬에이드",
+    "matched_title": "레몬에이드 (라지/점보)",
+    "src": "/images/menus/additional-11.png",
+    "original": "https://www.theventi.co.kr/new/upload/menu_new/2039262055_dCBMyTrF_20260612162209.png",
+    "source_snapshot": "venti-5.html",
+    "representative": false
   }
 ]

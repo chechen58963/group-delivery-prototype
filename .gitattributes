@@ -151,3 +151,5 @@ public/images/coffee.jpg -filter -diff -merge -text
 public/images/reward-*.jpg -filter -diff -merge -text
 public/images/brands/* -filter -diff -merge -text
 public/images/menus/*.webp -filter -diff -merge -text
+public/images/menus/*.png -filter -diff -merge -text
+public/images/menus/*.jpg -filter -diff -merge -text

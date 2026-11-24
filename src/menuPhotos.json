@@ -23,7 +23,9 @@
     "케이준양념감자 (중)": "/images/menus/mom-9.webp",
     "코울슬로": "/images/menus/mom-10.webp",
     "콘샐러드": "/images/menus/mom-11.webp",
-    "바삭크림치즈볼 (4조각)": "/images/menus/mom-12.webp"
+    "바삭크림치즈볼 (4조각)": "/images/menus/mom-12.webp",
+    "간장마늘싸이버거": "/images/menus/additional-9.webp",
+    "인크레더블버거": "/images/menus/additional-10.jpg"
   },
   "이디야": {
     "카페 아메리카노": "/images/menus/ediya-1.webp",
@@ -35,7 +37,9 @@
     "콜드브루": "/images/menus/ediya-7.webp",
     "초콜릿": "/images/menus/ediya-9.webp",
     "딸기 요거트 플랫치노": "/images/menus/ediya-11.webp",
-    "플레인 와플": "/images/menus/ediya-12.webp"
+    "플레인 와플": "/images/menus/ediya-12.webp",
+    "녹차 라떼": "/images/menus/additional-6.jpg",
+    "아이스티 복숭아": "/images/menus/additional-7.jpg"
   },
   "메가": {
     "메가리카노": "/images/menus/mega-1.webp",
@@ -67,7 +71,9 @@
     "원조커피 (HOT)": "/images/menus/paik-3.webp",
     "사라다빵": "/images/menus/paik-6.webp",
     "아이스티샷추가 (아샷추)": "/images/menus/paik-7.webp",
-    "원조커피 (ICED)": "/images/menus/paik-8.webp"
+    "원조커피 (ICED)": "/images/menus/paik-8.webp",
+    "완전초코 (ICED)": "/images/menus/additional-5.png",
+    "옥수크림": "/images/menus/additional-8.jpg"
   },
   "롯데리아": {
     "리아 사각새우 더블 세트": "/images/menus/lotteria-1.webp",
@@ -84,6 +90,11 @@
   "더벤티": {
     "아이스 아메리카노": "/images/menus/venti-1.webp",
     "오렌지과채주스": "/images/menus/venti-7.webp",
-    "카페라떼": "/images/menus/venti-8.webp"
+    "카페라떼": "/images/menus/venti-8.webp",
+    "바닐라딥라떼 (HOT)": "/images/menus/additional-1.png",
+    "디카페인 코코넛라떼 (HOT)": "/images/menus/additional-2.png",
+    "더쌍화라떼 (HOT)": "/images/menus/additional-3.png",
+    "저당 말차라떼 (HOT)": "/images/menus/additional-4.png",
+    "레몬에이드": "/images/menus/additional-11.png"
   }
 }

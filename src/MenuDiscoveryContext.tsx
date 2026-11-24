@@ -88,6 +88,7 @@ function useDiscoveryState() {
   const [matches,setMatches]=useState<MenuMatch[]>([])
   const [suggestions,setSuggestions]=useState<OrderSuggestion[]>([]),[suggestionsReady,setSuggestionsReady]=useState(false),[suggestionsError,setSuggestionsError]=useState('')
   const [alerts,setAlerts]=useState<MenuNotification[]>([])
+  const deletedAlerts=useRef(new Map<string,Set<string>>())
   const [baskets,setBaskets]=useState<Basket[]>([])
   const [menuOptionsReady,setMenuOptionsReady]=useState(false)
   const [recruitmentProgress,setRecruitmentProgress]=useState<RecruitmentProgress[]>([])
@@ -137,7 +138,7 @@ function useDiscoveryState() {
         setMenuOptionsReady(!selectionInfo.error&&selectionInfo.data?.version===1)
         setRecruitmentProgress(!selectionInfo.error&&Array.isArray(selectionInfo.data?.progress)?selectionInfo.data.progress:[])
         const next=(notes.data??[]) as MenuNotification[]
-        setAlerts(next);setConnected(true);setError('')
+        setAlerts(next.filter(n=>!deletedAlerts.current.get(uid)?.has(n.id)));setConnected(true);setError('')
         if(!hydrated&&value?.active&&new Date(value.ends_at).getTime()>Date.now()){
           setMenus(value.menus);setStores(value.stores);setArea(value.area_id)
           const d=new Date(value.starts_at);setHour(d.getHours());setDay(d.toDateString()===new Date().toDateString()?0:1)
@@ -212,6 +213,13 @@ function useDiscoveryState() {
     suggestions,suggestionsReady,suggestionsError,saveOrderWish,startSuggestedOrder,
     intent:activeIntent,matches,visibleMatches:sameSelection?matches:[],alerts:currentAlerts,baskets,menuOptionsReady,recruitmentProgress,connected,loading,saving,error,setError,toast,setToast,save,refresh,
     cancel:async()=>{if(await run(()=>supabase.rpc('gd_cancel_intent'))) {setIntent(null);setMatches([]);setSuggestions([]);setToast('메뉴 기다리기를 취소했어요.')}},
+    deleteAlerts:async(ids:string[])=>{
+      if(!uid)return false
+      const owner=uid
+      if(!await run(()=>supabase.rpc('gd_delete_menu_notifications',{p_ids:ids})))return false
+      const deleted=deletedAlerts.current.get(owner)??new Set<string>();ids.forEach(id=>deleted.add(id));deletedAlerts.current.set(owner,deleted)
+      setAlerts(values=>values.filter(n=>!deleted.has(n.id)));return true
+    },
     readAlerts:async(ids:string[])=>{if(await run(()=>supabase.rpc('gd_mark_menu_notifications',{p_ids:ids})))setAlerts(values=>values.map(n=>ids.includes(n.id)?{...n,read_at:new Date().toISOString()}:n))},
     saveBasket:async(post:string,items:MenuChoice[])=>{
       if(!menuOptionsReady&&items.some(i=>i.temperature)){setError('메뉴 옵션 연결을 확인한 뒤 다시 저장해 주세요.');return false}
