@@ -40,7 +40,7 @@ function useLifecycleState(){
     const previousPeople=uid?readAccountHistory<unknown>(uid,'order-people',null):null
     seenPeople.current=Array.isArray(previousPeople)?previousPeople.filter((p):p is PersonNoticeSnapshot=>!!p&&typeof p.post_id==='string'&&typeof p.user_id==='string'&&typeof p.confirmed_amount==='number'&&typeof p.claimed_amount==='number').map(personNoticeSnapshot):null
     if(!uid||!s.allowed)return
-    let alive=true,running=false,seen:Map<string,string>|null=null
+    let alive=true,running=false
     const load=async()=>{
       if(running||pending.current)return;running=true;const generation=revision.current
       try{
@@ -68,8 +68,7 @@ function useLifecycleState(){
           if(person.user_id!==uid&&!before.received_at&&person.received_at)s.addNotification(post,`${s.nickname(person.user_id)}님이 음식 수령을 확인했어요.`,'receipt',`received:${person.user_id}:${person.received_at}`)
         }
         seenPeople.current=nextPeople.map(personNoticeSnapshot);saveAccountHistory(uid,'order-people',seenPeople.current.slice(-1000))
-        if(seen){const changed=next.find(v=>seen!.has(v.post_id)&&seen!.get(v.post_id)!==v.phase);if(changed)s.setNotice(`주문 상태가 ‘${phaseLabel[changed.phase]}’로 바뀌었어요.`)}
-        seen=new Map(next.map(v=>[v.post_id,v.phase]));setStates(next);setPeople(r[1].data as OrderPerson[]);setReviews(r[2].data as OrderReview[]);setReports(r[3].data as OrderReport[]);setReputations(r[4].data as Reputation[]);setAvailable(true);setLoadError('')
+        setStates(next);setPeople(r[1].data as OrderPerson[]);setReviews(r[2].data as OrderReview[]);setReports(r[3].data as OrderReport[]);setReputations(r[4].data as Reputation[]);setAvailable(true);setLoadError('')
       }catch(e){if(alive&&generation===revision.current){setAvailable(false);setLoadError(['PGRST202','PGRST205','42P01'].includes((e as {code?:string}).code??'')?'복원한 기능을 이용하려면 공유 저장소 업데이트가 필요해요.':(e as {message?:string}).message??'진행 상태를 불러오지 못했어요.')}}finally{running=false}
     }
     void load();const timer=setInterval(()=>{if(!document.hidden)void load()},3000)

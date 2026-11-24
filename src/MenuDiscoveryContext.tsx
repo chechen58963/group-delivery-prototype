@@ -118,7 +118,6 @@ function useDiscoveryState() {
     setMenuOptionsReady(false);setRecruitmentProgress([])
     if(!uid||!shared.allowed)return
     let alive=true,running=false,hydrated=false
-    let seen:Set<string>|null=null
     const load=async()=>{
       if(running)return;running=true;setLoading(true)
       try{
@@ -138,8 +137,7 @@ function useDiscoveryState() {
         setMenuOptionsReady(!selectionInfo.error&&selectionInfo.data?.version===1)
         setRecruitmentProgress(!selectionInfo.error&&Array.isArray(selectionInfo.data?.progress)?selectionInfo.data.progress:[])
         const next=(notes.data??[]) as MenuNotification[]
-        if(seen){const fresh=next.find(n=>!seen!.has(n.id)&&!n.read_at);if(fresh){const matching=(found.data as MenuMatch[]??[]).filter(m=>fresh.payload.stores.includes(m.store_name)).sort((a,b)=>Number(b.people_count)-Number(a.people_count))[0];if(fresh.kind==='group_invite')setToast('함께 주문할 모집이 열렸어요. 알림을 확인해 보세요.');else if(!offers.error&&Array.isArray(offers.data)&&offers.data.length)setToast('함께 주문할 메뉴 조합을 찾았어요. 가게와 예상 비용을 확인해 주세요.');else if(offers.error?.code==='PGRST202'&&matching&&Number(matching.people_count)>0)setToast(`${matching.store_name}에서 함께 주문할 배프 ${matching.people_count}명이 있어요. 알림에서 모집을 시작해 보세요.`)}}
-        seen=new Set(next.map(n=>n.id));setAlerts(next);setConnected(true);setError('')
+        setAlerts(next);setConnected(true);setError('')
         if(!hydrated&&value?.active&&new Date(value.ends_at).getTime()>Date.now()){
           setMenus(value.menus);setStores(value.stores);setArea(value.area_id)
           const d=new Date(value.starts_at);setHour(d.getHours());setDay(d.toDateString()===new Date().toDateString()?0:1)
@@ -157,7 +155,7 @@ function useDiscoveryState() {
     window.addEventListener('menu-discovery-refresh',load);window.addEventListener('focus',load)
     return()=>{alive=false;clearInterval(timer);window.removeEventListener('menu-discovery-refresh',load);window.removeEventListener('focus',load)}
   },[uid,shared.allowed])
-  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(''),6500);return()=>clearTimeout(timer)},[toast])
+  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(''),2000);return()=>clearTimeout(timer)},[toast])
   const refresh=()=>window.dispatchEvent(new Event('menu-discovery-refresh'))
   const run=async(fn:()=>PromiseLike<{error:unknown}>)=>{
     if(lock.current)return false

@@ -50,7 +50,7 @@ function useSharedState() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(''),6500);return()=>clearTimeout(timer)},[notice])
+  useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(''),2000);return()=>clearTimeout(timer)},[notice])
   const [notificationState,setNotificationState]=useState<{uid:string|undefined;items:SharedNotification[]}>({uid:undefined,items:[]})
   const ids = useRef(new Map<string, number>())
   const mutation = useRef(false)

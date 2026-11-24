@@ -149,6 +149,7 @@ export function OrderMenu({pop,push}:{pop:()=>void;push:Navigate}){
 }
 export function OrderPayment({pop,push}:{pop:()=>void;push:Navigate}){
   const o=useDeliveryLifecycle(),s=useSharedDelivery(),[copy,setCopy]=useState('')
+  useEffect(()=>{if(copy!=='계좌번호를 복사했어요.')return;const timer=setTimeout(()=>setCopy(''),2000);return()=>clearTimeout(timer)},[copy])
   if(!o.state||!o.post)return <Page title="송금 현황" pop={pop}><p>모임을 선택해 주세요.</p></Page>
   if(o.state.phase==='menu'&&!o.orderPeople.some(p=>p.transfer_review_pending||p.refund_due>0))return <Page title="송금 현황" pop={pop}><p>메뉴·계좌·수령 장소를 정하고 주문 내용을 확정하면 송금할 수 있어요.</p><ActionButton onClick={()=>push('menu')}>메뉴와 주문 확정으로</ActionButton></Page>
   if(s.isVirtual?.(o.post.owner_id)&&o.state.phase!=='cancelled'&&o.members.some(m=>m.user_id===o.uid))return <Page title="가상 리더의 주문" pop={pop} footer={o.state.phase==='payment'?<ActionButton disabled={s.busy} onClick={()=>void s.act('virtual-order',o.post!.id).then(ok=>{if(ok)push('delivery')})}>주문 진행</ActionButton>:<ActionButton onClick={()=>push(o.state!.phase==='arrived'?'receipt':o.state!.phase==='completed'?'complete':'delivery')}>진행 상태 확인</ActionButton>}>

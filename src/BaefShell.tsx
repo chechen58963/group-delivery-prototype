@@ -1,3 +1,4 @@
+import ActionFeedback from './ActionFeedback'
 import {WalkingRecordingStatus} from './WalkingRewards'
 import CancelOrderControl from './CancelOrderControl'
 import {timingSummary,plannedFromNote,timeLabel} from './orderTiming'
@@ -82,7 +83,7 @@ export default function BaefShell(){
   const lifecycle=useDeliveryLifecycle()
   const important=s.notifications.filter(n=>!n.read&&needsAttention(n.target,n.text,{uid:s.session?.user.id,post:s.rawPosts.find(p=>p.id===n.sharedPostId),members:s.members.filter(m=>m.post_id===n.sharedPostId),state:lifecycle.states.find(p=>p.post_id===n.sharedPostId),people:lifecycle.people.filter(p=>p.post_id===n.sharedPostId)})).sort((a,b)=>b.time-a.time)
   const [dismissed,setDismissed]=useState<number|null>(null)
-  const attention=important.find(n=>n.id!==dismissed)
+  const attention=orderScreens.has(screen)?important.find(n=>n.id!==dismissed&&n.sharedPostId===s.selectedRaw?.id):undefined
   const count=d.alerts.filter(n=>!n.read_at).length+s.notifications.filter(n=>!n.read).length
   const ongoingChat=screen==='chat'&&s.chatReadable
   const requestedOrder=navigation.restore.current??navigation.route.order
@@ -104,10 +105,10 @@ export default function BaefShell(){
     <div className={`bv-main live-main ${ongoingChat?'chat-mode':''} live-screen-${screen}`} style={height?{height:`${height}px`}:undefined}>
     {!ongoingChat&&<header className={`bv-app-header live-app-header ${!showNav?'live-inner-header':''}`}><button className="bv-wordmark bv-mobile-logo" onClick={()=>push('main')} aria-label="배프 홈">배프<span>.</span></button><span className="bv-desktop-greeting">{s.me?.nickname?`${s.me.nickname}님, 오늘은 뭘 드실래요?`:'가까운 배프와 가볍게 함께해요'}</span><div className="live-header-actions"><button className="live-account-control" disabled={s.initializing} onClick={()=>s.session?push('profile'):s.setLoginOpen(true)}>{s.initializing?'확인 중…':s.session?s.me?.nickname??'내 계정':'로그인'}</button><button className="bv-icon bv-notification-button" aria-label={`알림 ${count}개`} onClick={()=>setAlerts(true)}><Icon name="bell"/>{count>0&&<i>{Math.min(count,99)}</i>}</button>{s.session&&<button className="bv-header-avatar" aria-label="내 정보 보기" onClick={()=>push('profile')}><span className="bv-avatar small">{s.me?.nickname.slice(0,1)??'배'}</span></button>}</div></header>}
     {s.error&&!s.loginOpen&&<div className="baef-banner error" role="alert"><span>{s.error}</span><button aria-label="오류 안내 닫기" onClick={()=>s.setError('')}>×</button></div>}
-    {(s.notice||d.toast)&&<div className="baef-toast" role="status"><Icon name="check" size={19}/><span>{d.toast||s.notice}</span><button aria-label="안내 닫기" onClick={()=>{d.setToast('');s.setNotice('')}}><Icon name="close" size={17}/></button></div>}
-    {attention&&!alerts&&!s.loginOpen&&<aside className="baef-action-alert" aria-label="확인할 주문 알림"><Icon name="bell" size={21}/><button onClick={()=>{s.readNotification(attention.id);s.selectPost(attention.sharedPostId?s.numberFor(attention.sharedPostId):attention.postId);push(attention.target as Screen)}}><b>{attention.restaurant}</b><small>{attention.text}</small><span className="baef-alert-link">내용 확인하기 →</span></button><button aria-label="이 알림 읽음 처리" onClick={()=>{s.readNotification(attention.id);setDismissed(attention.id)}}><Icon name="close" size={16}/></button></aside>}
+    <ActionFeedback message={d.toast||s.notice} close={()=>{d.setToast('');s.setNotice('')}}/>
     <WalkingRecordingStatus/>
     <main id="baef-content" className={`baef-screen bv-content live-content ${showNav?'has-bottom-nav':''}`}>
+    {attention&&!alerts&&!s.loginOpen&&<aside className="baef-inline-order-notice" aria-label="확인할 주문 알림"><Icon name="bell" size={21}/><button onClick={()=>{s.readNotification(attention.id);s.selectPost(attention.sharedPostId?s.numberFor(attention.sharedPostId):attention.postId);push(attention.target as Screen)}}><b>{attention.restaurant}</b><small>{attention.text}</small><span className="baef-alert-link">내용 확인하기 →</span></button><button aria-label="화면 안내 접기" onClick={()=>setDismissed(attention.id)}><Icon name="close" size={16}/></button></aside>}
       {orderGate?<div className="baef-empty">{s.initializing||waitingForOrder||orderAccessBlocked?<p role="status">모임을 불러오는 중이에요.</p>:<><Icon name="bag" size={34}/><h1>로그인하고 모임을 확인해 주세요</h1><p>참가한 모임의 주문 진행과 대화를 이어볼 수 있어요.</p><button className="baef-button" onClick={()=>s.setLoginOpen(true)}>로그인</button><button className="baef-button secondary" onClick={()=>push('main')}>모집 둘러보기</button></>}</div>:<>
       {['menu','payment','delivery','receipt','complete','rating'].includes(screen)&&<OrderProgress push={push}/>}
       {(screen==='main'||screen==='category'||screen==='list')&&<LiveExplore push={push} compact={screen==='list'}/>}
