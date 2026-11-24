@@ -11,4 +11,11 @@ export function walkProgress(total:number){
 export const WALK_COMPLETION_POINTS=20
 export const WALK_METERS_PER_POINT=5
 export const WALK_DAILY_LIMIT=200
-export const orderRewardEstimate=(meters:number,today:number)=>Math.min(20+Math.floor(Math.max(0,Math.min(400,meters))/5),Math.max(0,200-today))
+export const LEADER_COMPLETION_POINTS=50
+export function orderRewardBreakdown(meters:number,today:number,leader=false){
+  const remaining=Math.max(0,WALK_DAILY_LIMIT-today)
+  const base=Math.min(WALK_COMPLETION_POINTS+Math.floor(walkEstimate(meters)/WALK_METERS_PER_POINT),remaining)
+  const bonus=leader?Math.min(LEADER_COMPLETION_POINTS,remaining-base):0
+  return {base,bonus,total:base+bonus}
+}
+export const orderRewardEstimate=(meters:number,today:number,leader=false)=>orderRewardBreakdown(meters,today,leader).total

@@ -150,4 +150,55 @@ await sql("select gd_order_action('late-report',$1,$2::jsonb)",[timed,JSON.strin
 assert.equal((await sql('select late_reported from gd_order_people where post_id=$1 and user_id=$2',[timed,other]))[0].late_reported,true)
 await admin();await db.exec(readFileSync(new URL('../supabase/APPLY-ORDER-TIMING.sql',import.meta.url),'utf8'))
 console.log('PASS: no pickup-time requirement; ETA is leader-only; late report needs acknowledgement plus grace; migration reruns')
+// Leader bonuses use the existing receipt transaction and wallet, without rewriting old earnings.
+await admin()
+const historical=JSON.stringify(await sql('select post_id,user_id,meters,points,awarded_at,rule_version from gd_walk_rewards order by post_id,user_id'))
+const leaderMigration=readFileSync(new URL('../supabase/APPLY-LEADER-REWARDS.sql',import.meta.url),'utf8')
+await db.exec(leaderMigration)
+assert.equal(JSON.stringify(await sql('select post_id,user_id,meters,points,awarded_at,rule_version from gd_walk_rewards order by post_id,user_id')),historical)
+await db.exec("update gd_walk_rewards set awarded_at=now()-interval '2 days'")
+await auth(uid);await sql("select gd_order_action('receive',$1,'{\"walk_meters\":0,\"walk_source\":\"gps\"}')",[timed])
+assert.equal((await sql('select count(*)::int n from gd_walk_rewards where post_id=$1',[timed]))[0].n,0)
+await auth(other);await sql("select gd_order_action('receive',$1,'{\"walk_meters\":50,\"walk_source\":\"gps\"}')",[timed])
+await auth(uid)
+let leaderReward=(await sql('select points,leader_bonus from gd_walk_rewards where post_id=$1 and user_id=$2',[timed,uid]))[0]
+assert.deepEqual(leaderReward,{points:70,leader_bonus:50})
+await auth(other);assert.deepEqual((await sql('select points,leader_bonus from gd_walk_rewards where post_id=$1',[timed]))[0],{points:30,leader_bonus:0})
+await admin();await db.query("update gd_order_states set phase='completed' where post_id=$1",[timed])
+assert.equal((await sql('select count(*)::int n from gd_walk_rewards where post_id=$1',[timed]))[0].n,2)
+const afterReward=JSON.stringify(await sql('select * from gd_walk_rewards order by post_id,user_id'))
+await db.exec(leaderMigration);assert.equal(JSON.stringify(await sql('select * from gd_walk_rewards order by post_id,user_id')),afterReward)
+console.log('PASS: leader earns 50P only after all receipts; participant amount unchanged; no historical backfill or duplicate bonus')
+
+async function rewardFixture(meters,virtual=false,cancel=false){
+ await auth(uid)
+ const id=(await sql("select gd_action('create',null,$1::jsonb) id",[JSON.stringify({restaurant:'맘스터치 충남대점',category:'버거',max_members:2,deadline:new Date(Date.now()+3600000).toISOString(),delivery_fee:3000,min_order:12000,meeting:'정문'})]))[0].id
+ if(virtual){
+  await admin();await db.query("update gd_virtual_rooms set next_join_at=now()-interval '1 second' where post_id=$1",[id]);await auth(uid);await sql('select gd_virtual_tick()')
+  const actor=(await sql("select user_id from gd_participations where post_id=$1 and status='pending'",[id]))[0].user_id
+  await sql("select gd_action('accept',$1,$2::jsonb)",[id,JSON.stringify({user_id:actor})])
+ }else{
+  await sql("select gd_virtual_control($1,'disable')",[id])
+  await auth(other);await sql("select gd_action('apply',$1)",[id]);await auth(uid);await sql("select gd_action('accept',$1,$2::jsonb)",[id,JSON.stringify({user_id:other})])
+ }
+ await sql("select gd_order_action('initialize',$1)",[id]);await admin()
+ await db.query('update gd_order_people set received_at=now() where post_id=$1',[id])
+ await db.query("insert into gd_walk_plans(post_id,user_id,meters,source) values($1,$2,$3,'gps') on conflict(post_id,user_id) do update set meters=excluded.meters",[id,uid,meters])
+ await db.query('update gd_order_states set phase=$2 where post_id=$1',[id,cancel?'cancelled':'completed'])
+ await db.query("update gd_participations set active=false where post_id=$1",[id])
+ return id
+}
+await admin();await db.exec("update gd_walk_rewards set awarded_at=now()-interval '2 days'")
+const full=await rewardFixture(400)
+assert.deepEqual((await sql('select points,leader_bonus from gd_walk_rewards where post_id=$1 and user_id=$2',[full,uid]))[0],{points:150,leader_bonus:50})
+const capped=await rewardFixture(0)
+assert.deepEqual((await sql('select points,leader_bonus from gd_walk_rewards where post_id=$1 and user_id=$2',[capped,uid]))[0],{points:50,leader_bonus:30})
+await auth(uid);assert.equal(Number((await sql('select today_earned from gd_point_wallet()'))[0].today_earned),200)
+await admin();await db.exec("update gd_walk_rewards set awarded_at=now()-interval '2 days'")
+const bot=await rewardFixture(0,true)
+assert.equal((await sql('select leader_bonus from gd_walk_rewards where post_id=$1 and user_id=$2',[bot,uid]))[0].leader_bonus,0)
+const cancelled=await rewardFixture(0,false,true)
+assert.equal((await sql('select count(*)::int n from gd_walk_rewards where post_id=$1',[cancelled]))[0].n,0)
+await auth(uid);await assert.rejects(db.query('update gd_walk_rewards set leader_bonus=50'),/permission denied/)
+console.log('PASS: daily 200P cap includes the leader bonus; virtual-only and cancelled rooms give no leader bonus; client cannot alter points')
 await db.close()

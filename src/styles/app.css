@@ -435,5 +435,9 @@
 .baef-inline-order-notice>button:first-of-type{flex:1;text-align:left;min-width:0}
 .baef-inline-order-notice small,.baef-inline-order-notice .baef-alert-link{display:block;font-size:12px;line-height:1.7}
 .baef-inline-order-notice>button:last-child{flex-shrink:0;min-width:32px;min-height:32px}
+.baef-leader-benefit{margin:16px 0;padding:14px 16px;border:1px solid var(--bv-line);border-radius:10px;background:var(--bv-soft)}
+.baef-leader-benefit>b{font-size:14px;color:var(--bv-green)}
+.baef-leader-benefit>p{font-size:12px;line-height:1.8;color:var(--bv-muted);margin-top:5px}
+.baef-leader-breakdown{display:block;font-size:12px;line-height:1.8;color:var(--bv-green);margin-top:6px}
 @media(max-width:1000px){.baef-live .baef-action-feedback{left:calc(50% + 90px)}}
 @media(max-width:720px){.baef-live .baef-action-feedback{left:50%;top:72px;font-size:12px}.baef-live .baef-inline-order-notice{margin:10px 16px 0}}
