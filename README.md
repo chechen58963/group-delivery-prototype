@@ -25,4 +25,4 @@ node --test tests/*.test.mjs
 - `src/ui/`: 공통 아이콘과 대화상자
 - `src/styles/`: 현재 디자인의 기본 스타일과 앱 배치
 
-회원·주문·후기·포인트는 기존 Supabase 프로젝트를 사용합니다. UI 정리에 따른 DB 업데이트는 필요하지 않습니다.
+회원·주문·후기·포인트는 기존 Supabase 프로젝트를 사용합니다. 모집 마감과 주문 예정 시각을 동기화하려면 주문 시간 업데이트 이후 `supabase/APPLY-RECRUITMENT-SCHEDULE.sql`을 한 번 적용합니다.

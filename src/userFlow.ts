@@ -19,6 +19,16 @@ export function originName(point:{lat:number;lng:number}|null|undefined) {
   const nearest=[...pickupPlaces].sort((a,b)=>metersBetween(point,a)-metersBetween(point,b))[0]
   return metersBetween(point,nearest)<=200?`${nearest.name} 주변`:'지도에서 선택한 출발점'
 }
+
+export function recruitmentPickupLabel(post: { meeting?: string; pickup_lat?: number | null; pickup_lng?: number | null }) {
+  const label = post.meeting?.trim()
+  if (label && label !== '지도에 표시된 공개 수령점' && label !== '지도에 지정한 공개 수령점') return label
+  if (post.pickup_lat == null || post.pickup_lng == null) return label || '참가 후 장소 조율'
+  const point = { lat: post.pickup_lat, lng: post.pickup_lng }
+  const place = pickupPlaces.find(p => metersBetween(point, p) <= 50)
+  if (!place) return label || '지도에 표시된 공개 수령점'
+  return place.lat === point.lat && place.lng === point.lng ? place.name : `${place.name} 주변`
+}
 export function pickupCandidates(points:{lat:number;lng:number}[]) {
   return pickupPlaces.map(place=>({...place,distances:points.map(p=>Math.ceil(metersBetween(p,place)))}))
     .filter(p=>points.length>0&&p.distances.every(d=>d<=400))

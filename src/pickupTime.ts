@@ -2,6 +2,15 @@ export function pickupDay(date:Date){
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
 }
 
+export function recruitmentDeadline(planned: Date, now = Date.now()) {
+  const minute = 60_000
+  const orderMinute = Math.floor(planned.getTime() / minute)
+  const firstFutureMinute = Math.floor(now / minute) + 1
+  if (!Number.isFinite(orderMinute) || firstFutureMinute >= orderMinute) return ''
+  const cutoff = new Date(Math.max(orderMinute - 5, firstFutureMinute) * minute)
+  return `${pickupDay(cutoff)}T${String(cutoff.getHours()).padStart(2, '0')}:${String(cutoff.getMinutes()).padStart(2, '0')}`
+}
+
 export function pickupTimeFields(value:string|null,suggestedDate?:string|null,now=new Date()){
   const saved=value?new Date(value):null
   const planned=suggestedDate?new Date(suggestedDate):null

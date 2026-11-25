@@ -20,7 +20,7 @@ import { OrderRouteSteps } from './OrderGuide'
 import { ButtonHint, SaveFeedback, relativeDateTime, useSaveFeedback } from './uiFeedback'
 import {originName,pickupPlaces} from './userFlow'
 import {validPublicPickup} from './publicPickup'
-import { pickupDay, pickupTimeFields } from './pickupTime'
+import { pickupDay, pickupTimeFields, recruitmentDeadline } from './pickupTime'
 import { deliveryWindow, estimatedBill, initialDeliverySlot } from './discoveryHelpers'
 import './discovery-fixes.css'
 import './location-choice.css'
@@ -84,9 +84,16 @@ function StoreOrderSheet({store,close,push,targetPostId}:{store:MenuStore;close:
   const d=useMenuDiscovery(),s=useSharedDelivery(),o=useDeliveryLifecycle()
   const draftKey=`${s.session?.user.id??'guest'}:${displayStoreName(store.store_name)}:${targetPostId??'new'}`
   const [draft,setDraft]=useState<StoreDraft>(()=>{
-    const saved=d.storeDrafts.current.get(draftKey);if(saved)return saved
+    const saved=d.storeDrafts.current.get(draftKey)
+    if (saved) {
+      const planned = deliveryWindow(saved.deliveryDay, saved.deliveryClock)?.start
+      if (planned && new Date(saved.deadline).getTime() >= planned.getTime()) {
+        return { ...saved, deadline: recruitmentDeadline(planned) }
+      }
+      return saved
+    }
     const slot=initialDeliverySlot(d.day,d.hour),cutoff=deliveryWindow(slot.deliveryDay,slot.deliveryClock)!.start
-    return {quantities:{},goal:String(store.goal_amount),maxMembers:2,fee:'3000',meeting:areaName(d.area),note:'',...slot,deadline:new Date(cutoff.getTime()-cutoff.getTimezoneOffset()*60000).toISOString().slice(0,16),publicPoint:null}
+    return {quantities:{},goal:String(store.goal_amount),maxMembers:2,fee:'3000',meeting:areaName(d.area),note:'',...slot,deadline:recruitmentDeadline(cutoff),publicPoint:null}
   })
   const {quantities,goal,maxMembers,fee,meeting,note,deliveryDay,deliveryClock,deadline,publicPoint}=draft
   const [pending,setPending]=useState(false),[problem,setProblem]=useState(''),[mapOpen,setMapOpen]=useState(false),[step,setStep]=useState(0)
@@ -98,7 +105,10 @@ function StoreOrderSheet({store,close,push,targetPostId}:{store:MenuStore;close:
   function update<K extends keyof StoreDraft>(key:K,value:StoreDraft[K]){setDraft(v=>({...v,[key]:value}));setProblem('')}
   function updateDelivery(key:'deliveryDay'|'deliveryClock',value:string){
     setDraft(previous=>{const next={...previous,[key]:value},prior=deliveryWindow(previous.deliveryDay,previous.deliveryClock),chosen=deliveryWindow(next.deliveryDay,next.deliveryClock),cutoff=new Date(previous.deadline)
-      if(chosen&&(!Number.isFinite(cutoff.getTime())||cutoff.getTime()>chosen.start.getTime()||prior&&cutoff.getTime()===prior.start.getTime()))next.deadline=new Date(chosen.start.getTime()-chosen.start.getTimezoneOffset()*60000).toISOString().slice(0,16)
+      if (chosen && (!Number.isFinite(cutoff.getTime()) || cutoff.getTime() <= Date.now()
+        || cutoff >= chosen.start || (prior && previous.deadline === recruitmentDeadline(prior.start)))) {
+        next.deadline = recruitmentDeadline(chosen.start)
+      }
       return next});setProblem('')
   }
   const sum=menuSubtotal(store.menus,quantities)
@@ -129,7 +139,12 @@ function StoreOrderSheet({store,close,push,targetPostId}:{store:MenuStore;close:
     if(postId){const room=s.rawPosts.find(p=>p.id===postId);if(!room||room.status!=='open'||new Date(room.deadline).getTime()<=Date.now()){setProblem('이 모집은 마감됐어요. 다른 모집을 선택해 주세요.');setPending(false);return}}
     if(!postId&&(!window||window.start.getTime()<=Date.now())){setProblem('앞으로의 주문 날짜와 시간을 골라 주세요.');setPending(false);return}
     if(!postId&&(!Number.isInteger(target)||target<=0||target>1000000)){setProblem('목표 주문금액을 확인해 주세요.');setPending(false);return}
-    if(!postId&&(!Number.isFinite(cutoff.getTime())||cutoff.getTime()<=Date.now()||cutoff.getTime()>window!.start.getTime()||cutoff.getTime()>Date.now()+7*86400000||!Number.isInteger(deliveryFee)||deliveryFee<0||deliveryFee>100000||!meeting.trim())){setProblem('모집 마감은 현재부터 주문 예정 시간 사이로 정하고, 배달비와 수령 장소도 확인해 주세요.');setPending(false);return}
+    if (!postId && (!Number.isFinite(cutoff.getTime()) || cutoff.getTime() <= Date.now() || cutoff >= window!.start || cutoff.getTime() > Date.now() + 7 * 86400000)) {
+      setProblem('모집 마감은 지금부터 7일 이내로, 주문 예정 시각보다 앞서게 정해 주세요.');setPending(false);return
+    }
+    if (!postId && (!Number.isInteger(deliveryFee) || deliveryFee < 0 || deliveryFee > 100000 || !meeting.trim())) {
+      setProblem('배달비와 수령 장소를 확인해 주세요.');setPending(false);return
+    }
     try{
       const result=await s.act(postId?'apply':'create',postId??null,postId?{}:{restaurant:store.store_name,category:store.menu_key==='coffee'?'카페':store.menu_key==='burger'?'버거':'패스트푸드',max_members:maxMembers,
         deadline:cutoff.toISOString(),delivery_fee:deliveryFee,min_order:target,meeting:meeting.trim(),...(publicPoint?{pickup_lat:publicPoint.lat,pickup_lng:publicPoint.lng}:{}),

@@ -48,7 +48,7 @@ mocks['./DeliveryLifecycle'] = { ...helpers, useDeliveryLifecycle: () => lifecyc
 const { LiveExplore, LiveOrders, LiveStorePicker } = load('LiveDiscovery.tsx')
 const { OrderMenu, OrderPayment, OrderReceipt } = load('OrderScreens.tsx')
 const {default:OrderSuggestionsPanel}=load('OrderSuggestionsPanel.tsx')
-const {suggestionDraft}=load('orderSuggestions.ts')
+const {suggestionDraft,findWishStores}=load('orderSuggestions.ts')
 const {default:OrderWishEditor}=load('OrderWishEditor.tsx')
 const {MenuAlerts}=load('MenuDiscovery.tsx')
 const render = component => renderToStaticMarkup(React.createElement(component, { push() {}, pop() {} }))
@@ -99,6 +99,47 @@ test('search includes catalogue menu names and category filters apply to real ro
   assert.match(render(LiveExplore), /모집 상세/)
   discovery.browseCategory = 'burger'
   assert.doesNotMatch(render(LiveExplore), /모집 상세/)
+})
+test('an empty room search opens matching with the exact catalogue store and item', () => {
+  reset()
+  shared.posts = []
+  const burgers = {store_name:'맘스터치 충남대점',menu_key:'burger',goal_amount:12000,menus:[
+    {id:1,name:'불싸이버거',price:5100},{id:7,name:'싸이버거',price:4900},
+  ]}
+  discovery.catalog.push(burgers)
+  discovery.search = '싸이버거'
+  assert.match(render(LiveExplore), /싸이버거 같이 먹을 사람 찾기/)
+  discovery.intent = {wish_store:discovery.catalog[0].store_name, wish_menu_id:1}
+  const choices = findWishStores(discovery.catalog, {query:discovery.search, category:'all'})
+  assert.deepEqual(choices.map(c => c.menus.map(m => m.id)), [[7]])
+  const editor = renderToStaticMarkup(React.createElement(OrderWishEditor, {choices,close(){}}))
+  assert.match(editor, /value="맘스터치 충남대점" selected=""/)
+  assert.match(editor, /value="7" selected="">싸이버거/)
+  assert.doesNotMatch(editor, /불싸이버거|이디야커피/)
+  shared.session = null
+  assert.match(render(LiveExplore), /싸이버거 같이 먹을 사람 찾기/)
+  discovery.search = '없는 메뉴'
+  assert.match(render(LiveExplore), /다른 메뉴로 배프 찾기/)
+})
+test('ambiguous searches ask for a matching store and respect the active category', () => {
+  reset()
+  discovery.catalog.push({...discovery.catalog[0],store_name:'빽다방 충남대점'})
+  const choices = findWishStores(discovery.catalog, {query:' 카페 아메리카노 ',category:'coffee'})
+  const html = renderToStaticMarkup(React.createElement(OrderWishEditor, {choices,close(){}}))
+  assert.match(html, /가게를 선택해 주세요/)
+  assert.match(html, /빽다방/)
+  assert.deepEqual(findWishStores(discovery.catalog, {query:'아메리카노',category:'burger'}), [])
+})
+test('recruitment cards show the pickup landmark without the visitor sharing a location', () => {
+  reset()
+  discovery.matchLocation = null
+  assert.match(render(LiveExplore), /수령 · 정문 벤치/)
+  shared.session = null
+  shared.rawPosts[0].meeting = '지도에 표시된 공개 수령점'
+  assert.match(render(LiveExplore), /수령 · 충남대 정문/)
+  shared.rawPosts[0].pickup_lat = null
+  shared.rawPosts[0].meeting = ''
+  assert.match(render(LiveExplore), /수령 · 참가 후 장소 조율/)
 })
 test('full rooms are not advertised as available to join', () => {
   reset()
@@ -249,6 +290,7 @@ test('a proposal seeds a reviewable two-person draft and rejects stale menu pric
  assert.equal(draft.maxMembers,2);assert.equal(draft.fee,'3000');assert.equal(draft.meeting,'충남대 정문')
  assert.equal(Object.values(draft.quantities).reduce((a,b)=>a+b,0),1)
  assert.deepEqual(draft.publicPoint,{lat:36.3621,lng:127.3444})
+ assert.ok(Date.parse(draft.deadline)>Date.now() && Date.parse(draft.deadline)<Date.parse(offer.starts_at))
  offer.my_item.price=1;assert.equal(suggestionDraft(offer,discovery.catalog),null)
 })
 

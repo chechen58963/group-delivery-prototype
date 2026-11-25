@@ -201,4 +201,52 @@ const cancelled=await rewardFixture(0,false,true)
 assert.equal((await sql('select count(*)::int n from gd_walk_rewards where post_id=$1',[cancelled]))[0].n,0)
 await auth(uid);await assert.rejects(db.query('update gd_walk_rewards set leader_bonus=50'),/permission denied/)
 console.log('PASS: daily 200P cap includes the leader bonus; virtual-only and cancelled rooms give no leader bonus; client cannot alter points')
+
+await admin()
+const scheduleOwner = '44444444-4444-4444-8444-444444444444'
+await db.query('insert into auth.users(id,email_confirmed_at) values($1,now())',[scheduleOwner])
+const originalPlan = new Date(Math.floor(Date.now()/60000)*60000 + 3600000).toISOString()
+const legacySchedule = {restaurant:'맘스터치 충남대점',category:'버거',max_members:2,delivery_fee:3000,min_order:12000,
+  meeting:'충남대 정문',deadline:new Date(Date.parse(originalPlan)+600000).toISOString(),
+  note:JSON.stringify({format:'campus-v1',starts_at:originalPlan})}
+await auth(scheduleOwner)
+const legacyRoom = (await sql("select gd_action('create',null,$1::jsonb) id",[JSON.stringify(legacySchedule)]))[0].id
+await admin()
+const scheduleMigration = readFileSync(new URL('../supabase/APPLY-RECRUITMENT-SCHEDULE.sql',import.meta.url),'utf8')
+await db.exec(scheduleMigration)
+const roomSchedule = async id => (await sql(`select p.deadline,gd_recruitment_plan(p.note) as planned,s.planned_order_at as detail
+  from gd_posts p left join gd_order_states s on s.post_id=p.id where p.id=$1`,[id]))[0]
+const corrected = await roomSchedule(legacyRoom)
+assert.equal(new Date(corrected.planned).toISOString(),originalPlan)
+assert.ok(corrected.deadline < corrected.planned)
+await db.exec(scheduleMigration)
+assert.deepEqual(await roomSchedule(legacyRoom),corrected)
+
+const demoRoom = (await sql(`select p.id,p.restaurant from gd_posts p join gd_virtual_rooms v on v.post_id=p.id
+  where v.virtual_leader and p.status='open' and not exists(select 1 from gd_participations a join gd_testers t on t.user_id=a.user_id
+  where a.post_id=p.id and not t.is_virtual) limit 1`))[0]
+const assertDemoSchedule = async id => {
+  const schedule = await roomSchedule(id)
+  assert.equal(Date.parse(schedule.planned)-Date.parse(schedule.deadline),10*60000)
+  assert.equal(Date.parse(schedule.planned),Date.parse(schedule.detail))
+}
+await db.query("update gd_posts set deadline=now()+interval '1 minute' where id=$1",[demoRoom.id])
+await db.query("update gd_order_states set planned_order_at=now()-interval '1 day' where post_id=$1",[demoRoom.id])
+await db.exec('select gd_virtual_seed()')
+await assertDemoSchedule(demoRoom.id)
+await db.query("update gd_posts set status='closed' where id=$1",[demoRoom.id])
+await db.exec('select gd_virtual_seed()')
+const replacement = (await sql("select id from gd_posts where restaurant=$1 and status='open' and id<>$2 order by created_at desc limit 1",[demoRoom.restaurant,demoRoom.id]))[0]
+await assertDemoSchedule(replacement.id)
+await auth(scheduleOwner)
+const earlier = new Date(Date.parse(originalPlan)-1200000).toISOString()
+await sql("select gd_order_action('order-plan',$1,$2::jsonb)",[legacyRoom,JSON.stringify({start:earlier,end:originalPlan})])
+await admin()
+const edited = await roomSchedule(legacyRoom)
+assert.equal(new Date(edited.detail).toISOString(),earlier)
+assert.equal(Date.parse(edited.planned)-Date.parse(edited.deadline),60000)
+await auth(scheduleOwner)
+await sql("select gd_action('cancel',$1)",[legacyRoom])
+await assert.rejects(db.query("select gd_action('create',null,$1::jsonb)",[JSON.stringify(legacySchedule)]),/마감은 주문 예정 시각보다 앞서야/)
+console.log('PASS: existing, new, renewed and rescheduled rooms close before the planned order; repeat migration is stable')
 await db.close()

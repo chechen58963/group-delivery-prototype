@@ -4,7 +4,15 @@ import {readFileSync} from 'node:fs'
 import ts from 'typescript'
 const m={exports:{}}
 new Function('module','exports',ts.transpileModule(readFileSync(new URL('../src/orderTiming.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(m,m.exports)
-const {readyAt,timingSummary,canReportLate,pickupGraceDeadline,etaExpired}=m.exports
+const {readyAt,timingSummary,canReportLate,pickupGraceDeadline,etaExpired,recruitmentPlan}=m.exports
+test('open rooms use the renewed plan and omit contradictory legacy times', () => {
+ const room = {status:'open',deadline:'2026-11-24T11:53:00Z',note:JSON.stringify({starts_at:'2026-11-24T12:03:00Z'})}
+ assert.equal(recruitmentPlan(room,'2026-11-24T11:43:00Z'),'2026-11-24T12:03:00Z')
+ room.note = JSON.stringify({starts_at:'2026-11-24T11:43:00Z'})
+ assert.equal(recruitmentPlan(room),null)
+ assert.equal(recruitmentPlan({...room,note:'기존 모집'}),null)
+ assert.equal(recruitmentPlan({...room,status:'closed'},'2026-11-24T12:05:00Z'),'2026-11-24T12:05:00Z')
+})
 test('planned orders and delivery estimates are never pickup readiness',()=>{
  const s={phase:'delivering',planned_order_at:'2026-11-18T09:00:00Z',delivery_eta_start:'2026-11-18T10:00:00Z',delivery_eta_end:'2026-11-18T10:15:00Z'}
  assert.equal(readyAt(s),null);assert.match(timingSummary(s,Date.parse('2026-11-18T10:00:00Z')),/도착 예상/)

@@ -2,7 +2,9 @@ import {platformCheckout} from './platformCheckout'
 import {displayStoreName} from './storeNames'
 import OrderSuggestions from './OrderSuggestionsPanel'
 import OrderWishEditor from './OrderWishEditor'
-import {plannedFromNote,timeLabel} from './orderTiming'
+import {recruitmentPlan,timeLabel} from './orderTiming'
+import {findWishStores, normalizeMenuSearch, type WishSearch} from './orderSuggestions'
+import {recruitmentPickupLabel} from './userFlow'
 import CancelOrderControl from './CancelOrderControl'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSharedDelivery } from './SharedDelivery'
@@ -62,11 +64,11 @@ function useSavedRooms() {
 }
 export function LiveExplore({ push, compact = false }: { push: Navigate; compact?: boolean }) {
   const s = useSharedDelivery(), d = useMenuDiscovery(), o = useDeliveryLifecycle()
-  const [store, setStore] = useState<MenuStore | null>(null), [preferences, setPreferences] = useState(false), [savedOnly, setSavedOnly] = useState(false)
+  const [store, setStore] = useState<MenuStore | null>(null), [preferences, setPreferences] = useState<WishSearch | null>(null), [savedOnly, setSavedOnly] = useState(false)
   const saved = useSavedRooms(), scroll = useRef<HTMLDivElement>(null), restored = useRef(false), previousUser = useRef(s.session?.user.id)
   useEffect(() => {
     const uid = s.session?.user.id
-    if (previousUser.current && previousUser.current !== uid) { setStore(null); setPreferences(false); setSavedOnly(false); restored.current = false }
+    if (previousUser.current && previousUser.current !== uid) { setStore(null); setPreferences(null); setSavedOnly(false); restored.current = false }
     previousUser.current = uid
   }, [s.session?.user.id])
   useEffect(() => {
@@ -78,9 +80,24 @@ export function LiveExplore({ push, compact = false }: { push: Navigate; compact
   const pointFor = (id?: string) => { const p = s.rawPosts.find(v => v.id === id); return p?.pickup_lat != null && p.pickup_lng != null ? { lat: p.pickup_lat, lng: p.pickup_lng } : null }
   const distanceFor = (id?: string) => { const p = pointFor(id); return p && d.matchLocation ? distanceM(p, d.matchLocation) : Infinity }
   const nearby = d.browseRange === 'near' && !!d.matchLocation
-  const query = d.search.trim().toLowerCase()
-  const matchesStore = (c: MenuStore) => (d.browseCategory === 'all' || d.browseCategory === c.menu_key) && `${displayStoreName(c.store_name)} ${FOOD_CHOICES.find(f => f.id === c.menu_key)?.name} ${c.menus.map(m => m.name).join(' ')}`.toLowerCase().includes(query)
-  const groups = s.posts.filter(p => p.status === 'recruiting' && (s.rawPosts.find(r => r.id === p.sharedId)?.member_count ?? 0) < p.maxMembers && d.catalog.some(c => c.store_name === p.restaurant && (d.browseCategory === 'all' || c.menu_key === d.browseCategory)) && `${displayStoreName(p.restaurant)} ${p.category} ${p.description} ${d.catalog.find(c => c.store_name === p.restaurant)?.menus.map(m => m.name).join(' ')}`.toLowerCase().includes(query) && (!nearby || distanceFor(p.sharedId) <= 400) && (!savedOnly || saved.ids.includes(p.sharedId ?? '')))
+  const query = d.search.trim()
+  const term = normalizeMenuSearch(query)
+  const containsTerm = (value: string) => normalizeMenuSearch(value).includes(term)
+  const openPreferences = (term = '') => setPreferences({ query: term, category: d.browseCategory })
+  const wishStores = findWishStores(d.catalog, { query, category: d.browseCategory })
+  const categoryStores = d.catalog.filter(c => d.browseCategory === 'all' || d.browseCategory === c.menu_key)
+  const matchingStores = categoryStores.filter(c => {
+    const brand = displayStoreName(c.store_name)
+    return containsTerm(brand) || containsTerm(FOOD_CHOICES.find(f => f.id === c.menu_key)?.name ?? '')
+      || c.menus.some(menu => containsTerm(brand + menu.name))
+  })
+  const groups = s.posts.filter(post => {
+    const raw = s.rawPosts.find(r => r.id === post.sharedId)
+    return raw && post.status === 'recruiting' && raw.member_count < post.maxMembers
+      && categoryStores.some(c => c.store_name === post.restaurant)
+      && (matchingStores.some(c => c.store_name === post.restaurant) || containsTerm(`${post.category} ${post.description}`))
+      && (!nearby || distanceFor(post.sharedId) <= 400) && (!savedOnly || saved.ids.includes(raw.id))
+  })
   if (d.sort === 'near' && d.matchLocation) groups.sort((a,b) => compareKnownDistance(distanceFor(a.sharedId),distanceFor(b.sharedId)))
   const pins: MapPin[] = groups.flatMap(p => { const point = pointFor(p.sharedId); return point ? [{ id: String(p.id), point: { x: 0, y: 0 }, coordinates: point, label: displayStoreName(p.restaurant), symbol: '모집', kind: 'post' as const }] : [] })
   if (d.matchLocation) pins.push({ id: 'me', point: { x: 0, y: 0 }, coordinates: d.matchLocation, label: '내 출발 위치', symbol: '나', kind: 'me' })
@@ -91,32 +108,64 @@ export function LiveExplore({ push, compact = false }: { push: Navigate; compact
     <div className="live-location"><LocationChoice /></div>
     {!compact ? <div className="bv-home-intro"><div><p className="bv-eyebrow">오늘도 가볍게, 함께</p><h1>한 잔만 주문해도,<br />함께라면 가볍게.</h1><p className="bv-home-sub">가까운 배프와 주문하고 배달비를 나눠요.</p></div><div className="bv-intro-art" aria-hidden="true"><div className="bv-art-circle" /><img src="/images/menus/ediya-1-ice.webp" alt="" /><img src="/images/menus/subway-1.webp" alt="" /><span>함께라서<br /><b>가벼운 한 끼</b></span></div></div> : <h1 className="bv-screen-heading">함께 주문할 배프 찾기</h1>}
     {s.active && activeTx && next && <button className="bv-active-strip" onClick={() => { s.selectPost(activeTx.post.id); push(next.route) }}><span className="bv-active-dot" /><span><b>{next.title}</b><small>{displayStoreName(activeTx.post.restaurant)} · {next.action}</small></span><Icon name="arrow" size={20} /></button>}
-    {!compact&&<OrderSuggestions configure={()=>setPreferences(true)} push={push}/>}
+    {!compact&&<OrderSuggestions configure={()=>openPreferences()} push={push}/>}
     <OrderJourney/><div className="bv-search"><Icon name="search" size={21} /><input type="search" enterKeyHint="search" placeholder="가게나 먹고 싶은 메뉴 검색" aria-label="가게 또는 메뉴 검색" value={d.search} onChange={e => { d.setSearch(e.target.value); resetScroll() }} />{d.search && <button aria-label="검색어 지우기" onClick={() => { d.setSearch(''); resetScroll() }}><Icon name="close" size={18} /></button>}</div>
     <LiveCategories value={d.browseCategory} change={v => { d.setBrowseCategory(v); resetScroll() }} />
     <div className="bv-browse-layout"><section className="live-browse-results"><div className="bv-list-heading"><div><h2>지금 함께 주문할 배프{s.ready && s.session && <em>{groups.length}</em>}</h2><p>{nearby ? '내 출발 위치에서 수령점까지 400m 이내예요.' : '먹고 싶은 메뉴가 있는 모집을 찾아보세요.'}</p></div><div className="bv-list-options"><select aria-label="모집 정렬" value={d.sort === 'near' && !d.matchLocation ? 'recent' : d.sort} onChange={e => d.setSort(e.target.value as 'recent' | 'near')}><option value="recent">최근순</option><option value="near" disabled={!d.matchLocation}>가까운순</option></select><button onClick={() => d.setBrowseView(d.browseView === 'map' ? 'list' : 'map')} aria-pressed={d.browseView === 'map'}><Icon name={d.browseView === 'map' ? 'receipt' : 'map'} size={18} />{d.browseView === 'map' ? '목록' : '지도'}</button></div></div>
       {(!s.session || s.allowed) && <div className="live-range"><button aria-pressed={!nearby} onClick={() => d.setBrowseRange('all')}>전체 모집</button><button aria-pressed={nearby} disabled={!d.matchLocation} onClick={() => d.setBrowseRange('near')}>수령점 400m 이내</button><button aria-pressed={savedOnly} onClick={() => setSavedOnly(v => !v)}><Icon name="heart" size={15} />저장한 모집</button></div>}
-      {loading ? <div className="bv-empty" role="status"><span className="bv-empty-icon"><Icon name="bag" size={30} /></span><h2>주변 주문을 불러오고 있어요</h2></div> : !s.session && !s.posts.length ? <div className="live-guest-invite"><Icon name="users" size={30} /><h2>지금 열린 모집이 없어요</h2><p>아래에서 가게를 고르고 첫 모집을 시작해 보세요.</p><button className="bv-button" onClick={() => s.setLoginOpen(true)}>로그인하고 시작하기<Icon name="arrow" size={18} /></button></div> : s.session && !s.allowed ? <div className="bv-empty"><h2>계정 인증을 확인해 주세요</h2><p>이메일 인증을 마친 뒤 다시 로그인해 주세요.</p></div> : <>
+      {loading ? <div className="bv-empty" role="status"><span className="bv-empty-icon"><Icon name="bag" size={30} /></span><h2>주변 주문을 불러오고 있어요</h2></div> : !s.session && !s.posts.length && !query ? <div className="live-guest-invite"><Icon name="users" size={30} /><h2>지금 열린 모집이 없어요</h2><p>아래에서 가게를 고르고 첫 모집을 시작해 보세요.</p><button className="bv-button" onClick={() => s.setLoginOpen(true)}>로그인하고 시작하기<Icon name="arrow" size={18} /></button></div> : s.session && !s.allowed ? <div className="bv-empty"><h2>계정 인증을 확인해 주세요</h2><p>이메일 인증을 마친 뒤 다시 로그인해 주세요.</p></div> : <>
         {d.browseView === 'map' && <><div className="baef-public-map live-public-map"><Suspense fallback={<p role="status">지도 불러오는 중…</p>}><LocationMap pins={pins} title="지도에서 모집글 찾기" center={d.matchLocation ?? undefined} onSelect={id => { if (id === 'me') return; s.selectPost(Number(id)); push('detail') }} /></Suspense></div><p className="baef-muted live-map-note">공개 수령점이 지정된 모집만 지도에 표시돼요.</p></>}
         <div className="bv-room-list">{groups.map(p => {
           const distance = distanceFor(p.sharedId), raw = s.rawPosts.find(v => v.id === p.sharedId)!, count = Math.min(p.currentMembers + 1, p.maxMembers), bill = estimatedBill(0, raw.delivery_fee, count), image = liveStorePhoto(p.restaurant), isSaved = saved.ids.includes(raw.id)
-          return <article className="bv-room-card" key={raw.id}><button className="bv-room-main" aria-label={`${displayStoreName(p.restaurant)} 모집 상세`} onClick={() => { s.selectPost(p.id); push('detail') }}><div className="bv-room-photo">{image ? <img src={image} alt={`${displayStoreName(p.restaurant)} 메뉴`} /> : <StoreBrand name={p.restaurant} fallback={<Icon name="bag" size={36} />} />}<span className="bv-room-photo-tag">{p.deadline} 마감</span></div><div className="bv-room-content"><div className="bv-room-store"><StoreBrand name={p.restaurant} /><span>{p.category}</span></div><h3>{displayStoreName(p.restaurant)}</h3>{plannedFromNote(raw.note)&&<p className="baef-room-plan">주문 예정 {timeLabel(plannedFromNote(raw.note))}</p>}{(raw.public_virtual_leader||s.isVirtual?.(raw.owner_id))&&<span className="baef-virtual-badge">가상 유저의 모집</span>}<div className="bv-room-route"><Icon name="walk" size={15} /><span>{Number.isFinite(distance) ? `수령점 약 ${Math.ceil(distance)}m` : '거리 확인 필요'}</span><span className="live-room-count">{p.currentMembers} / {p.maxMembers}명</span></div><div className="bv-room-cost"><span>내 예상 배달비 <b>{money(bill.share)}</b></span></div><span className="bv-saving">{money(bill.saving)} 절약 예상</span></div></button><button className={`bv-save ${isSaved ? 'saved' : ''}`} aria-label={isSaved ? `${displayStoreName(p.restaurant)} 모집 저장 해제` : `${displayStoreName(p.restaurant)} 모집 저장`} aria-pressed={isSaved} onClick={() => saved.toggle(raw.id)}><Icon name="heart" size={20} /></button></article>
+          const planned = recruitmentPlan(raw, o.states.find(state => state.post_id === raw.id)?.planned_order_at)
+          const pickupId = `room-pickup-${raw.id}`
+          return <article className="bv-room-card" key={raw.id}>
+            <button className="bv-room-main" aria-label={`${displayStoreName(p.restaurant)} 모집 상세`} aria-describedby={pickupId} onClick={() => { s.selectPost(p.id); push('detail') }}>
+              <div className="bv-room-photo">
+                {image ? <img src={image} alt={`${displayStoreName(p.restaurant)} 메뉴`} /> : <StoreBrand name={p.restaurant} fallback={<Icon name="bag" size={36} />} />}
+                <span className="bv-room-photo-tag">{p.deadline} 마감</span>
+              </div>
+              <div className="bv-room-content">
+                <div className="bv-room-store"><StoreBrand name={p.restaurant} /><span>{p.category}</span></div>
+                <h3>{displayStoreName(p.restaurant)}</h3>
+                {planned && <p className="baef-room-plan">주문 예정 {timeLabel(planned)}</p>}
+                {(raw.public_virtual_leader || s.isVirtual?.(raw.owner_id)) && <span className="baef-virtual-badge">가상 유저의 모집</span>}
+                <p id={pickupId} className="live-room-pickup"><Icon name="pin" size={16} /><span>수령 · {recruitmentPickupLabel(raw)}</span></p>
+                <div className="bv-room-route">
+                  {Number.isFinite(distance) && <><Icon name="walk" size={15} /><span>직선 약 {Math.ceil(distance)}m</span></>}
+                  <span className="live-room-count">{p.currentMembers} / {p.maxMembers}명</span>
+                </div>
+                <div className="bv-room-cost"><span>내 예상 배달비 <b>{money(bill.share)}</b></span></div>
+                <span className="bv-saving">{money(bill.saving)} 절약 예상</span>
+              </div>
+            </button>
+            <button className={`bv-save ${isSaved ? 'saved' : ''}`} aria-label={`${displayStoreName(p.restaurant)} 모집 저장${isSaved ? ' 해제' : ''}`} aria-pressed={isSaved} onClick={() => saved.toggle(raw.id)}><Icon name="heart" size={20} /></button>
+          </article>
         })}</div>
-        {!groups.length && <div className="live-no-groups"><Icon name={savedOnly ? 'heart' : 'users'} size={30} /><h3>{savedOnly ? '저장한 모집 중 열려 있는 주문이 없어요' : '조건에 맞는 모집이 아직 없어요'}</h3><p>먼저 메뉴를 골라 함께할 배프를 모아볼까요?</p>{nearby && <button className="baef-text-action" onClick={() => d.setBrowseRange('all')}>모든 거리의 모집 보기 →</button>}{(d.search || d.browseCategory !== 'all') && <button className="baef-text-action" onClick={() => { d.setSearch(''); d.setBrowseCategory('all') }}>검색 조건 지우기</button>}</div>}
+        {!groups.length && <div className="live-no-groups">
+          <Icon name={savedOnly ? 'heart' : 'users'} size={30} />
+          <h3>{savedOnly ? '저장한 모집 중 열려 있는 주문이 없어요' : '조건에 맞는 모집이 아직 없어요'}</h3>
+          {query ? <button className="bv-button live-search-match" onClick={() => openPreferences(wishStores.length ? d.search.trim() : '')}>
+            {wishStores.length ? `${d.search.trim()} 같이 먹을 사람 찾기` : '다른 메뉴로 배프 찾기'}
+          </button> : <p>먼저 메뉴를 골라 함께할 배프를 모아볼까요?</p>}
+          {nearby && <button className="baef-text-action" onClick={() => d.setBrowseRange('all')}>모든 거리의 모집 보기 →</button>}
+          {(query || d.browseCategory !== 'all') && <button className="baef-text-action" onClick={() => { d.setSearch(''); d.setBrowseCategory('all') }}>검색 조건 지우기</button>}
+        </div>}
       </>}
       <button className="bv-create-prompt" onClick={() => push('create')}><span><b>찾는 가게가 없나요?</b><small>내가 먼저 함께 주문할 배프를 모아보세요</small></span><Icon name="plus" size={23} /></button>
     </section><aside className="bv-how-it-works"><span className="bv-eyebrow">배프와 주문하기</span><h2>커피 한 잔도<br />부담 없이.</h2><ol>{[['먹고 싶은 메뉴 담기', '근처 모집에서 내 메뉴를 골라요'], ['배달비 나누기', '주문 금액을 리더에게 보내요'], ['가까운 곳에서 받기', '약속한 장소에서 내 음식을 받아요']].map(([title, text], i) => <li key={title}><i>{i + 1}</i><span><b>{title}</b><small>{text}</small></span></li>)}</ol><p>조금 걷고, 함께 아끼는<br />우리 동네 주문 습관.</p></aside></div>
-    <section className="live-store-preview"><div className="bv-section-title"><h2>가게부터 골라볼까요?</h2><button className="bv-text-button" onClick={() => push('create')}>모두 보기<Icon name="chevron" size={15} /></button></div><div className="live-brand-grid">{d.catalog.filter(matchesStore).map(c => <button key={c.store_name} onClick={() => setStore(c)}><StoreBrand name={c.store_name} fallback={<Icon name="bag" size={30} />} /><b>{displayStoreName(c.store_name)}</b><small>메뉴 {c.menus.length}개</small></button>)}</div>{!d.catalog.filter(matchesStore).length && <p className="baef-muted">검색 조건에 맞는 가게가 없어요.</p>}</section>
-    <div className="bv-preferences-link"><button onClick={() => setPreferences(true)}><Icon name="bell" size={21} /><span><b>{d.suggestionsReady?'내 메뉴·타협 범위 설정':d.intent ? '관심 메뉴 알림을 기다리고 있어요' : '아직 뭘 먹을지 고민된다면?'}</b><small>먹고 싶은 메뉴가 겹치면 알려드려요</small></span><Icon name="chevron" size={17} /></button></div>
+    <section className="live-store-preview"><div className="bv-section-title"><h2>가게부터 골라볼까요?</h2><button className="bv-text-button" onClick={() => push('create')}>모두 보기<Icon name="chevron" size={15} /></button></div><div className="live-brand-grid">{matchingStores.map(c => <button key={c.store_name} onClick={() => setStore(c)}><StoreBrand name={c.store_name} fallback={<Icon name="bag" size={30} />} /><b>{displayStoreName(c.store_name)}</b><small>메뉴 {c.menus.length}개</small></button>)}</div>{!matchingStores.length && <p className="baef-muted">검색 조건에 맞는 가게가 없어요.</p>}</section>
+    <div className="bv-preferences-link"><button onClick={() => openPreferences()}><Icon name="bell" size={21} /><span><b>{d.suggestionsReady?'내 메뉴·타협 범위 설정':d.intent ? '관심 메뉴 알림을 기다리고 있어요' : '아직 뭘 먹을지 고민된다면?'}</b><small>먹고 싶은 메뉴가 겹치면 알려드려요</small></span><Icon name="chevron" size={17} /></button></div>
     {d.error && <p className="baef-error" role="alert">{d.error}</p>}
     {store && <StoreSheet store={store} close={() => setStore(null)} push={push} />}
-    {preferences && <LiveMenuPreferences close={() => setPreferences(false)} />}
+    {preferences && !s.loginOpen && <LiveMenuPreferences search={preferences.query ? preferences : undefined} close={() => setPreferences(null)} />}
   </div></div>
 }
-export function LiveMenuPreferences({ close }: { close: () => void }) {
+export function LiveMenuPreferences({ close, search }: { close: () => void; search?: WishSearch }) {
   const d = useMenuDiscovery(), s = useSharedDelivery()
-  if (s.session&&d.suggestionsReady) return <OrderWishEditor close={close}/>
-  if (!s.session) return <Modal title="먹고 싶은 메뉴 알림" close={close} footer={<button className="baef-button" onClick={() => { close(); s.setLoginOpen(true) }}>로그인하고 메뉴 알림 설정</button>}><p className="baef-muted">로그인하면 먹고 싶은 메뉴와 시간이 맞는 배프를 알려드려요.</p></Modal>
+  if (s.session && d.suggestionsReady) return <OrderWishEditor close={close} choices={search ? findWishStores(d.catalog, search) : undefined} />
+  if (!s.session) return <Modal title="먹고 싶은 메뉴 알림" close={close} footer={<button className="baef-button" onClick={() => { if (!search) close(); s.setLoginOpen(true) }}>로그인하고 메뉴 알림 설정</button>}><p className="baef-muted">{search ? `로그인하면 ‘${search.query}’로 함께 주문할 사람을 찾을 수 있어요.` : '로그인하면 먹고 싶은 메뉴와 시간이 맞는 배프를 알려드려요.'}</p></Modal>
+  if (search && !d.connected && !d.error) return <Modal title="먹고 싶은 메뉴로 배프 찾기" close={close}><p role="status">메뉴를 불러오고 있어요.</p></Modal>
   const reason = s.active ? '진행 중인 주문을 먼저 확인해 주세요.' : !d.menus.length ? '먹고 싶은 메뉴를 하나 이상 골라 주세요.' : !d.stores.length ? '가능한 가게를 한 곳 이상 골라 주세요.' : !d.matchLocation ? '출발 위치를 먼저 설정해 주세요.' : ''
   return <Modal title="먹고 싶은 메뉴 알림" close={close} footer={<><button className="baef-button" disabled={d.saving || !!reason} onClick={() => void d.save().then(ok => { if (ok) close() })}>{d.saving ? '저장 중…' : d.intent ? '메뉴 알림 변경' : '이 메뉴로 알림 받기'}</button>{reason && <p className="baef-muted">{reason}</p>}</>}>
     <p className="baef-muted">메뉴와 시간이 맞는 배프가 생기면 알려드려요.</p><div className="live-interest-choices">{FOOD_CHOICES.map(f => <button key={f.id} aria-pressed={d.menus.includes(f.id)} onClick={() => d.toggleMenu(f.id)}>{f.name}{d.menus.includes(f.id) && <Icon name="check" size={16} />}</button>)}</div>

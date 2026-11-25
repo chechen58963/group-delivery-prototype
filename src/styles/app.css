@@ -74,6 +74,8 @@
 .baef-live .bv-room-store .baef-store-brand { width: 112px; height: 44px; padding: 6px; border-radius: 8px; }
 .baef-live .bv-room-store { padding-right: 14px; }
 .baef-live .bv-room-route { align-items: center; justify-content: flex-start; gap: 5px; }
+.baef-live .live-room-pickup { display: flex; align-items: baseline; gap: 5px; margin: 6px 0 2px; font-size: 0.875rem; color: var(--bv-ink); overflow-wrap: anywhere; }
+.baef-live .live-room-pickup svg { flex: none; align-self: flex-start; margin-top: 3px; }
 .baef-live .live-room-count { margin-left: auto; white-space: nowrap; }
 .baef-live .bv-saving { display: inline-block; margin-top: 6px; }
 .baef-live .bv-save { z-index: 1; }
@@ -87,6 +89,7 @@
 .baef-live .live-guest-invite p, .baef-live .live-no-groups p { font-size: 13px; color: var(--bv-muted); }
 .baef-live .live-guest-invite .bv-button { max-width: 310px; margin: 20px auto 0; }
 .baef-live .live-no-groups button { display: block; margin: 12px auto 0; }
+.baef-live .live-search-match { max-width: 100%; height: auto; min-height: 44px; padding: 10px 18px; white-space: normal; overflow-wrap: anywhere; }
 .baef-live .live-store-preview { border-top: 1px solid var(--bv-line); margin-top: 34px; padding-top: 30px; }
 .baef-live .live-brand-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 22px 16px; }
 .baef-live .live-brand-grid > button { text-align: left; border: 1px solid var(--bv-line); border-radius: 13px; padding: 18px; min-width: 0; }

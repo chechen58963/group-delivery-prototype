@@ -2,7 +2,7 @@ import { pickupDay, pickupTimestamp } from './pickupTime'
 
 export function initialDeliverySlot(day:number,hour:number,now=new Date()){
  const start=new Date(now);start.setDate(start.getDate()+day);start.setHours(hour,0,0,0)
- if(start.getTime()<=now.getTime())start.setTime(Math.ceil((now.getTime()+15*60000)/(15*60000))*15*60000)
+ if(start.getTime()<=Math.floor(now.getTime()/60000)*60000+60000)start.setTime(Math.ceil((now.getTime()+15*60000)/(15*60000))*15*60000)
  return {deliveryDay:pickupDay(start),deliveryClock:`${String(start.getHours()).padStart(2,'0')}:${String(start.getMinutes()).padStart(2,'0')}`}
 }
 export function deliveryWindow(day:string,clock:string){

@@ -3,7 +3,7 @@ import {displayStoreName} from './storeNames'
 import ActionFeedback from './ActionFeedback'
 import {WalkingRecordingStatus} from './WalkingRewards'
 import CancelOrderControl from './CancelOrderControl'
-import {timingSummary,plannedFromNote,timeLabel} from './orderTiming'
+import {timingSummary,recruitmentPlan,timeLabel} from './orderTiming'
 import { useEffect, useRef, useState } from 'react'
 import { usePreferences } from './AppPreferences'
 import { SharedApplicants, SharedChat, useSharedDelivery } from './SharedDelivery'
@@ -24,7 +24,7 @@ import RecruitmentProgress from './RecruitmentProgress'
 import { LiveExplore, LiveOrders, LiveStorePicker, LiveMenuPreferences, liveStorePhoto } from './LiveDiscovery'
 import Icon, { type IconName } from './ui/Icon'
 import StoreBrand from './StoreBrand'
-import {previewMembers,needsAttention} from './userFlow'
+import {recruitmentPickupLabel,previewMembers,needsAttention} from './userFlow'
 import {Modal} from './ui/Modal'
 import AuthDialog from './AuthDialog'
 import { PersonProfile } from './OrderScreens'
@@ -158,7 +158,7 @@ function GroupDetail({pop,push}:{pop:()=>void;push:(s:Screen)=>void}){
     {mine?.status==='pending'&&mine.active&&<section className="baef-current-order"><h2>리더 수락 대기</h2><p>수락되면 알림으로 알려드려요. 기다리는 동안 다른 모집에 중복 신청할 수 없어요.</p><button className="baef-button secondary" disabled={s.busy} onClick={()=>void s.act('withdraw',p.id)}>신청 취소</button></section>}
     {next&&mine?.status!=='pending'&&<section className="baef-current-order"><span className="baef-eyebrow">{owner?'리더 · 다음 할 일':'참가자 · 다음 할 일'}</span><h2>{next.title}</h2><p>{next.description}</p><button className="baef-button" onClick={()=>push(next.route)}>{next.action}<span aria-hidden="true">→</span></button>{mine?.status==='accepted'&&!ended&&<div className="baef-order-links"><button onClick={()=>push('chat')}>채팅방 열기</button>{owner&&next.route!=='applicants'&&<button onClick={()=>push('applicants')}>신청자 관리</button>}</div>}</section>}
     {owner&&mine?.active&&<RoomTimeEditor/>}
-    {open&&<RecruitmentProgress postId={p.id} goal={p.min_order} members={p.member_count} maxMembers={p.max_members}/>}<dl className="baef-detail-facts"><dt>수령 제안 장소</dt><dd>{p.meeting}</dd><dt>주문 예정</dt><dd>{timeLabel(state?.planned_order_at??plannedFromNote(p.note))||'모집 후 함께 주문해요'}</dd><dt>모집 마감</dt><dd>{new Date(p.deadline).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</dd><dt>목표 주문금액</dt><dd>{money(p.min_order)}</dd><dt>배달비</dt><dd>총 {money(p.delivery_fee)} · {Math.ceil(p.delivery_fee/previewMembers(p.member_count,p.max_members,mine?.status==='accepted')).toLocaleString()}원씩 예상</dd></dl>
+    {open&&<RecruitmentProgress postId={p.id} goal={p.min_order} members={p.member_count} maxMembers={p.max_members}/>}<dl className="baef-detail-facts"><dt>수령 제안 장소</dt><dd>{recruitmentPickupLabel(p)}</dd><dt>모집 마감</dt><dd>{timeLabel(p.deadline)}</dd><dt>주문 예정</dt><dd>{timeLabel(recruitmentPlan(p, state?.planned_order_at)) || '모집 마감 후 조율'}</dd><dt>목표 주문금액</dt><dd>{money(p.min_order)}</dd><dt>배달비</dt><dd>총 {money(p.delivery_fee)} · {Math.ceil(p.delivery_fee/previewMembers(p.member_count,p.max_members,mine?.status==='accepted')).toLocaleString()}원씩 예상</dd></dl>
     {mine?.status==='accepted'&&<section className="baef-goal"><div><span>현재 모인 메뉴금액</span><b>{money(total)}</b></div><progress max={Math.max(1,p.min_order)} value={Math.min(total,p.min_order)} aria-label="주문 목표금액 달성도"/><p>{total>=p.min_order?'목표금액을 채웠어요. 주문 내용을 확인해 주세요.':`${money(p.min_order-total)} 더 모이면 목표금액을 채워요.`}</p></section>}
     {mine?.active&&<BasketEditor postId={p.id}/>}
     {people.length>0&&<OrderParticipants/>}
